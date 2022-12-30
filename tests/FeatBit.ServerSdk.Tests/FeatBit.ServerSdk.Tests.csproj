@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net6.0</TargetFramework>
+        <AssemblyName>FeatBit.ServerSdk.Tests</AssemblyName>
+        <PackageId>FeatBit.ServerSdk.Tests</PackageId>
+        <IsPackable>false</IsPackable>
+        <IsTestProject>true</IsTestProject>
+        <RootNamespace>FeatBit.Sdk.Server</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\FeatBit.ServerSdk\FeatBit.ServerSdk.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.11.0"/>
+        <PackageReference Include="xunit.runner.visualstudio" Version="2.4.3"/>
+        <PackageReference Include="xunit" Version="2.4.1"/>
+    </ItemGroup>
+
+</Project>

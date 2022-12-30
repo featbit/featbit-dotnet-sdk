@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>netstandard2.0</TargetFramework>
+        <DebugType>portable</DebugType>
+        <AssemblyName>FeatBit.ServerSdk</AssemblyName>
+        <OutputType>Library</OutputType>
+        <PackageId>FeatBit.ServerSdk</PackageId>
+        <RootNamespace>FeatBit.Sdk.Server</RootNamespace>
+        <Description>FeatBit Server-Side .NET SDK</Description>
+        <Authors>FeatBit</Authors>
+        <Owners>FeatBit</Owners>
+        <Company>FeatBit</Company>
+        <Authors>FeatBit</Authors>
+        <Owners>FeatBit</Owners>
+        <Copyright>Copyright 2023 FeatBit</Copyright>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    </PropertyGroup>
+
+    <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'
+                     or '$(TargetFramework)' == 'net462'">
+        <PackageReference Include="System.Text.Json" Version="6.0.7"/>
+        <!-- it's a built-in package in netcoreapp3.1 and net6.0 -->
+    </ItemGroup>
+
+</Project>
