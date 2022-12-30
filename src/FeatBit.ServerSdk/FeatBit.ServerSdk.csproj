@@ -16,6 +16,10 @@
         <Copyright>Copyright 2023 FeatBit</Copyright>
         <IncludeSymbols>true</IncludeSymbols>
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+        <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+        <PackageProjectUrl>https://github.com/featbit/dotnet-server-sdk</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/featbit/dotnet-server-sdk</RepositoryUrl>
+        <RepositoryBranch>main</RepositoryBranch>
     </PropertyGroup>
 
     <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'
