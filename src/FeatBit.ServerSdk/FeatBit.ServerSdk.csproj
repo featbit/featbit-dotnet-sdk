@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>netstandard2.0</TargetFramework>
+        <TargetFrameworks>netstandard2.0;netcoreapp3.1;net6.0;net462</TargetFrameworks>
         <DebugType>portable</DebugType>
         <AssemblyName>FeatBit.ServerSdk</AssemblyName>
         <OutputType>Library</OutputType>
@@ -22,10 +22,8 @@
         <RepositoryBranch>main</RepositoryBranch>
     </PropertyGroup>
 
-    <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'
-                     or '$(TargetFramework)' == 'net462'">
-        <PackageReference Include="System.Text.Json" Version="6.0.7"/>
-        <!-- it's a built-in package in netcoreapp3.1 and net6.0 -->
+    <ItemGroup>
+        <PackageReference Include="System.Text.Json" Version="6.0.7" />
     </ItemGroup>
 
 </Project>
