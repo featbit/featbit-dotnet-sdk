@@ -26,8 +26,9 @@ namespace FeatBit.Sdk.Server.Store
         /// All previous data will be discarded, regardless of versioning.
         /// </para>
         /// </remarks>
-        /// <param name="objects">a list of <see cref="IStorableObject"/> instances.</param>
-        void Populate(IEnumerable<IStorableObject> objects);
+        /// <param name="objects">a list of <see cref="StorableObject"/> instances with
+        /// their store keys.</param>
+        void Populate(IEnumerable<StorableObject> objects);
 
         /// <summary>
         /// Retrieves an object from the store, if available.
@@ -35,5 +36,20 @@ namespace FeatBit.Sdk.Server.Store
         /// <param name="key">the unique key of the object within the store</param>
         /// <returns>The object; null if the key is unknown</returns>
         TObject Get<TObject>(string key) where TObject : class;
+
+        /// <summary>
+        /// Updates or inserts an item in the store. For updates, the object will only be
+        /// updated if the existing version is less than the new version.
+        /// </summary>
+        /// <remarks>
+        /// The SDK may pass an <see cref="StorableObject"/> that contains a null, to
+        /// represent a placeholder for a deleted item. In that case, assuming the version
+        /// is greater than any existing version of that item, the store should retain that
+        /// placeholder rather than simply not storing anything.
+        /// </remarks>
+        /// <param name="storableObj">the item to insert or update</param>
+        /// <returns>true if the item was updated; false if it was not updated because the
+        /// store contains an equal or greater version</returns>
+        bool Upsert(StorableObject storableObj);
     }
 }

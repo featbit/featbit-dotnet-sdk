@@ -4,8 +4,10 @@ using FeatBit.Sdk.Server.Store;
 
 namespace FeatBit.Sdk.Server.Model
 {
-    internal sealed class FeatureFlag : IStorableObject
+    internal sealed class FeatureFlag : StorableObject
     {
+        public override string StoreKey => $"ff_{Id}";
+
         public Guid Id { get; set; }
 
         public string Key { get; set; }
@@ -26,10 +28,9 @@ namespace FeatBit.Sdk.Server.Model
 
         public bool ExptIncludeAllTargets { get; set; }
 
-        public DateTime UpdatedAt { get; set; }
-
         public FeatureFlag(
             string key,
+            long version,
             string variationType,
             ICollection<Variation> variations,
             ICollection<TargetUser> targetUsers,
@@ -37,11 +38,11 @@ namespace FeatBit.Sdk.Server.Model
             bool isEnabled,
             string disabledVariationId,
             Fallthrough fallthrough,
-            bool exptIncludeAllTargets,
-            DateTime updatedAt)
+            bool exptIncludeAllTargets)
         {
             Id = Guid.NewGuid();
             Key = key;
+            Version = version;
             VariationType = variationType;
             Variations = variations;
             TargetUsers = targetUsers;
@@ -50,16 +51,6 @@ namespace FeatBit.Sdk.Server.Model
             DisabledVariationId = disabledVariationId;
             Fallthrough = fallthrough;
             ExptIncludeAllTargets = exptIncludeAllTargets;
-            UpdatedAt = updatedAt;
-        }
-
-        public string StoreKey => $"ff_{Id}";
-
-        public ObjectDescriptor Descriptor()
-        {
-            var version = UpdatedAt == default ? 0 : new DateTimeOffset(UpdatedAt).ToUnixTimeMilliseconds();
-
-            return new ObjectDescriptor(version, this);
         }
     }
 
@@ -92,6 +83,8 @@ namespace FeatBit.Sdk.Server.Model
 
     internal sealed class RolloutVariation
     {
+        public Guid Id { get; set; }
+
         public double[] Rollout { get; set; }
 
         public double ExptRollout { get; set; }

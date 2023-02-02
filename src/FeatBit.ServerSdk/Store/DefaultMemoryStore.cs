@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -8,32 +7,52 @@ namespace FeatBit.Sdk.Server.Store
     {
         public bool Populated { get; private set; }
 
-        private readonly object _populateLock = new object();
+        private readonly object _writeLock = new object();
 
-        private volatile ConcurrentDictionary<string, ObjectDescriptor> _items =
-            new ConcurrentDictionary<string, ObjectDescriptor>();
+        private volatile Dictionary<string, StorableObject> _items =
+            new Dictionary<string, StorableObject>();
 
-        public void Populate(IEnumerable<IStorableObject> objects)
+        public void Populate(IEnumerable<StorableObject> objects)
         {
-            lock (_populateLock)
+            lock (_writeLock)
             {
-                var kvs = objects.Select(
-                    x => new KeyValuePair<string, ObjectDescriptor>(x.StoreKey, x.Descriptor())
-                );
-
-                _items = new ConcurrentDictionary<string, ObjectDescriptor>(kvs);
+                _items = objects.ToDictionary(storableObj => storableObj.StoreKey, storableObj => storableObj);
                 Populated = true;
             }
         }
 
         public TObject Get<TObject>(string key) where TObject : class
         {
-            if (_items.TryGetValue(key, out var descriptor) && descriptor.Item is TObject tObject)
+            if (_items.TryGetValue(key, out var obj) && obj is TObject tObject)
             {
                 return tObject;
             }
 
             return null;
+        }
+
+        public bool Upsert(StorableObject storableObj)
+        {
+            var key = storableObj.StoreKey;
+
+            lock (_writeLock)
+            {
+                // update item
+                if (_items.TryGetValue(key, out var existed))
+                {
+                    if (existed.Version >= storableObj.Version)
+                    {
+                        return false;
+                    }
+
+                    _items[key] = storableObj;
+                    return true;
+                }
+
+                // add item
+                _items.Add(key, storableObj);
+                return true;
+            }
         }
     }
 }

@@ -4,8 +4,10 @@ using FeatBit.Sdk.Server.Store;
 
 namespace FeatBit.Sdk.Server.Model
 {
-    internal sealed class Segment : IStorableObject
+    internal sealed class Segment : StorableObject
     {
+        public override string StoreKey => $"segment_{Id}";
+
         public Guid Id { get; set; }
 
         public ICollection<string> Included { get; set; }
@@ -14,28 +16,17 @@ namespace FeatBit.Sdk.Server.Model
 
         public ICollection<MatchRule> Rules { get; set; }
 
-        public DateTime UpdatedAt { get; set; }
-
         public Segment(
+            long version,
             ICollection<string> included,
             ICollection<string> excluded,
-            ICollection<MatchRule> rules,
-            DateTime updatedAt)
+            ICollection<MatchRule> rules)
         {
             Id = Guid.NewGuid();
+            Version = version;
             Included = included;
             Excluded = excluded;
             Rules = rules;
-            UpdatedAt = updatedAt;
-        }
-
-        public string StoreKey => $"segment_{Id}";
-
-        public ObjectDescriptor Descriptor()
-        {
-            var version = UpdatedAt == default ? 0 : new DateTimeOffset(UpdatedAt).ToUnixTimeMilliseconds();
-
-            return new ObjectDescriptor(version, this);
         }
     }
 

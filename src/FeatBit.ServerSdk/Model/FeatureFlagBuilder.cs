@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 
 namespace FeatBit.Sdk.Server.Model
@@ -7,6 +6,7 @@ namespace FeatBit.Sdk.Server.Model
     {
         private readonly string _key;
 
+        private long _version;
         private string _variationType = string.Empty;
         private ICollection<Variation> _variations = new List<Variation>();
         private ICollection<TargetUser> _targetUsers = new List<TargetUser>();
@@ -15,7 +15,6 @@ namespace FeatBit.Sdk.Server.Model
         private string _disabledVariationId = string.Empty;
         private Fallthrough _fallthrough;
         private bool _exptIncludeAllTargets = true;
-        private DateTime _updatedAt = DateTime.UtcNow;
 
         internal FeatureFlagBuilder(string key)
         {
@@ -24,8 +23,14 @@ namespace FeatBit.Sdk.Server.Model
 
         public FeatureFlag Build()
         {
-            return new FeatureFlag(_key, _variationType, _variations, _targetUsers, _rules, _isEnabled,
-                _disabledVariationId, _fallthrough, _exptIncludeAllTargets, _updatedAt);
+            return new FeatureFlag(_key, _version, _variationType, _variations, _targetUsers, _rules, _isEnabled,
+                _disabledVariationId, _fallthrough, _exptIncludeAllTargets);
+        }
+
+        public FeatureFlagBuilder Version(long version)
+        {
+            _version = version;
+            return this;
         }
 
         public FeatureFlagBuilder VariationType(string variationType)
@@ -103,12 +108,6 @@ namespace FeatBit.Sdk.Server.Model
         public FeatureFlagBuilder ExptIncludeAllTargets(bool exptIncludeAllTargets)
         {
             _exptIncludeAllTargets = exptIncludeAllTargets;
-            return this;
-        }
-
-        public FeatureFlagBuilder UpdatedAt(DateTime updatedAt)
-        {
-            _updatedAt = updatedAt;
             return this;
         }
     }

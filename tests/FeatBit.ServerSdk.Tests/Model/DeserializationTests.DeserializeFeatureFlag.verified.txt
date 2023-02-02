@@ -1,0 +1,114 @@
+﻿{
+  StoreKey: ff_174c7138-426d-4434-8a91-af8c00306de3,
+  Id: Guid_1,
+  Key: example,
+  VariationType: boolean,
+  Variations: [
+    {
+      Value: true
+    },
+    {
+      Value: false
+    }
+  ],
+  TargetUsers: [
+    {
+      KeyIds: [
+        true-1,
+        true-2,
+        true-3,
+        true-4,
+        true-5,
+        true-6,
+        true-7,
+        true-8,
+        true-9,
+        true-10
+      ],
+      VariationId: Guid_2
+    },
+    {
+      KeyIds: [
+        false-1,
+        false-2,
+        false-3,
+        false-4,
+        false-5
+      ],
+      VariationId: Guid_3
+    }
+  ],
+  Rules: [
+    {
+      IncludedInExpt: false,
+      Conditions: [
+        {
+          Property: age,
+          Op: BiggerThan,
+          Value: 22
+        },
+        {
+          Property: name,
+          Op: EndsWith,
+          Value: _qa
+        }
+      ],
+      Variations: [
+        {
+          Id: Guid_2,
+          Rollout: [
+            0.0,
+            1.0
+          ],
+          ExptRollout: 1.0
+        }
+      ]
+    },
+    {
+      DispatchKey: keyId,
+      IncludedInExpt: false,
+      Conditions: [
+        {
+          Property: country,
+          Op: IsOneOf,
+          Value: ["cn","us","jp","gb","es","ss"]
+        }
+      ],
+      Variations: [
+        {
+          Id: Guid_2,
+          Rollout: [
+            0.0,
+            0.2
+          ],
+          ExptRollout: 1.0
+        },
+        {
+          Id: Guid_3,
+          Rollout: [
+            0.2,
+            1.0
+          ],
+          ExptRollout: 1.0
+        }
+      ]
+    }
+  ],
+  IsEnabled: true,
+  DisabledVariationId: Guid_3,
+  Fallthrough: {
+    IncludedInExpt: true,
+    Variations: [
+      {
+        Id: Guid_2,
+        Rollout: [
+          0.0,
+          1.0
+        ],
+        ExptRollout: 1.0
+      }
+    ]
+  },
+  ExptIncludeAllTargets: true,
+  Version: 1674871495616
+}
