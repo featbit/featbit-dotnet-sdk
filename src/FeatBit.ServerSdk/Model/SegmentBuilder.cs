@@ -1,21 +1,25 @@
+using System;
 using System.Collections.Generic;
 
 namespace FeatBit.Sdk.Server.Model
 {
     internal class SegmentBuilder
     {
+        private Guid _id;
         private long _version;
         private ICollection<string> _included = new List<string>();
         private ICollection<string> _excluded = new List<string>();
         private ICollection<MatchRule> _rules = new List<MatchRule>();
 
-        public SegmentBuilder()
-        {
-        }
-
         public Segment Build()
         {
-            return new Segment(_version, _included, _excluded, _rules);
+            return new Segment(_id, _version, _included, _excluded, _rules);
+        }
+
+        public SegmentBuilder Id(Guid id)
+        {
+            _id = id;
+            return this;
         }
 
         public SegmentBuilder Version(long version)

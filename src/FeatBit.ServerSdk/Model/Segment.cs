@@ -17,12 +17,13 @@ namespace FeatBit.Sdk.Server.Model
         public ICollection<MatchRule> Rules { get; set; }
 
         public Segment(
+            Guid id,
             long version,
             ICollection<string> included,
             ICollection<string> excluded,
             ICollection<MatchRule> rules)
         {
-            Id = Guid.NewGuid();
+            Id = id;
             Version = version;
             Included = included;
             Excluded = excluded;

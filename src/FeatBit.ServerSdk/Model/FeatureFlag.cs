@@ -29,6 +29,7 @@ namespace FeatBit.Sdk.Server.Model
         public bool ExptIncludeAllTargets { get; set; }
 
         public FeatureFlag(
+            Guid id,
             string key,
             long version,
             string variationType,
@@ -40,7 +41,7 @@ namespace FeatBit.Sdk.Server.Model
             Fallthrough fallthrough,
             bool exptIncludeAllTargets)
         {
-            Id = Guid.NewGuid();
+            Id = id;
             Key = key;
             Version = version;
             VariationType = variationType;

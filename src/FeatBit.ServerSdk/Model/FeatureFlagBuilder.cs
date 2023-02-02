@@ -1,11 +1,12 @@
+using System;
 using System.Collections.Generic;
 
 namespace FeatBit.Sdk.Server.Model
 {
     internal class FeatureFlagBuilder
     {
-        private readonly string _key;
-
+        private Guid _id = Guid.NewGuid();
+        private string _key;
         private long _version;
         private string _variationType = string.Empty;
         private ICollection<Variation> _variations = new List<Variation>();
@@ -16,15 +17,22 @@ namespace FeatBit.Sdk.Server.Model
         private Fallthrough _fallthrough;
         private bool _exptIncludeAllTargets = true;
 
-        internal FeatureFlagBuilder(string key)
-        {
-            _key = key;
-        }
-
         public FeatureFlag Build()
         {
-            return new FeatureFlag(_key, _version, _variationType, _variations, _targetUsers, _rules, _isEnabled,
+            return new FeatureFlag(_id, _key, _version, _variationType, _variations, _targetUsers, _rules, _isEnabled,
                 _disabledVariationId, _fallthrough, _exptIncludeAllTargets);
+        }
+
+        public FeatureFlagBuilder Id(Guid id)
+        {
+            _id = id;
+            return this;
+        }
+
+        public FeatureFlagBuilder Key(string key)
+        {
+            _key = key;
+            return this;
         }
 
         public FeatureFlagBuilder Version(long version)

@@ -1,4 +1,3 @@
-using System;
 using FeatBit.Sdk.Server.Model;
 
 namespace FeatBit.Sdk.Server.Store;
@@ -20,7 +19,7 @@ public class MemoryStoreTests
     public void GetFeatureFlag()
     {
         var store = new DefaultMemoryStore();
-        var flag = new FeatureFlagBuilder("hello-world").Build();
+        var flag = new FeatureFlagBuilder().Build();
         store.Populate(new[] { flag });
 
         var result = store.Get<FeatureFlag>(flag.StoreKey);
@@ -52,14 +51,48 @@ public class MemoryStoreTests
     [Fact]
     public void UpsertFeatureFlag()
     {
-        var store = new DefaultMemoryStore();
-        var flag = new FeatureFlagBuilder("hello-world").Build();
+        var flagId = Guid.NewGuid();
 
+        var store = new DefaultMemoryStore();
+        var flag = new FeatureFlagBuilder()
+            .Id(flagId)
+            .VariationType("boolean")
+            .Version(1)
+            .Build();
+
+        // insert
         var insertResult = store.Upsert(flag);
         Assert.True(insertResult);
 
         var inserted = store.Get<FeatureFlag>(flag.StoreKey);
         Assert.NotNull(inserted);
         Assert.Same(flag, inserted);
+
+        // update
+        var updatedFlag = new FeatureFlagBuilder()
+            .Id(flagId)
+            .VariationType("json")
+            .Version(2)
+            .Build();
+        var updatedResult = store.Upsert(updatedFlag);
+        Assert.True(updatedResult);
+
+        var updated = store.Get<FeatureFlag>(flag.StoreKey);
+        Assert.Equal("json", updated.VariationType);
+        Assert.Equal(2, updated.Version);
+
+        // update with old version data (store's data won't change)
+        var oldFlag = new FeatureFlagBuilder()
+            .Id(flagId)
+            .VariationType("string")
+            .Version(0)
+            .Build();
+
+        var updateUsingOldFlag = store.Upsert(oldFlag);
+        Assert.False(updateUsingOldFlag);
+
+        var origin = store.Get<FeatureFlag>(flag.StoreKey);
+        Assert.Equal("json", origin.VariationType);
+        Assert.Equal(2, origin.Version);
     }
 }
