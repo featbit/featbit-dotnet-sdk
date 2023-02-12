@@ -14,18 +14,22 @@ namespace FeatBit.Sdk.Server.Options
 
         public TimeSpan KeepAliveInterval { get; set; }
 
+        public TimeSpan[] ReconnectRetryDelays { get; set; }
+
         public FbOptions(
             Uri eventUri,
             Uri streamingUri,
             TimeSpan connectTimeout,
             TimeSpan closeTimeout,
-            TimeSpan keepAliveInterval)
+            TimeSpan keepAliveInterval,
+            TimeSpan[] reconnectRetryDelays)
         {
             EventUri = eventUri;
             StreamingUri = streamingUri;
             ConnectTimeout = connectTimeout;
             CloseTimeout = closeTimeout;
             KeepAliveInterval = keepAliveInterval;
+            ReconnectRetryDelays = reconnectRetryDelays;
         }
     }
 }

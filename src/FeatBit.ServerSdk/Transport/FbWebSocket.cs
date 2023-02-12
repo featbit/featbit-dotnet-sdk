@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using FeatBit.Sdk.Server.Options;
+using FeatBit.Sdk.Server.Retry;
 
 namespace FeatBit.Sdk.Server.Transport
 {
@@ -14,6 +15,8 @@ namespace FeatBit.Sdk.Server.Transport
         public event Func<Task> OnConnected;
         public event Action<Exception> OnConnectError;
         public event Func<Task> OnKeepAlive;
+        public event Func<Exception, Task> OnReconnecting;
+        public event Func<Task> OnReconnected;
         public event Func<Exception, WebSocketCloseStatus?, string, Task> OnClosed;
         public event Func<ReadOnlySequence<byte>, Task> OnReceived;
 
@@ -26,24 +29,29 @@ namespace FeatBit.Sdk.Server.Transport
         private readonly TimeSpan _keepAliveInterval;
         private Timer _keepAliveTimer;
         private Exception _closeException;
+        private readonly IRetryPolicy _retryPolicy;
+        private CancellationTokenSource _stopCts = new CancellationTokenSource();
 
         internal FbWebSocket(FbOptions options, WebSocketTransport transport = null)
         {
             _options = options;
             _transport = transport ?? new WebSocketTransport();
             _keepAliveInterval = options.KeepAliveInterval;
+            _retryPolicy = _options.ReconnectRetryDelays?.Length > 0
+                ? new DefaultRetryPolicy(_options.ReconnectRetryDelays)
+                : new DefaultRetryPolicy();
         }
 
-        public async Task StartAsync()
+        public async Task StartAsync(CancellationToken cancellationToken = default)
         {
             try
             {
-                await _transport.StartAsync(_options);
+                await _transport.StartAsync(_options, cancellationToken);
 
                 _receiveTask = ReceiveLoop();
 
                 _keepAliveTimer = new Timer(
-                    state => _ = KeepAliveAsync(),
+                    state => _ = KeepAliveAsync(cancellationToken),
                     null,
                     _keepAliveInterval,
                     _keepAliveInterval
@@ -119,17 +127,84 @@ namespace FeatBit.Sdk.Server.Transport
         {
             try
             {
-                // Stop the transport
+                // Stop(Dispose) current transport
                 await _transport.StopAsync();
 
-                // Fire-and-forget the closed event
-                _ = OnClosed?.Invoke(_closeException, _transport.CloseStatus, _transport.CloseDescription)
-                    .ConfigureAwait(false);
+                var closeStatus = _transport.CloseStatus;
+                if (closeStatus == WebSocketCloseStatus.NormalClosure || closeStatus == (WebSocketCloseStatus)4003)
+                {
+                    CompleteClose(_closeException);
+                }
+                else
+                {
+                    // Fire-and-forget the reconnect action
+                    _ = ReconnectAsync();
+                }
             }
             catch
             {
                 // The transport threw an exception while stopping.
             }
+        }
+
+        private async Task ReconnectAsync()
+        {
+            // Fire-and-forget the reconnecting event
+            _ = OnReconnecting?.Invoke(_closeException).ConfigureAwait(false);
+
+            var retryTimes = 0;
+            while (true)
+            {
+                // Reconnect attempt number {retryTimes} will start in {nextRetryDelay}
+                var nextRetryDelay = _retryPolicy.NextRetryDelay(new RetryContext { RetryAttempt = retryTimes });
+                try
+                {
+                    await Task.Delay(nextRetryDelay, _stopCts.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException ex)
+                {
+                    var stoppedEx =
+                        new Exception("FbWebSocket stopped during reconnect delay. Done reconnecting.", ex);
+                    CompleteClose(stoppedEx);
+
+                    return;
+                }
+
+                try
+                {
+                    await StartAsync(_stopCts.Token).ConfigureAwait(false);
+
+                    // reconnected successfully after {retryTimes} attempts.
+
+                    // Fire-and-forget the reconnected event
+                    _ = OnReconnected?.Invoke();
+                }
+                catch (Exception ex)
+                {
+                    // Reconnect attempt failed.
+
+                    // Connection stopped during reconnect attempt
+                    if (_stopCts.IsCancellationRequested)
+                    {
+                        var stoppedEx =
+                            new Exception("Connection stopped during reconnect attempt. Done reconnecting.", ex);
+                        CompleteClose(stoppedEx);
+
+                        return;
+                    }
+
+                    retryTimes++;
+                }
+            }
+        }
+
+        private void CompleteClose(Exception exception)
+        {
+            _stopCts = new CancellationTokenSource();
+
+            // Fire-and-forget the closed event
+            _ = OnClosed?.Invoke(exception, _transport.CloseStatus, _transport.CloseDescription)
+                .ConfigureAwait(false);
         }
 
         private async Task KeepAliveAsync(CancellationToken ct = default)
@@ -145,6 +220,8 @@ namespace FeatBit.Sdk.Server.Transport
 
         public async Task StopAsync()
         {
+            _stopCts.Cancel();
+
             _keepAliveTimer?.Dispose();
 
             // Terminating receive loop, which should cause everything to shut down

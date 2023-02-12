@@ -9,17 +9,20 @@ namespace FeatBit.Sdk.Server.Options
         private TimeSpan _connectTimeout;
         private TimeSpan _closeTimeout;
         private TimeSpan _keepAliveInterval;
+        private TimeSpan[] _reconnectRetryDelays;
 
         public FbOptionsBuilder()
         {
             _connectTimeout = TimeSpan.FromSeconds(5);
             _closeTimeout = TimeSpan.FromSeconds(2);
             _keepAliveInterval = TimeSpan.FromSeconds(15);
+            _reconnectRetryDelays = Array.Empty<TimeSpan>();
         }
 
         public FbOptions Build()
         {
-            return new FbOptions(_eventUri, _streamingUri, _connectTimeout, _closeTimeout, _keepAliveInterval);
+            return new FbOptions(_eventUri, _streamingUri, _connectTimeout, _closeTimeout, _keepAliveInterval,
+                _reconnectRetryDelays);
         }
 
         public FbOptionsBuilder Steaming(Uri uri)
@@ -49,6 +52,12 @@ namespace FeatBit.Sdk.Server.Options
         public FbOptionsBuilder KeepAliveInterval(TimeSpan interval)
         {
             _keepAliveInterval = interval;
+            return this;
+        }
+
+        public FbOptionsBuilder ReconnectRetryDelays(TimeSpan[] delays)
+        {
+            _reconnectRetryDelays = delays;
             return this;
         }
     }

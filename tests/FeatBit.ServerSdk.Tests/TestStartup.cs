@@ -56,6 +56,15 @@ public class TestStartup : StartupBase
                 cts.Token
             );
         }
+
+        if (op == "close-unexpectedly")
+        {
+            await webSocket.CloseOutputAsync(
+                WebSocketCloseStatus.EndpointUnavailable,
+                "server going down",
+                cts.Token
+            );
+        }
     }
 
     private static async Task Echo(WebSocket webSocket)

@@ -145,4 +145,61 @@ public class FbWebSocketTests
 
         Assert.Equal(2, keepAliveTimes);
     }
+
+    [Fact]
+    public async Task TestReconnectOnUnexpectedClose()
+    {
+        var fbWebSocket = _app.CreateFbWebSocket("close-unexpectedly");
+
+        var onReconnectingCalled = false;
+        fbWebSocket.OnReconnecting += ex =>
+        {
+            Assert.Null(ex);
+            onReconnectingCalled = true;
+            return Task.CompletedTask;
+        };
+
+        var tcs = new TaskCompletionSource();
+        var reconnectTask = tcs.Task;
+        var onReconnectedCalled = false;
+        fbWebSocket.OnReconnected += () =>
+        {
+            onReconnectedCalled = true;
+
+            tcs.SetResult();
+            return Task.CompletedTask;
+        };
+
+        await fbWebSocket.StartAsync();
+        await reconnectTask.WaitAsync(TimeSpan.FromSeconds(1));
+
+        Assert.True(onReconnectingCalled);
+        Assert.True(onReconnectedCalled);
+    }
+
+    [Fact]
+    public async Task CanStopFbWebSocketWhenReconnecting()
+    {
+        var fbWebSocket = _app.CreateFbWebSocket(
+            "close-unexpectedly",
+            // set reconnect delay as 1s
+            builder => builder.ReconnectRetryDelays(new[] { TimeSpan.FromSeconds(1) })
+        );
+
+        var tcs = new TaskCompletionSource();
+        var onClosedTask = tcs.Task;
+        fbWebSocket.OnClosed += (exception, _, _) =>
+        {
+            Assert.NotNull(exception);
+            Assert.Equal("FbWebSocket stopped during reconnect delay. Done reconnecting.", exception.Message);
+
+            tcs.SetResult();
+            return Task.CompletedTask;
+        };
+
+        await fbWebSocket.StartAsync();
+        await fbWebSocket.StopAsync();
+
+        await onClosedTask.WaitAsync(TimeSpan.FromSeconds(1));
+    }
 }

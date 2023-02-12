@@ -48,14 +48,13 @@ namespace FeatBit.Sdk.Server.Transport
             _webSocketFactory = webSocketFactory;
         }
 
-        public async Task StartAsync(FbOptions options)
+        public async Task StartAsync(FbOptions options, CancellationToken cancellationToken = default)
         {
             _closeTimeout = options.CloseTimeout;
 
             var factory = _webSocketFactory ?? DefaultWebSocketFactory;
 
-            var connectCts = new CancellationTokenSource(options.ConnectTimeout);
-            _webSocket = await factory(options.StreamingUri, connectCts.Token);
+            _webSocket = await factory(options.StreamingUri, cancellationToken);
             if (_webSocket == null)
             {
                 throw new InvalidOperationException("Configured WebSocketFactory did not return a value.");
