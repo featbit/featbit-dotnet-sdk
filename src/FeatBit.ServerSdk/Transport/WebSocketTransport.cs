@@ -5,7 +5,6 @@ using System.Net.WebSockets;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
-using FeatBit.Sdk.Server.Options;
 
 namespace FeatBit.Sdk.Server.Transport
 {
@@ -30,6 +29,8 @@ namespace FeatBit.Sdk.Server.Transport
         private volatile bool _aborted;
         private Task Running { get; set; } = Task.CompletedTask;
 
+        private static readonly TimeSpan DefaultCloseTimeout = TimeSpan.FromSeconds(5);
+
         // 1MB
         private const long DefaultBufferSize = 1024 * 1024;
 
@@ -48,13 +49,16 @@ namespace FeatBit.Sdk.Server.Transport
             _webSocketFactory = webSocketFactory;
         }
 
-        public async Task StartAsync(FbOptions options, CancellationToken cancellationToken = default)
+        public async Task StartAsync(
+            Uri uri,
+            TimeSpan? closeTimeout = null,
+            CancellationToken cancellationToken = default)
         {
-            _closeTimeout = options.CloseTimeout;
+            _closeTimeout = closeTimeout ?? DefaultCloseTimeout;
 
             var factory = _webSocketFactory ?? DefaultWebSocketFactory;
 
-            _webSocket = await factory(options.StreamingUri, cancellationToken);
+            _webSocket = await factory(uri, cancellationToken);
             if (_webSocket == null)
             {
                 throw new InvalidOperationException("Configured WebSocketFactory did not return a value.");

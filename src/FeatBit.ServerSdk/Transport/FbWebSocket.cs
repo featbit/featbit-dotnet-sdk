@@ -37,8 +37,8 @@ namespace FeatBit.Sdk.Server.Transport
             _options = options;
             _transport = transport ?? new WebSocketTransport();
             _keepAliveInterval = options.KeepAliveInterval;
-            _retryPolicy = _options.ReconnectRetryDelays?.Length > 0
-                ? new DefaultRetryPolicy(_options.ReconnectRetryDelays)
+            _retryPolicy = options.ReconnectRetryDelays?.Length > 0
+                ? new DefaultRetryPolicy(options.ReconnectRetryDelays)
                 : new DefaultRetryPolicy();
         }
 
@@ -46,7 +46,7 @@ namespace FeatBit.Sdk.Server.Transport
         {
             try
             {
-                await _transport.StartAsync(_options, cancellationToken);
+                await _transport.StartAsync(_options.StreamingUri, _options.CloseTimeout, cancellationToken);
 
                 _receiveTask = ReceiveLoop();
 
