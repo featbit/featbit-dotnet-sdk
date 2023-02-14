@@ -25,6 +25,8 @@
     <ItemGroup>
         <None Update="Model\one-flag.json" CopyToOutputDirectory="Always" />
         <None Update="Model\one-segment.json" CopyToOutputDirectory="Always" />
+        <None Update="DataSynchronizer\full-data-set.json" CopyToOutputDirectory="Always" />
+        <None Update="DataSynchronizer\patch-data-set.json" CopyToOutputDirectory="Always" />
     </ItemGroup>
 
 </Project>

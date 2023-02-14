@@ -1,5 +1,5 @@
 ﻿{
-  StoreKey: ff_174c7138-426d-4434-8a91-af8c00306de3,
+  StoreKey: ff_example,
   Id: Guid_1,
   Key: example,
   VariationType: boolean,

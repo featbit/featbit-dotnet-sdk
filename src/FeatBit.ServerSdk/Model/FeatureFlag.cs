@@ -6,7 +6,7 @@ namespace FeatBit.Sdk.Server.Model
 {
     internal sealed class FeatureFlag : StorableObject
     {
-        public override string StoreKey => $"ff_{Id}";
+        public override string StoreKey => $"ff_{Key}";
 
         public Guid Id { get; set; }
 

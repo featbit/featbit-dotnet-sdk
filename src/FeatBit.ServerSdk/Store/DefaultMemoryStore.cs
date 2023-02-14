@@ -54,5 +54,12 @@ namespace FeatBit.Sdk.Server.Store
                 return true;
             }
         }
+
+        public long Version()
+        {
+            var values = _items.Values;
+
+            return values.Count == 0 ? 0 : values.Max(x => x.Version);
+        }
     }
 }

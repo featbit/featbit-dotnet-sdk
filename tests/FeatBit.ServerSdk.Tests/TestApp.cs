@@ -41,6 +41,13 @@ public class TestApp : WebApplicationFactory<TestStartup>
         return new FbWebSocket(options, transport);
     }
 
+    internal FbWebSocket CreateFbWebSocket(FbOptions options)
+    {
+        var transport = CreateWebSocketTransport();
+
+        return new FbWebSocket(options, transport);
+    }
+
     protected override TestServer CreateServer(IWebHostBuilder builder) =>
         base.CreateServer(builder.UseSolutionRelativeContentRoot(""));
 

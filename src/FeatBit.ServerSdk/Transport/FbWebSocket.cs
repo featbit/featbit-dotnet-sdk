@@ -51,7 +51,7 @@ namespace FeatBit.Sdk.Server.Transport
                 _receiveTask = ReceiveLoop();
 
                 _keepAliveTimer = new Timer(
-                    state => _ = KeepAliveAsync(cancellationToken),
+                    state => _ = KeepAliveAsync(),
                     null,
                     _keepAliveInterval,
                     _keepAliveInterval

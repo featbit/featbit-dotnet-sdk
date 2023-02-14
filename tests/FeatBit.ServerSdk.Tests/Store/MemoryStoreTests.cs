@@ -51,11 +51,11 @@ public class MemoryStoreTests
     [Fact]
     public void UpsertFeatureFlag()
     {
-        var flagId = Guid.NewGuid();
+        const string flagKey = "hello";
 
         var store = new DefaultMemoryStore();
         var flag = new FeatureFlagBuilder()
-            .Id(flagId)
+            .Key(flagKey)
             .VariationType("boolean")
             .Version(1)
             .Build();
@@ -70,7 +70,7 @@ public class MemoryStoreTests
 
         // update
         var updatedFlag = new FeatureFlagBuilder()
-            .Id(flagId)
+            .Key(flagKey)
             .VariationType("json")
             .Version(2)
             .Build();
@@ -83,7 +83,7 @@ public class MemoryStoreTests
 
         // update with old version data (store's data won't change)
         var oldFlag = new FeatureFlagBuilder()
-            .Id(flagId)
+            .Key(flagKey)
             .VariationType("string")
             .Version(0)
             .Build();
@@ -94,5 +94,32 @@ public class MemoryStoreTests
         var origin = store.Get<FeatureFlag>(flag.StoreKey);
         Assert.Equal("json", origin.VariationType);
         Assert.Equal(2, origin.Version);
+    }
+
+    [Fact]
+    public void GetVersion()
+    {
+        var store = new DefaultMemoryStore();
+        Assert.Equal(0, store.Version());
+
+        const string flagKey = "hello";
+
+        // insert
+        var flag = new FeatureFlagBuilder()
+            .Key(flagKey)
+            .VariationType("boolean")
+            .Version(123)
+            .Build();
+        store.Populate(new[] { flag });
+        Assert.Equal(123, store.Version());
+
+        // update
+        var updatedFlag = new FeatureFlagBuilder()
+            .Key(flagKey)
+            .VariationType("json")
+            .Version(456)
+            .Build();
+        store.Upsert(updatedFlag);
+        Assert.Equal(456, store.Version());
     }
 }
