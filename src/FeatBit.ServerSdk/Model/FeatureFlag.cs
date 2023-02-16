@@ -1,12 +1,14 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using FeatBit.Sdk.Server.Evaluation;
 using FeatBit.Sdk.Server.Store;
 
 namespace FeatBit.Sdk.Server.Model
 {
     internal sealed class FeatureFlag : StorableObject
     {
-        public override string StoreKey => $"ff_{Key}";
+        public override string StoreKey => StoreKeys.ForFeatureFlag(Key);
 
         public Guid Id { get; set; }
 
@@ -53,6 +55,11 @@ namespace FeatBit.Sdk.Server.Model
             Fallthrough = fallthrough;
             ExptIncludeAllTargets = exptIncludeAllTargets;
         }
+
+        public Variation GetVariation(string variationId)
+        {
+            return Variations.FirstOrDefault(x => x.Id == variationId);
+        }
     }
 
     internal sealed class TargetUser
@@ -64,6 +71,8 @@ namespace FeatBit.Sdk.Server.Model
 
     internal sealed class TargetRule
     {
+        public string Name { get; set; }
+
         public string DispatchKey { get; set; }
 
         public bool IncludedInExpt { get; set; }
@@ -84,10 +93,12 @@ namespace FeatBit.Sdk.Server.Model
 
     internal sealed class RolloutVariation
     {
-        public Guid Id { get; set; }
+        public string Id { get; set; }
 
         public double[] Rollout { get; set; }
 
         public double ExptRollout { get; set; }
+
+        public bool IsInRollout(string key) => DispatchAlgorithm.IsInRollout(key, Rollout);
     }
 }

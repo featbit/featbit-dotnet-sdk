@@ -6,7 +6,7 @@ namespace FeatBit.Sdk.Server.Model
 {
     internal sealed class Segment : StorableObject
     {
-        public override string StoreKey => $"segment_{Id}";
+        public override string StoreKey => StoreKeys.ForSegment(Id.ToString());
 
         public Guid Id { get; set; }
 
