@@ -49,7 +49,6 @@ namespace FeatBit.Sdk.Server.Transport
                 await _transport.StartAsync(_options.StreamingUri, _options.CloseTimeout, cancellationToken);
 
                 _receiveTask = ReceiveLoop();
-
                 _keepAliveTimer = new Timer(
                     state => _ = KeepAliveAsync(),
                     null,
@@ -57,7 +56,8 @@ namespace FeatBit.Sdk.Server.Transport
                     _keepAliveInterval
                 );
 
-                await (OnConnected?.Invoke() ?? Task.CompletedTask);
+                // Fire-and-forget the connected event
+                _ = OnConnected?.Invoke();
             }
             catch (Exception ex)
             {
@@ -89,7 +89,8 @@ namespace FeatBit.Sdk.Server.Transport
                             // Processing {MessageLength} byte message from server.
                             while (TextMessageParser.TryParseMessage(ref buffer, out var payload))
                             {
-                                await (OnReceived?.Invoke(payload) ?? Task.CompletedTask);
+                                // Fire-and-forget the message received event
+                                _ = OnReceived?.Invoke(payload);
                             }
                         }
 
