@@ -23,6 +23,11 @@ namespace FeatBit.Sdk.Server.Evaluation
                 return EvalResult.FlagNotFound;
             }
 
+            return Evaluate(flag, context.FbUser);
+        }
+
+        public EvalResult Evaluate(FeatureFlag flag, FbUser user)
+        {
             // if flag is disabled
             if (!flag.IsEnabled)
             {
@@ -35,7 +40,6 @@ namespace FeatBit.Sdk.Server.Evaluation
                 return EvalResult.FlagOff(disabledVariation.Value);
             }
 
-            var user = context.FbUser;
             // if user is targeted
             var targetUser = flag.TargetUsers.FirstOrDefault(x => x.KeyIds.Contains(user.Key));
             if (targetUser != null)

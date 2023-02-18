@@ -49,6 +49,33 @@ public class MemoryStoreTests
     }
 
     [Fact]
+    public void FindObjects()
+    {
+        var store = new DefaultMemoryStore();
+
+        StorableObject flag1 = new FeatureFlagBuilder()
+            .Key("f1")
+            .Build();
+        StorableObject flag2 = new FeatureFlagBuilder()
+            .Key("f2")
+            .Build();
+        StorableObject segment1 = new SegmentBuilder()
+            .Id(Guid.NewGuid())
+            .Build();
+        StorableObject segment2 = new SegmentBuilder()
+            .Id(Guid.NewGuid())
+            .Build();
+
+        store.Populate(new[] { flag1, flag2, segment1, segment2 });
+
+        var flags = store.Find<FeatureFlag>(x => x.StoreKey.StartsWith(StoreKeys.FlagPrefix));
+        var segments = store.Find<Segment>(x => x.StoreKey.StartsWith(StoreKeys.SegmentPrefix));
+
+        Assert.Equal(2, flags.Count);
+        Assert.Equal(2, segments.Count);
+    }
+
+    [Fact]
     public void UpsertFeatureFlag()
     {
         const string flagKey = "hello";

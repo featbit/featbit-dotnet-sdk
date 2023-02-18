@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -29,6 +30,21 @@ namespace FeatBit.Sdk.Server.Store
             }
 
             return null;
+        }
+
+        public ICollection<TObject> Find<TObject>(Func<StorableObject, bool> predicate)
+        {
+            var result = new List<TObject>();
+
+            foreach (var value in _items.Values.Where(predicate))
+            {
+                if (value is TObject tObject)
+                {
+                    result.Add(tObject);
+                }
+            }
+
+            return result;
         }
 
         public bool Upsert(StorableObject storableObj)

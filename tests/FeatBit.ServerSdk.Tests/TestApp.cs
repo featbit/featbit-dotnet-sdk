@@ -34,7 +34,7 @@ public class TestApp : WebApplicationFactory<TestStartup>
 
         var transport = CreateWebSocketTransport();
 
-        var builder = new FbOptionsBuilder().Steaming(wsUri);
+        var builder = new FbOptionsBuilder("fake-env-secret").Steaming(wsUri);
         configure?.Invoke(builder);
         var options = builder.Build();
 

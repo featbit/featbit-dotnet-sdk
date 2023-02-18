@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace FeatBit.Sdk.Server.Store
@@ -36,6 +37,14 @@ namespace FeatBit.Sdk.Server.Store
         /// <param name="key">the unique key of the object within the store</param>
         /// <returns>The object; null if the key is unknown</returns>
         TObject Get<TObject>(string key) where TObject : class;
+
+        /// <summary>
+        /// Retrieves all the objects that match the conditions defined by the specified predicate.
+        /// </summary>
+        /// <param name="predicate">The delegate which defines the conditions of the elements to search for.</param>
+        /// <returns>A <see cref="ICollection{T}"/> containing all the elements that match the conditions defined by the specified predicate, if found;
+        /// otherwise, an empty <see cref="ICollection{T}"/></returns>
+        ICollection<TObject> Find<TObject>(Func<StorableObject, bool> predicate);
 
         /// <summary>
         /// Updates or inserts an item in the store. For updates, the object will only be

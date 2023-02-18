@@ -5,7 +5,7 @@ namespace FeatBit.Sdk.Server.Retry
 {
     internal sealed class DefaultRetryPolicy : IRetryPolicy
     {
-        private static readonly TimeSpan[] DefaultRetryDelays =
+        internal static readonly TimeSpan[] DefaultRetryDelays =
         {
             // retry immediately for the first
             TimeSpan.Zero,

@@ -48,6 +48,11 @@ namespace FeatBit.Sdk.Server.Evaluation
     public enum ReasonKind
     {
         /// <summary>
+        /// Indicates that the caller tried to evaluate a flag before the client had successfully initialized.
+        /// </summary>
+        ClientNotReady,
+
+        /// <summary>
         /// Indicates that the flag was off and therefore returned its configured off value.
         /// </summary>
         Off,
@@ -66,6 +71,12 @@ namespace FeatBit.Sdk.Server.Evaluation
         /// Indicates that the user matched one of the flag's rules.
         /// </summary>
         RuleMatch,
+
+        /// <summary>
+        /// Indicates that the result value was not of the requested type, e.g. you requested a <see langword="bool"/>
+        /// but the value was an <see langword="int"/>.
+        /// </summary>
+        WrongType,
 
         /// <summary>
         /// Indicates that the flag could not be evaluated, e.g. because it does not exist or due to an unexpected
