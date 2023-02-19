@@ -30,22 +30,25 @@ public class TestApp : WebApplicationFactory<TestStartup>
 
     internal FbWebSocket CreateFbWebSocket(string op, Func<FbOptionsBuilder, FbOptionsBuilder> configure = null)
     {
-        var wsUri = GetWsUri(op);
-
-        var transport = CreateWebSocketTransport();
-
-        var builder = new FbOptionsBuilder("fake-env-secret").Steaming(wsUri);
+        var builder = new FbOptionsBuilder("fake-env-secret");
         configure?.Invoke(builder);
         var options = builder.Build();
 
-        return new FbWebSocket(options, transport);
+        Uri WebsocketUriResolver(FbOptions ops)
+        {
+            return
+                // if not default streaming uri, then use user defined uri
+                ops.StreamingUri.OriginalString != "ws://localhost:5100"
+                    ? ops.StreamingUri
+                    : GetWsUri(op);
+        }
+
+        return new FbWebSocket(options, CreateWebSocketTransport, WebsocketUriResolver);
     }
 
     internal FbWebSocket CreateFbWebSocket(FbOptions options)
     {
-        var transport = CreateWebSocketTransport();
-
-        return new FbWebSocket(options, transport);
+        return new FbWebSocket(options, CreateWebSocketTransport);
     }
 
     protected override TestServer CreateServer(IWebHostBuilder builder) =>

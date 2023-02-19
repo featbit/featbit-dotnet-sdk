@@ -1,5 +1,4 @@
 using System;
-using FeatBit.Sdk.Server.Transport;
 
 namespace FeatBit.Sdk.Server.Options
 {
@@ -82,19 +81,6 @@ namespace FeatBit.Sdk.Server.Options
             CloseTimeout = closeTimeout;
             KeepAliveInterval = keepAliveInterval;
             ReconnectRetryDelays = reconnectRetryDelays;
-        }
-
-        internal Uri ResolveWebSocketUri()
-        {
-            var token = ConnectionToken.New(EnvSecret);
-
-            var webSocketUri = new UriBuilder(StreamingUri)
-            {
-                Path = "streaming",
-                Query = $"?type=server&token={token}"
-            }.Uri;
-
-            return webSocketUri;
         }
 
         internal FbOptions ShallowCopy()

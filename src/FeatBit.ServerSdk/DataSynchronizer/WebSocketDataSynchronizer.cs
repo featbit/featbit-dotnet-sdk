@@ -29,10 +29,9 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
             Func<FbOptions, FbWebSocket> fbWebSocketFactory = null)
         {
             _store = store;
-            // Shallow copy before setting the StreamingUri property so we don't mutate the user-defined options object.
-            var shallowCopiedOptions = options.ShallowCopy();
-            shallowCopiedOptions.StreamingUri = options.ResolveWebSocketUri();
 
+            // Shallow copy so we don't mutate the user-defined options object.
+            var shallowCopiedOptions = options.ShallowCopy();
             _options = shallowCopiedOptions;
 
             var factory = fbWebSocketFactory ?? DefaultFbWebSocketFactory;

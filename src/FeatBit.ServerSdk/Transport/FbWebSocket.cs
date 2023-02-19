@@ -24,7 +24,9 @@ namespace FeatBit.Sdk.Server.Transport
             new ReadOnlyMemory<byte>(Encoding.UTF8.GetBytes("{\"messageType\":\"ping\",\"data\":{}}"));
 
         private readonly FbOptions _options;
-        private readonly WebSocketTransport _transport;
+        private readonly Func<WebSocketTransport> _transportFactory;
+        private readonly Func<FbOptions, Uri> _webSocketUriResolver;
+        private WebSocketTransport _transport;
         private Task _receiveTask;
         private readonly TimeSpan _keepAliveInterval;
         private Timer _keepAliveTimer;
@@ -32,10 +34,14 @@ namespace FeatBit.Sdk.Server.Transport
         private readonly IRetryPolicy _retryPolicy;
         private CancellationTokenSource _stopCts = new CancellationTokenSource();
 
-        internal FbWebSocket(FbOptions options, WebSocketTransport transport = null)
+        internal FbWebSocket(
+            FbOptions options,
+            Func<WebSocketTransport> transportFactory = null,
+            Func<FbOptions, Uri> webSocketUriResolver = null)
         {
             _options = options;
-            _transport = transport ?? new WebSocketTransport();
+            _transportFactory = transportFactory;
+            _webSocketUriResolver = webSocketUriResolver;
             _keepAliveInterval = options.KeepAliveInterval;
             _retryPolicy = options.ReconnectRetryDelays?.Length > 0
                 ? new DefaultRetryPolicy(options.ReconnectRetryDelays)
@@ -46,7 +52,22 @@ namespace FeatBit.Sdk.Server.Transport
         {
             try
             {
-                await _transport.StartAsync(_options.StreamingUri, _options.CloseTimeout, cancellationToken);
+                var webSocketUriResolver = _webSocketUriResolver ?? DefaultWebSocketUriResolver;
+                var webSocketUri = webSocketUriResolver(_options);
+                if (webSocketUri == null)
+                {
+                    throw new InvalidOperationException("Configured WebSocketUriResolver did not return a value.");
+                }
+
+                var transportFactory = _transportFactory ?? DefaultWebSocketTransportFactory;
+                _transport = transportFactory();
+                if (_transport == null)
+                {
+                    throw new InvalidOperationException("Configured WebSocketTransportFactory did not return a value.");
+                }
+
+                // starts the transport
+                await _transport.StartAsync(webSocketUri, _options.CloseTimeout, cancellationToken);
 
                 _receiveTask = ReceiveLoop();
                 _keepAliveTimer = new Timer(
@@ -63,6 +84,23 @@ namespace FeatBit.Sdk.Server.Transport
             {
                 OnConnectError?.Invoke(ex);
             }
+        }
+
+        private static WebSocketTransport DefaultWebSocketTransportFactory()
+        {
+            return new WebSocketTransport();
+        }
+
+        private static Uri DefaultWebSocketUriResolver(FbOptions options)
+        {
+            var token = ConnectionToken.New(options.EnvSecret);
+            var webSocketUri = new UriBuilder(options.StreamingUri)
+            {
+                Path = "streaming",
+                Query = $"?type=server&token={token}"
+            }.Uri;
+
+            return webSocketUri;
         }
 
         private async Task ReceiveLoop()
@@ -131,21 +169,26 @@ namespace FeatBit.Sdk.Server.Transport
                 // Stop(Dispose) current transport
                 await _transport.StopAsync();
 
-                var closeStatus = _transport.CloseStatus;
-                if (closeStatus == WebSocketCloseStatus.NormalClosure || closeStatus == (WebSocketCloseStatus)4003)
-                {
-                    CompleteClose(_closeException);
-                }
-                else
+                if (ShouldReconnect())
                 {
                     // Fire-and-forget the reconnect action
                     _ = ReconnectAsync();
+                }
+                else
+                {
+                    CompleteClose(_closeException);
                 }
             }
             catch
             {
                 // The transport threw an exception while stopping.
             }
+        }
+
+        private bool ShouldReconnect()
+        {
+            var closeStatus = _transport.CloseStatus;
+            return closeStatus != WebSocketCloseStatus.NormalClosure && closeStatus != (WebSocketCloseStatus)4003;
         }
 
         private async Task ReconnectAsync()
@@ -156,6 +199,12 @@ namespace FeatBit.Sdk.Server.Transport
             var retryTimes = 0;
             while (true)
             {
+                if (!ShouldReconnect())
+                {
+                    CompleteClose(_closeException);
+                    return;
+                }
+
                 // Reconnect attempt number {retryTimes} will start in {nextRetryDelay}
                 var nextRetryDelay = _retryPolicy.NextRetryDelay(new RetryContext { RetryAttempt = retryTimes });
                 try
@@ -193,9 +242,9 @@ namespace FeatBit.Sdk.Server.Transport
 
                         return;
                     }
-
-                    retryTimes++;
                 }
+
+                retryTimes++;
             }
         }
 
