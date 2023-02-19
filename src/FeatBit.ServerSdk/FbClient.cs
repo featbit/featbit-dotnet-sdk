@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Threading.Tasks;
 using FeatBit.Sdk.Server.DataSynchronizer;
 using FeatBit.Sdk.Server.Evaluation;
 using FeatBit.Sdk.Server.Model;
@@ -222,6 +223,14 @@ namespace FeatBit.Sdk.Server
                 .ToArray();
 
             return results;
+        }
+
+        /// <summary>
+        /// Shuts down the client and releases any resources it is using.
+        /// </summary>
+        public async Task CloseAsync()
+        {
+            await _dataSynchronizer.StopAsync();
         }
 
         private EvalDetail<TValue> EvaluateCore<TValue>(
