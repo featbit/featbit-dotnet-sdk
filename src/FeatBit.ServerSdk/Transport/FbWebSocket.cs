@@ -48,7 +48,7 @@ namespace FeatBit.Sdk.Server.Transport
                 : new DefaultRetryPolicy();
         }
 
-        public async Task StartAsync(CancellationToken cancellationToken = default)
+        public async Task ConnectAsync(CancellationToken cancellationToken = default)
         {
             try
             {
@@ -222,7 +222,7 @@ namespace FeatBit.Sdk.Server.Transport
 
                 try
                 {
-                    await StartAsync(_stopCts.Token).ConfigureAwait(false);
+                    await ConnectAsync(_stopCts.Token).ConfigureAwait(false);
 
                     // reconnected successfully after {retryTimes} attempts.
 
@@ -268,7 +268,7 @@ namespace FeatBit.Sdk.Server.Transport
         public async Task SendAsync(ReadOnlyMemory<byte> source, CancellationToken ct = default)
             => await _transport.Output.WriteAsync(source, ct);
 
-        public async Task StopAsync()
+        public async Task CloseAsync()
         {
             _stopCts.Cancel();
 

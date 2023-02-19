@@ -54,7 +54,7 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
             Task.Run(() =>
             {
                 var cts = new CancellationTokenSource(_options.ConnectTimeout);
-                return _webSocket.StartAsync(cts.Token);
+                return _webSocket.ConnectAsync(cts.Token);
             });
 
             return _initTcs.Task;
@@ -164,7 +164,7 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
             _webSocket.OnConnected -= OnConnected;
             _webSocket.OnReceived -= OnReceived;
 
-            await _webSocket.StopAsync();
+            await _webSocket.CloseAsync();
         }
     }
 }

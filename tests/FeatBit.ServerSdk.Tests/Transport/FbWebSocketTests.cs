@@ -27,7 +27,7 @@ public class FbWebSocketTests
             return Task.CompletedTask;
         };
 
-        await fbWebSocket.StartAsync();
+        await fbWebSocket.ConnectAsync();
         Assert.True(onConnectedCalled);
     }
 
@@ -46,7 +46,7 @@ public class FbWebSocketTests
             onConnectErrorCalled = true;
         };
 
-        await fbWebSocket.StartAsync();
+        await fbWebSocket.ConnectAsync();
 
         Assert.True(onConnectErrorCalled);
     }
@@ -69,7 +69,7 @@ public class FbWebSocketTests
             return Task.CompletedTask;
         };
 
-        await fbWebSocket.StartAsync();
+        await fbWebSocket.ConnectAsync();
         await fbWebSocket.SendAsync(send);
 
         await receiveTask.WaitAsync(TimeSpan.FromMilliseconds(500));
@@ -93,8 +93,8 @@ public class FbWebSocketTests
             return Task.CompletedTask;
         };
 
-        await fbWebSocket.StartAsync();
-        await fbWebSocket.StopAsync();
+        await fbWebSocket.ConnectAsync();
+        await fbWebSocket.CloseAsync();
 
         Assert.True(onClosedCalled);
     }
@@ -121,7 +121,7 @@ public class FbWebSocketTests
             return Task.CompletedTask;
         };
 
-        await fbWebSocket.StartAsync();
+        await fbWebSocket.ConnectAsync();
         await onClosedTask.WaitAsync(TimeSpan.FromSeconds(1));
     }
 
@@ -140,7 +140,7 @@ public class FbWebSocketTests
             return Task.CompletedTask;
         };
 
-        await fbWebSocket.StartAsync();
+        await fbWebSocket.ConnectAsync();
         await Task.Delay(120);
 
         Assert.Equal(2, keepAliveTimes);
@@ -170,7 +170,7 @@ public class FbWebSocketTests
             return Task.CompletedTask;
         };
 
-        await fbWebSocket.StartAsync();
+        await fbWebSocket.ConnectAsync();
         await reconnectTask.WaitAsync(TimeSpan.FromSeconds(1));
 
         Assert.True(onReconnectingCalled);
@@ -197,8 +197,8 @@ public class FbWebSocketTests
             return Task.CompletedTask;
         };
 
-        await fbWebSocket.StartAsync();
-        await fbWebSocket.StopAsync();
+        await fbWebSocket.ConnectAsync();
+        await fbWebSocket.CloseAsync();
 
         await onClosedTask.WaitAsync(TimeSpan.FromSeconds(1));
     }
