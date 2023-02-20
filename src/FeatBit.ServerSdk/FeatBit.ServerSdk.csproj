@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
+        <PackageVersion>1.0.0-rc</PackageVersion>
         <TargetFrameworks>netstandard2.0;netstandard2.1;netcoreapp3.1;net6.0;net462</TargetFrameworks>
         <DebugType>portable</DebugType>
         <AssemblyName>FeatBit.ServerSdk</AssemblyName>
@@ -20,6 +21,16 @@
         <PackageProjectUrl>https://github.com/featbit/dotnet-server-sdk</PackageProjectUrl>
         <RepositoryUrl>https://github.com/featbit/dotnet-server-sdk</RepositoryUrl>
         <RepositoryBranch>main</RepositoryBranch>
+        <PackageIcon>icon.png</PackageIcon>
+        <RepositoryType>git</RepositoryType>
+        <PackageReadmeFile>NuGet.md</PackageReadmeFile>
+        <EmbedUntrackedSources>true</EmbedUntrackedSources>
+        <PackageTags>featbit feature toggle featuretoggle continuous delivery featuremanagement feature-flags toggling</PackageTags>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
+        <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+        <Deterministic>true</Deterministic>
     </PropertyGroup>
 
     <ItemGroup>
@@ -31,6 +42,15 @@
                        or '$(TargetFramework)' == 'net462'">
         <!-- it's a built-in package in netcoreapp3.1 and net6.0 -->
         <PackageReference Include="System.Text.Json" Version="6.0.0"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="All"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="NuGet.md" Pack="true" PackagePath="\"/>
+        <None Include="icon.png" Pack="true" PackagePath=""/>
     </ItemGroup>
 
 </Project>
