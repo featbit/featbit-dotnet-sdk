@@ -30,7 +30,7 @@
                        or '$(TargetFramework)' == 'netstandard2.1'
                        or '$(TargetFramework)' == 'net462'">
         <!-- it's a built-in package in netcoreapp3.1 and net6.0 -->
-        <PackageReference Include="System.Text.Json" Version="6.0.7"/>
+        <PackageReference Include="System.Text.Json" Version="6.0.0"/>
     </ItemGroup>
 
 </Project>
