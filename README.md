@@ -21,6 +21,10 @@ This version of the SDK is built for the following targets:
 The .NET build tools should automatically load the most appropriate build of the SDK for whatever platform your
 application or library is targeted to.
 
+> **_NOTE:_** This SDK requires the `System.Text.Json` API to be available, which is included in the runtime for .NET
+> Core 3.1 and later versions, but not on other platforms, so on other platforms the SDK brings
+> in `System.Text.Json` as a NuGet package dependency.
+
 ## Get Started
 
 ### Installation
