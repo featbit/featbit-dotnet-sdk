@@ -4,7 +4,7 @@ using FeatBit.Sdk.Server;
 using FeatBit.Sdk.Server.Model;
 
 // Set secret to your FeatBit SDK secret.
-const string secret = "ZLOel0piWk-KNx7KaAx1mQhBtR81DkXE6f_bEXdmrp-A";
+const string secret = "<replace-with-your-env-secret>";
 if (string.IsNullOrWhiteSpace(secret))
 {
     Console.WriteLine("Please edit Program.cs to set secret to your FeatBit SDK secret first ");
