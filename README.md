@@ -29,8 +29,67 @@ application or library is targeted to.
 
 ### Installation
 
+The latest stable version is available on [NuGet](https://www.nuget.org/packages/FeatBit.ServerSdk/).
+
+```sh
+dotnet add package FeatBit.ServerSdk --version 1.0.0-rc.p1
+```
+
+Use the `--version` option to specify
+a [preview version](https://www.nuget.org/packages/FeatBit.ServerSdk/absoluteLatest) to install.
+
 ### Basic usage
 
+The following code demonstrates basic usage of FeatBit.ServerSdk.
+
+```cs
+using FeatBit.Sdk.Server;
+using FeatBit.Sdk.Server.Model;
+
+// Set secret to your FeatBit SDK secret.
+const string secret = "<replace-with-your-env-secret>";
+
+// Creates a new client instance that connects to FeatBit with the default option.
+var client = new FbClient(secret);
+if (!client.Initialized)
+{
+    Console.WriteLine("FbClient failed to initialize. Exiting...");
+}
+else
+{
+    Console.WriteLine("FbClient successfully initialized!");
+
+    // flag to be evaluated
+    const string flagKey = "game-runner";
+
+    // create a user
+    var user = FbUser.Builder("anonymous").Build();
+
+    // evaluate a boolean flag for a given user
+    var boolVariation = client.BoolVariation(flagKey, user, defaultValue: false);
+    Console.WriteLine($"flag '{flagKey}' returns {boolVariation} for user {user.Key}");
+
+    // evaluate a boolean flag for a given user with evaluation detail
+    var boolVariationDetail = client.BoolVariationDetail(flagKey, user, defaultValue: false);
+    Console.WriteLine(
+        $"flag '{flagKey}' returns {boolVariationDetail.Value} for user {user.Key}. " +
+        $"Reason Kind: {boolVariationDetail.Kind}, Reason Description: {boolVariationDetail.Reason}"
+    );
+}
+```
+
+## Data Synchronization
+
+We use websocket to make the local data synchronized with the FeatBit server, and then store them in memory by
+default. Whenever there is any change to a feature flag or its related data, this change will be pushed to the SDK and
+the average synchronization time is less than 100 ms. Be aware the websocket connection may be interrupted due to
+internet outage, but it will be resumed automatically once the problem is gone.
+
 ## Getting support
+
+- If you have a specific question about using this sdk, we encourage you
+  to [ask it in our slack](https://join.slack.com/t/featbit/shared_invite/zt-1ew5e2vbb-x6Apan1xZOaYMnFzqZkGNQ).
+- If you encounter a bug or would like to request a
+  feature, [submit an issue](https://github.com/featbit/dotnet-server-sdk/issues/new).
 
 ## See also
