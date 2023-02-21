@@ -1,5 +1,7 @@
 using System;
 using FeatBit.Sdk.Server.Retry;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FeatBit.Sdk.Server.Options
 {
@@ -13,6 +15,7 @@ namespace FeatBit.Sdk.Server.Options
         private TimeSpan _closeTimeout;
         private TimeSpan _keepAliveInterval;
         private TimeSpan[] _reconnectRetryDelays;
+        private ILoggerFactory _loggerFactory;
 
         public FbOptionsBuilder(string envSecret)
         {
@@ -26,12 +29,13 @@ namespace FeatBit.Sdk.Server.Options
             _closeTimeout = TimeSpan.FromSeconds(2);
             _keepAliveInterval = TimeSpan.FromSeconds(15);
             _reconnectRetryDelays = DefaultRetryPolicy.DefaultRetryDelays;
+            _loggerFactory = NullLoggerFactory.Instance;
         }
 
         public FbOptions Build()
         {
             return new FbOptions(_envSecret, _streamingUri, _eventUri, _startWaitTime, _connectTimeout, _closeTimeout,
-                _keepAliveInterval, _reconnectRetryDelays);
+                _keepAliveInterval, _reconnectRetryDelays, _loggerFactory);
         }
 
         public FbOptionsBuilder Steaming(Uri uri)
@@ -78,6 +82,12 @@ namespace FeatBit.Sdk.Server.Options
         public FbOptionsBuilder ReconnectRetryDelays(TimeSpan[] delays)
         {
             _reconnectRetryDelays = delays;
+            return this;
+        }
+
+        public FbOptionsBuilder LoggerFactory(ILoggerFactory loggerFactory)
+        {
+            _loggerFactory = loggerFactory;
             return this;
         }
     }
