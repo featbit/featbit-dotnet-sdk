@@ -91,5 +91,3 @@ internet outage, but it will be resumed automatically once the problem is gone.
   to [ask it in our slack](https://join.slack.com/t/featbit/shared_invite/zt-1ew5e2vbb-x6Apan1xZOaYMnFzqZkGNQ).
 - If you encounter a bug or would like to request a
   feature, [submit an issue](https://github.com/featbit/dotnet-server-sdk/issues/new).
-
-## See also
