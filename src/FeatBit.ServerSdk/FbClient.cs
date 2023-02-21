@@ -6,6 +6,7 @@ using FeatBit.Sdk.Server.Evaluation;
 using FeatBit.Sdk.Server.Model;
 using FeatBit.Sdk.Server.Options;
 using FeatBit.Sdk.Server.Store;
+using Microsoft.Extensions.Logging;
 
 namespace FeatBit.Sdk.Server
 {
@@ -13,9 +14,11 @@ namespace FeatBit.Sdk.Server
     {
         #region private fields
 
+        private readonly FbOptions _options;
         private readonly IMemoryStore _store;
         private readonly IDataSynchronizer _dataSynchronizer;
         private readonly Evaluator _evaluator;
+        private readonly ILogger _logger;
 
         #endregion
 
@@ -97,44 +100,56 @@ namespace FeatBit.Sdk.Server
         /// <seealso cref="FbClient"/>
         public FbClient(FbOptions options)
         {
+            _options = options;
             _store = new DefaultMemoryStore();
             _dataSynchronizer = new WebSocketDataSynchronizer(options, _store);
             _evaluator = new Evaluator(_store);
+            _logger = options.LoggerFactory.CreateLogger<FbClient>();
 
-            var task = _dataSynchronizer.StartAsync();
-            try
-            {
-                var success = task.Wait(options.StartWaitTime);
-                if (!success)
-                {
-                    // Timeout encountered waiting for FbClient initialization
-                }
-            }
-            catch
-            {
-                // we do not want to throw exceptions from the FbClient constructor, so we'll just swallow this.
-            }
+            // starts client
+            Start();
         }
 
         // internal use for testing
         internal FbClient(FbOptions options, IMemoryStore store, IDataSynchronizer synchronizer)
         {
+            _options = options;
             _store = store;
             _dataSynchronizer = synchronizer;
             _evaluator = new Evaluator(_store);
+            _logger = options.LoggerFactory.CreateLogger<FbClient>();
 
+            // starts client
+            Start();
+        }
+
+        /// <summary>
+        /// Starts FbClient.
+        /// </summary>
+        private void Start()
+        {
+            _logger.LogInformation("Starting FbClient...");
             var task = _dataSynchronizer.StartAsync();
             try
             {
-                var success = task.Wait(options.StartWaitTime);
-                if (!success)
+                _logger.LogInformation(
+                    "Waiting up to {0} milliseconds for FbClient to start...",
+                    _options.StartWaitTime.TotalMilliseconds
+                );
+                var success = task.Wait(_options.StartWaitTime);
+                if (success)
                 {
-                    // Timeout encountered waiting for FbClient initialization
+                    _logger.LogInformation("FbClient successfully started");
+                }
+                else
+                {
+                    _logger.LogWarning("Timeout encountered waiting for FbClient initialization");
                 }
             }
-            catch
+            catch (Exception ex)
             {
                 // we do not want to throw exceptions from the FbClient constructor, so we'll just swallow this.
+                _logger.LogWarning("Exception occurs when initialize FbClient", ex);
             }
         }
 
