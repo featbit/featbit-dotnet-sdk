@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <PackageVersion>1.0.0-rc</PackageVersion>
+        <PackageVersion>1.0.0-rc.p1</PackageVersion>
         <TargetFrameworks>netstandard2.0;netstandard2.1;netcoreapp3.1;net6.0;net462</TargetFrameworks>
         <DebugType>portable</DebugType>
         <AssemblyName>FeatBit.ServerSdk</AssemblyName>
@@ -26,6 +26,8 @@
         <PackageReadmeFile>NuGet.md</PackageReadmeFile>
         <EmbedUntrackedSources>true</EmbedUntrackedSources>
         <PackageTags>featbit feature toggle featuretoggle continuous delivery featuremanagement feature-flags toggling</PackageTags>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <NoWarn>1591;</NoWarn>
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
