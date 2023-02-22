@@ -63,8 +63,8 @@ namespace FeatBit.Sdk.Server.Transport
             }
 
             var transportFactory = _transportFactory ?? DefaultWebSocketTransportFactory;
-            _transport = transportFactory();
-            if (_transport == null)
+            var transport = transportFactory();
+            if (transport == null)
             {
                 throw new InvalidOperationException("Configured WebSocketTransportFactory did not return a value.");
             }
@@ -73,15 +73,18 @@ namespace FeatBit.Sdk.Server.Transport
             {
                 // starts the transport
                 Log.StartingTransport(_logger, "WebSockets", webSocketUri);
-                await _transport.StartAsync(webSocketUri, _options.CloseTimeout, cancellationToken);
+                await transport.StartAsync(webSocketUri, _options.CloseTimeout, cancellationToken);
             }
             catch (Exception ex)
             {
                 Log.ErrorStartingTransport(_logger, ex);
-                await _transport.StopAsync();
+                await transport.StopAsync();
                 OnConnectError?.Invoke(ex);
                 return;
             }
+
+            // We successfully started, set the transport properties (we don't want to set these until the transport is definitely running).
+            _transport = transport;
 
             Log.StartingReceiveLoop(_logger);
             _receiveTask = ReceiveLoop();
@@ -307,16 +310,20 @@ namespace FeatBit.Sdk.Server.Transport
 
         public async Task CloseAsync()
         {
-            _stopCts.Cancel();
+            // _transport = null indicates we never started or stopped already
+            if (_transport != null)
+            {
+                _stopCts.Cancel();
+                _keepAliveTimer?.Dispose();
 
-            _keepAliveTimer?.Dispose();
+                Log.TerminatingReceiveLoop(_logger);
+                _transport.Input.CancelPendingRead();
 
-            Log.TerminatingReceiveLoop(_logger);
-            _transport.Input.CancelPendingRead();
+                Log.WaitingForReceiveLoopToTerminate(_logger);
+                await (_receiveTask ?? Task.CompletedTask).ConfigureAwait(false);
+            }
 
-            Log.WaitingForReceiveLoopToTerminate(_logger);
-            await (_receiveTask ?? Task.CompletedTask).ConfigureAwait(false);
-
+            _transport = null;
             Log.Stopped(_logger);
         }
     }
