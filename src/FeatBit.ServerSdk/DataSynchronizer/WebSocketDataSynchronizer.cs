@@ -8,6 +8,7 @@ using FeatBit.Sdk.Server.Json;
 using FeatBit.Sdk.Server.Options;
 using FeatBit.Sdk.Server.Store;
 using FeatBit.Sdk.Server.Transport;
+using Microsoft.Extensions.Logging;
 
 namespace FeatBit.Sdk.Server.DataSynchronizer
 {
@@ -19,6 +20,7 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
         private readonly FbOptions _options;
         private readonly FbWebSocket _webSocket;
         private readonly TaskCompletionSource<bool> _initTcs;
+        private readonly ILogger<WebSocketDataSynchronizer> _logger;
 
         private static readonly byte[] FullDataSync =
             Encoding.UTF8.GetBytes("{\"messageType\":\"data-sync\",\"data\":{\"timestamp\":0}}");
@@ -42,6 +44,8 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
 
             _initTcs = new TaskCompletionSource<bool>();
             Initialized = false;
+
+            _logger = options.LoggerFactory.CreateLogger<WebSocketDataSynchronizer>();
         }
 
         private static FbWebSocket DefaultFbWebSocketFactory(FbOptions options)
@@ -67,9 +71,9 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
                 // do data-sync once the connection is established
                 await DoDataSyncAsync();
             }
-            catch
+            catch (Exception ex)
             {
-                // exception occured when data-sync
+                _logger.LogError("Exception occurred when performing data synchronization request", ex);
             }
         }
 
@@ -79,9 +83,9 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
             {
                 HandleMessage(bytes);
             }
-            catch
+            catch (Exception ex)
             {
-                // exception occured when handling server's message
+                _logger.LogError("Exception occurred when handling server message", ex);
             }
 
             return Task.CompletedTask;
@@ -111,6 +115,7 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
                 request = JsonSerializer.SerializeToUtf8Bytes(patchDataSync);
             }
 
+            _logger.LogDebug("Do data-sync with version: {Version}", version);
             await _webSocket.SendAsync(request);
         }
 
@@ -135,6 +140,7 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
 #else
                     var dataSet = root.GetProperty("data").Deserialize<DataSet>(ReusableJsonSerializerOptions.Web);
 #endif
+                    _logger.LogDebug("Received {Type} data-sync message", dataSet.EventType);
                     var objects = dataSet.GetStorableObjects();
                     // populate data store
                     if (dataSet.EventType == DataSet.Full)
