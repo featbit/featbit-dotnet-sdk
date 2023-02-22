@@ -32,7 +32,7 @@ application or library is targeted to.
 The latest stable version is available on [NuGet](https://www.nuget.org/packages/FeatBit.ServerSdk/).
 
 ```sh
-dotnet add package FeatBit.ServerSdk --version 1.0.0-rc.p1
+dotnet add package FeatBit.ServerSdk
 ```
 
 Use the `--version` option to specify
@@ -78,12 +78,22 @@ else
 }
 ```
 
+### Examples
+
+- [Console App](https://github.com/featbit/dotnet-server-sdk/blob/main/examples/ConsoleApp/Program.cs)
+
 ## Data Synchronization
 
 We use websocket to make the local data synchronized with the FeatBit server, and then store them in memory by
 default. Whenever there is any change to a feature flag or its related data, this change will be pushed to the SDK and
 the average synchronization time is less than 100 ms. Be aware the websocket connection may be interrupted due to
 internet outage, but it will be resumed automatically once the problem is gone.
+
+## What's Next
+
+- add feature flag insights support
+- support offline mode & bootstrapping
+- asp.net core integration & examples
 
 ## Getting support
 

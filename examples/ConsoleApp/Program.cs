@@ -2,27 +2,34 @@
 
 using FeatBit.Sdk.Server;
 using FeatBit.Sdk.Server.Model;
+using FeatBit.Sdk.Server.Options;
+using Microsoft.Extensions.Logging;
 
 // Set secret to your FeatBit SDK secret.
-const string secret = "<replace-with-your-env-secret>";
+const string secret = "";
 if (string.IsNullOrWhiteSpace(secret))
 {
-    Console.WriteLine("Please edit Program.cs to set secret to your FeatBit SDK secret first ");
+    Console.WriteLine("Please edit Program.cs to set secret to your FeatBit SDK secret first. Exiting...");
     Environment.Exit(1);
 }
 
-var client = new FbClient(secret);
+// Creates a new client to connect to FeatBit with a custom option.
+// use console logging for FbClient
+var consoleLoggerFactory = LoggerFactory.Create(opt => opt.AddConsole());
+var options = new FbOptionsBuilder(secret)
+    .LoggerFactory(consoleLoggerFactory)
+    .Build();
+
+var client = new FbClient(options);
 if (!client.Initialized)
 {
     Console.WriteLine("FbClient failed to initialize. Exiting...");
     Environment.Exit(-1);
 }
 
-Console.WriteLine("FbClient successfully initialized!");
-
 while (true)
 {
-    Console.WriteLine("Please input {userKey}/{flagKey}, for example 'user-id/use-new-algorithm'. Input 'exit' to exit.");
+    Console.WriteLine("Please input userKey/flagKey, for example 'user-id/use-new-algorithm'. Input 'exit' to exit.");
     var input = Console.ReadLine();
     if (string.IsNullOrWhiteSpace(input))
     {
