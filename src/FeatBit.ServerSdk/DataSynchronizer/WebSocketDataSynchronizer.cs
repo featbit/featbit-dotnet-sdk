@@ -73,7 +73,7 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
             }
             catch (Exception ex)
             {
-                _logger.LogError("Exception occurred when performing data synchronization request", ex);
+                _logger.LogError(ex, "Exception occurred when performing data synchronization request");
             }
         }
 
@@ -85,7 +85,7 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
             }
             catch (Exception ex)
             {
-                _logger.LogError("Exception occurred when handling server message", ex);
+                _logger.LogError(ex, "Exception occurred when handling server message");
             }
 
             return Task.CompletedTask;
