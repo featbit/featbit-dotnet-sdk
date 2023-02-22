@@ -28,6 +28,7 @@
         <PackageTags>featbit feature toggle featuretoggle continuous delivery featuremanagement feature-flags toggling</PackageTags>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <NoWarn>1591;</NoWarn>
+        <LangVersion>10</LangVersion>
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">

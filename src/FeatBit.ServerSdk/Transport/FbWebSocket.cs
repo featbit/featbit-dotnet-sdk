@@ -7,10 +7,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using FeatBit.Sdk.Server.Options;
 using FeatBit.Sdk.Server.Retry;
+using Microsoft.Extensions.Logging;
 
 namespace FeatBit.Sdk.Server.Transport
 {
-    internal sealed class FbWebSocket
+    internal sealed partial class FbWebSocket
     {
         public event Func<Task> OnConnected;
         public event Action<Exception> OnConnectError;
@@ -33,6 +34,7 @@ namespace FeatBit.Sdk.Server.Transport
         private Exception _closeException;
         private readonly IRetryPolicy _retryPolicy;
         private CancellationTokenSource _stopCts = new CancellationTokenSource();
+        private readonly ILogger<FbWebSocket> _logger;
 
         internal FbWebSocket(
             FbOptions options,
@@ -46,44 +48,56 @@ namespace FeatBit.Sdk.Server.Transport
             _retryPolicy = options.ReconnectRetryDelays?.Length > 0
                 ? new DefaultRetryPolicy(options.ReconnectRetryDelays)
                 : new DefaultRetryPolicy();
+            _logger = options.LoggerFactory.CreateLogger<FbWebSocket>();
         }
 
         public async Task ConnectAsync(CancellationToken cancellationToken = default)
         {
+            Log.Starting(_logger);
+
+            var webSocketUriResolver = _webSocketUriResolver ?? DefaultWebSocketUriResolver;
+            var webSocketUri = webSocketUriResolver(_options);
+            if (webSocketUri == null)
+            {
+                throw new InvalidOperationException("Configured WebSocketUriResolver did not return a value.");
+            }
+
+            var transportFactory = _transportFactory ?? DefaultWebSocketTransportFactory;
+            _transport = transportFactory();
+            if (_transport == null)
+            {
+                throw new InvalidOperationException("Configured WebSocketTransportFactory did not return a value.");
+            }
+
             try
             {
-                var webSocketUriResolver = _webSocketUriResolver ?? DefaultWebSocketUriResolver;
-                var webSocketUri = webSocketUriResolver(_options);
-                if (webSocketUri == null)
-                {
-                    throw new InvalidOperationException("Configured WebSocketUriResolver did not return a value.");
-                }
-
-                var transportFactory = _transportFactory ?? DefaultWebSocketTransportFactory;
-                _transport = transportFactory();
-                if (_transport == null)
-                {
-                    throw new InvalidOperationException("Configured WebSocketTransportFactory did not return a value.");
-                }
-
                 // starts the transport
+                Log.StartingTransport(_logger, "WebSockets", webSocketUri);
                 await _transport.StartAsync(webSocketUri, _options.CloseTimeout, cancellationToken);
-
-                _receiveTask = ReceiveLoop();
-                _keepAliveTimer = new Timer(
-                    state => _ = KeepAliveAsync(),
-                    null,
-                    _keepAliveInterval,
-                    _keepAliveInterval
-                );
-
-                // Fire-and-forget the connected event
-                _ = OnConnected?.Invoke();
             }
             catch (Exception ex)
             {
+                Log.ErrorStartingTransport(_logger, ex);
+                await _transport.StopAsync();
                 OnConnectError?.Invoke(ex);
+                return;
             }
+
+            Log.StartingReceiveLoop(_logger);
+            _receiveTask = ReceiveLoop();
+
+            Log.StartingKeepAliveTimer(_logger);
+            _keepAliveTimer = new Timer(
+                state => _ = KeepAliveAsync(),
+                null,
+                _keepAliveInterval,
+                _keepAliveInterval
+            );
+
+            Log.InvokingEventHandler(_logger, nameof(OnConnected));
+            _ = OnConnected?.Invoke();
+
+            Log.Started(_logger);
         }
 
         private static WebSocketTransport DefaultWebSocketTransportFactory()
@@ -119,15 +133,15 @@ namespace FeatBit.Sdk.Server.Transport
                     {
                         if (result.IsCanceled)
                         {
-                            // We were canceled. Possibly because we were stopped gracefully
+                            Log.ReceiveLoopCanceled(_logger);
                             break;
                         }
                         else if (!buffer.IsEmpty)
                         {
-                            // Processing {MessageLength} byte message from server.
+                            Log.ProcessingMessage(_logger, buffer.Length);
                             while (TextMessageParser.TryParseMessage(ref buffer, out var payload))
                             {
-                                // Fire-and-forget the message received event
+                                Log.InvokingEventHandler(_logger, nameof(OnReceived));
                                 _ = OnReceived?.Invoke(payload);
                             }
                         }
@@ -153,12 +167,13 @@ namespace FeatBit.Sdk.Server.Transport
             }
             catch (Exception ex)
             {
-                // The server connection was terminated with an error.
+                Log.ServerDisconnectedWithError(_logger, ex);
                 _closeException = ex;
             }
             finally
             {
                 await HandleConnectionCloseAsync();
+                Log.ReceiveLoopEnded(_logger);
             }
         }
 
@@ -166,22 +181,24 @@ namespace FeatBit.Sdk.Server.Transport
         {
             try
             {
-                // Stop(Dispose) current transport
+                Log.StoppingTransport(_logger);
                 await _transport.StopAsync();
-
-                if (ShouldReconnect())
-                {
-                    // Fire-and-forget the reconnect action
-                    _ = ReconnectAsync();
-                }
-                else
-                {
-                    CompleteClose(_closeException);
-                }
             }
-            catch
+            catch (Exception ex)
             {
-                // The transport threw an exception while stopping.
+                Log.ErrorStoppingTransport(_logger, ex);
+            }
+
+            Log.StoppingKeepAliveTimer(_logger);
+            _keepAliveTimer?.Dispose();
+
+            if (ShouldReconnect())
+            {
+                _ = ReconnectAsync();
+            }
+            else
+            {
+                CompleteClose(_closeException);
             }
         }
 
@@ -193,7 +210,17 @@ namespace FeatBit.Sdk.Server.Transport
 
         private async Task ReconnectAsync()
         {
-            // Fire-and-forget the reconnecting event
+            var reconnectStartTime = DateTime.UtcNow;
+            if (_closeException != null)
+            {
+                Log.ReconnectingWithError(_logger, _closeException);
+            }
+            else
+            {
+                Log.Reconnecting(_logger);
+            }
+
+            Log.InvokingEventHandler(_logger, nameof(OnReconnecting));
             _ = OnReconnecting?.Invoke(_closeException).ConfigureAwait(false);
 
             var retryTimes = 0;
@@ -201,18 +228,20 @@ namespace FeatBit.Sdk.Server.Transport
             {
                 if (!ShouldReconnect())
                 {
+                    Log.StopReconnectDueToSpecifiedCloseStatus(_logger, _transport.CloseStatus!.Value);
                     CompleteClose(_closeException);
                     return;
                 }
 
-                // Reconnect attempt number {retryTimes} will start in {nextRetryDelay}
                 var nextRetryDelay = _retryPolicy.NextRetryDelay(new RetryContext { RetryAttempt = retryTimes });
                 try
                 {
+                    Log.AwaitingReconnectRetryDelay(_logger, retryTimes, nextRetryDelay);
                     await Task.Delay(nextRetryDelay, _stopCts.Token).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException ex)
                 {
+                    Log.ReconnectingStoppedDuringRetryDelay(_logger);
                     var stoppedEx =
                         new Exception("FbWebSocket stopped during reconnect delay. Done reconnecting.", ex);
                     CompleteClose(stoppedEx);
@@ -224,18 +253,18 @@ namespace FeatBit.Sdk.Server.Transport
                 {
                     await ConnectAsync(_stopCts.Token).ConfigureAwait(false);
 
-                    // reconnected successfully after {retryTimes} attempts.
+                    Log.Reconnected(_logger, retryTimes, DateTime.UtcNow - reconnectStartTime);
 
-                    // Fire-and-forget the reconnected event
+                    Log.InvokingEventHandler(_logger, nameof(OnConnected));
                     _ = OnReconnected?.Invoke();
                 }
                 catch (Exception ex)
                 {
-                    // Reconnect attempt failed.
-
-                    // Connection stopped during reconnect attempt
+                    Log.ReconnectAttemptFailed(_logger, ex);
                     if (_stopCts.IsCancellationRequested)
                     {
+                        Log.ReconnectingStoppedDuringReconnectAttempt(_logger);
+
                         var stoppedEx =
                             new Exception("Connection stopped during reconnect attempt. Done reconnecting.", ex);
                         CompleteClose(stoppedEx);
@@ -250,18 +279,26 @@ namespace FeatBit.Sdk.Server.Transport
 
         private void CompleteClose(Exception exception)
         {
+            if (exception != null)
+            {
+                Log.ShuttingDownWithError(_logger, exception);
+            }
+            else
+            {
+                Log.ShuttingDown(_logger);
+            }
+
             _stopCts = new CancellationTokenSource();
 
-            // Fire-and-forget the closed event
-            _ = OnClosed?.Invoke(exception, _transport.CloseStatus, _transport.CloseDescription)
-                .ConfigureAwait(false);
+            Log.InvokingEventHandler(_logger, nameof(OnClosed));
+            _ = OnClosed?.Invoke(exception, _transport.CloseStatus, _transport.CloseDescription).ConfigureAwait(false);
         }
 
         private async Task KeepAliveAsync(CancellationToken ct = default)
         {
             await SendAsync(PingMessage, ct);
 
-            // Fire-and-forget the ping event
+            Log.InvokingEventHandler(_logger, nameof(OnKeepAlive));
             _ = OnKeepAlive?.Invoke();
         }
 
@@ -274,11 +311,13 @@ namespace FeatBit.Sdk.Server.Transport
 
             _keepAliveTimer?.Dispose();
 
-            // Terminating receive loop, which should cause everything to shut down
+            Log.TerminatingReceiveLoop(_logger);
             _transport.Input.CancelPendingRead();
 
-            // Waiting for the receive loop to terminate.
+            Log.WaitingForReceiveLoopToTerminate(_logger);
             await (_receiveTask ?? Task.CompletedTask).ConfigureAwait(false);
+
+            Log.Stopped(_logger);
         }
     }
 }
