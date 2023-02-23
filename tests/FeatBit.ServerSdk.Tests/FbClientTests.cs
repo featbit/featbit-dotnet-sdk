@@ -17,11 +17,24 @@ public class FbClientTests
     }
 
     [Fact]
-    public void FbClientIsInitialized()
+    public async Task CloseInitializedFbClient()
     {
         var client = CreateTestFbClient();
-
         Assert.True(client.Initialized);
+
+        await client.CloseAsync();
+    }
+
+    [Fact]
+    public async Task CloseUninitializedFbClient()
+    {
+        var options = new FbOptionsBuilder("fake-secret")
+            .StartWaitTime(TimeSpan.FromMilliseconds(50))
+            .Build();
+        var client = new FbClient(options);
+        Assert.False(client.Initialized);
+
+        await client.CloseAsync();
     }
 
     [Fact]
