@@ -52,11 +52,6 @@ namespace FeatBit.Sdk.Server.Options
 
         public FbOptionsBuilder StartWaitTime(TimeSpan waitTime)
         {
-            if (waitTime < TimeSpan.FromSeconds(1))
-            {
-                throw new InvalidOperationException("start wait time must greater than 1s");
-            }
-
             _startWaitTime = waitTime;
             return this;
         }
