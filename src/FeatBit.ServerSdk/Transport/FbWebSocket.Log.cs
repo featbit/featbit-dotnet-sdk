@@ -39,7 +39,7 @@ namespace FeatBit.Sdk.Server.Transport
                 EventName = "ProcessingMessage")]
             public static partial void ProcessingMessage(ILogger logger, long messageLength);
 
-            [LoggerMessage(10, LogLevel.Error, "The server connection was terminated with an error.",
+            [LoggerMessage(10, LogLevel.Trace, "The server connection was terminated with an error.",
                 EventName = "ServerDisconnectedWithError")]
             public static partial void ServerDisconnectedWithError(ILogger logger, Exception ex);
 
