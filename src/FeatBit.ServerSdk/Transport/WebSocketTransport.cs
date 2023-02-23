@@ -5,11 +5,13 @@ using System.Net.WebSockets;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FeatBit.Sdk.Server.Transport
 {
     // ref: https://github.com/dotnet/aspnetcore/blob/main/src/SignalR/clients/csharp/Http.Connections.Client/src/Internal/WebSocketsTransport.cs
-    internal sealed class WebSocketTransport : IDuplexPipe
+    internal sealed partial class WebSocketTransport : IDuplexPipe
     {
         public PipeReader Input => _transport.Input;
         public PipeWriter Output => _transport.Output;
@@ -28,6 +30,7 @@ namespace FeatBit.Sdk.Server.Transport
         private readonly CancellationTokenSource _stopCts = new CancellationTokenSource();
         private volatile bool _aborted;
         private Task Running { get; set; } = Task.CompletedTask;
+        private readonly ILogger<WebSocketTransport> _logger;
 
         private static readonly TimeSpan DefaultCloseTimeout = TimeSpan.FromSeconds(5);
 
@@ -44,8 +47,11 @@ namespace FeatBit.Sdk.Server.Transport
             useSynchronizationContext: false
         );
 
-        public WebSocketTransport(Func<Uri, CancellationToken, Task<WebSocket>> webSocketFactory = null)
+        public WebSocketTransport(
+            ILoggerFactory loggerFactory = null,
+            Func<Uri, CancellationToken, Task<WebSocket>> webSocketFactory = null)
         {
+            _logger = (loggerFactory ?? NullLoggerFactory.Instance).CreateLogger<WebSocketTransport>();
             _webSocketFactory = webSocketFactory;
         }
 
@@ -63,6 +69,8 @@ namespace FeatBit.Sdk.Server.Transport
             {
                 throw new InvalidOperationException("Configured WebSocketFactory did not return a value.");
             }
+
+            Log.StartedTransport(_logger);
 
             // Create the pipe pair (Application's writer is connected to Transport's reader, and vice versa)
             var pair = DuplexPipe.CreateConnectionPair(DefaultPipeOptions, DefaultPipeOptions);
@@ -160,6 +168,7 @@ namespace FeatBit.Sdk.Server.Transport
                     var result = await socket.ReceiveAsync(Memory<byte>.Empty, _stopCts.Token).ConfigureAwait(false);
                     if (result.MessageType == WebSocketMessageType.Close)
                     {
+                        Log.WebSocketClosed(_logger, socket.CloseStatus);
                         return;
                     }
 
@@ -187,8 +196,11 @@ namespace FeatBit.Sdk.Server.Transport
 
                     if (receiveResult.MessageType == WebSocketMessageType.Close)
                     {
+                        Log.WebSocketClosed(_logger, _webSocket.CloseStatus);
                         return;
                     }
+
+                    Log.MessageReceived(_logger, receiveResult.MessageType, receiveResult.Count);
 
                     // write record separator
                     TextMessageFormatter.WriteRecordSeparator(_application.Output);
@@ -206,7 +218,7 @@ namespace FeatBit.Sdk.Server.Transport
             }
             catch (OperationCanceledException)
             {
-                // Receive loop canceled.
+                Log.ReceiveCanceled(_logger);
             }
             catch (Exception ex)
             {
@@ -220,7 +232,7 @@ namespace FeatBit.Sdk.Server.Transport
                 // We're done writing
                 _application.Output.Complete();
 
-                // Receive loop stopped.
+                Log.ReceiveStopped(_logger);
             }
         }
 
@@ -250,7 +262,7 @@ namespace FeatBit.Sdk.Server.Transport
                         {
                             try
                             {
-                                // Received message from application. Payload size: {buffer.Length}.
+                                Log.ReceivedFromApp(_logger, buffer.Length);
                                 if (WebSocketCanSend(socket))
                                 {
                                     await socket.SendAsync(buffer, WebSocketMessageType.Text, _stopCts.Token)
@@ -261,11 +273,11 @@ namespace FeatBit.Sdk.Server.Transport
                                     break;
                                 }
                             }
-                            catch (Exception)
+                            catch (Exception ex)
                             {
                                 if (!_aborted)
                                 {
-                                    // Error while sending a message.
+                                    Log.ErrorSendingMessage(_logger, ex);
                                 }
 
                                 break;
@@ -300,15 +312,15 @@ namespace FeatBit.Sdk.Server.Transport
                             _stopCts.Token
                         ).ConfigureAwait(false);
                     }
-                    catch (Exception)
+                    catch (Exception ex)
                     {
-                        // Closing webSocket failed.
+                        Log.ClosingWebSocketFailed(_logger, ex);
                     }
                 }
 
                 _application.Input.Complete();
 
-                // Send loop stopped.
+                Log.SendStopped(_logger);
             }
         }
 
@@ -342,10 +354,10 @@ namespace FeatBit.Sdk.Server.Transport
             {
                 await Running.ConfigureAwait(false);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Transport stopped.
                 // exceptions have been handled in the Running task continuation by closing the channel with the exception
+                Log.TransportStopped(_logger, ex);
             }
             finally
             {

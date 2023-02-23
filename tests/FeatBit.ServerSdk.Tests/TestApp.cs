@@ -25,7 +25,10 @@ public class TestApp : WebApplicationFactory<TestStartup>
     internal WebSocketTransport CreateWebSocketTransport()
     {
         var client = Server.CreateWebSocketClient();
-        return new WebSocketTransport((uri, cancellationToken) => client.ConnectAsync(uri, cancellationToken));
+
+        return new WebSocketTransport(
+            webSocketFactory: (uri, cancellationToken) => client.ConnectAsync(uri, cancellationToken)
+        );
     }
 
     internal FbWebSocket CreateFbWebSocket(string op, Func<FbOptionsBuilder, FbOptionsBuilder> configure = null)

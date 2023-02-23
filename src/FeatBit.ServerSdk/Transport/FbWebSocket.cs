@@ -33,6 +33,7 @@ namespace FeatBit.Sdk.Server.Transport
         private Exception _closeException;
         private readonly IRetryPolicy _retryPolicy;
         private CancellationTokenSource _stopCts = new CancellationTokenSource();
+        private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger<FbWebSocket> _logger;
 
         internal FbWebSocket(
@@ -47,7 +48,8 @@ namespace FeatBit.Sdk.Server.Transport
             _retryPolicy = options.ReconnectRetryDelays?.Length > 0
                 ? new DefaultRetryPolicy(options.ReconnectRetryDelays)
                 : new DefaultRetryPolicy();
-            _logger = options.LoggerFactory.CreateLogger<FbWebSocket>();
+            _loggerFactory = options.LoggerFactory;
+            _logger = _loggerFactory.CreateLogger<FbWebSocket>();
         }
 
         public async Task ConnectAsync(CancellationToken cancellationToken = default, bool isReconnecting = false)
@@ -106,9 +108,9 @@ namespace FeatBit.Sdk.Server.Transport
             Log.Started(_logger);
         }
 
-        private static WebSocketTransport DefaultWebSocketTransportFactory()
+        private WebSocketTransport DefaultWebSocketTransportFactory()
         {
-            return new WebSocketTransport();
+            return new WebSocketTransport(_loggerFactory);
         }
 
         private static Uri DefaultWebSocketUriResolver(FbOptions options)
