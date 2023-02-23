@@ -313,7 +313,16 @@ namespace FeatBit.Sdk.Server.Transport
         }
 
         public async Task SendAsync(ReadOnlyMemory<byte> source, CancellationToken ct = default)
-            => await _transport.Output.WriteAsync(source, ct);
+        {
+            if (_transport.State == WebSocketState.Open)
+            {
+                await _transport.Output.WriteAsync(source, ct);
+            }
+            else
+            {
+                Log.FailedToSendMessage(_logger, _transport.State);
+            }
+        }
 
         public async Task CloseAsync()
         {

@@ -106,6 +106,9 @@ namespace FeatBit.Sdk.Server.Transport
 
             [LoggerMessage(27, LogLevel.Information, "FbWebSocket stopped.", EventName = "Stopped")]
             public static partial void Stopped(ILogger logger);
+
+            [LoggerMessage(28, LogLevel.Debug, "Failed to send message, transport state: {TransportState}")]
+            public static partial void FailedToSendMessage(ILogger logger, WebSocketState transportState);
         }
     }
 }
