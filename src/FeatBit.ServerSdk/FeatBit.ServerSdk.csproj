@@ -18,8 +18,8 @@
         <IncludeSymbols>true</IncludeSymbols>
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
         <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
-        <PackageProjectUrl>https://github.com/featbit/dotnet-server-sdk</PackageProjectUrl>
-        <RepositoryUrl>https://github.com/featbit/dotnet-server-sdk</RepositoryUrl>
+        <PackageProjectUrl>https://github.com/featbit/featbit-dotnet-sdk</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/featbit/featbit-dotnet-sdk</RepositoryUrl>
         <RepositoryBranch>main</RepositoryBranch>
         <PackageIcon>icon.png</PackageIcon>
         <RepositoryType>git</RepositoryType>
