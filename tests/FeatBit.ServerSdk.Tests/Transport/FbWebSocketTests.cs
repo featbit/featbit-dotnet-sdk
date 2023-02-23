@@ -32,23 +32,24 @@ public class FbWebSocketTests
     }
 
     [Fact]
-    public async Task TestOnConnectError()
+    public async Task TestConnectError()
     {
         var fbWebSocket = _app.CreateFbWebSocket(
             "echo",
             builder => builder.Steaming(new Uri("ws://localhost/not-found"))
         );
 
-        var onConnectErrorCalled = false;
-        fbWebSocket.OnConnectError += ex =>
+        Exception connectException = null;
+        try
         {
-            Assert.NotNull(ex);
-            onConnectErrorCalled = true;
-        };
+            await fbWebSocket.ConnectAsync();
+        }
+        catch (Exception ex)
+        {
+            connectException = ex;
+        }
 
-        await fbWebSocket.ConnectAsync();
-
-        Assert.True(onConnectErrorCalled);
+        Assert.NotNull(connectException);
     }
 
     [Fact]

@@ -14,7 +14,6 @@ namespace FeatBit.Sdk.Server.Transport
     internal sealed partial class FbWebSocket
     {
         public event Func<Task> OnConnected;
-        public event Action<Exception> OnConnectError;
         public event Func<Task> OnKeepAlive;
         public event Func<Exception, Task> OnReconnecting;
         public event Func<Task> OnReconnected;
@@ -79,8 +78,7 @@ namespace FeatBit.Sdk.Server.Transport
             {
                 Log.ErrorStartingTransport(_logger, ex);
                 await transport.StopAsync();
-                OnConnectError?.Invoke(ex);
-                return;
+                throw;
             }
 
             // We successfully started, set the transport properties (we don't want to set these until the transport is definitely running).
