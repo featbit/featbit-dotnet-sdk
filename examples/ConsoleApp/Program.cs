@@ -59,7 +59,7 @@ while (true)
     Console.WriteLine();
 }
 
-// Shuts down the client
+// Shuts down the client to ensure all pending events are sent.
 await client.CloseAsync();
 
 Environment.Exit(1);
