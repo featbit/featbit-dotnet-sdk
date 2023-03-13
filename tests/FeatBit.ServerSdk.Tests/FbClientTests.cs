@@ -1,5 +1,6 @@
 using FeatBit.Sdk.Server.DataSynchronizer;
 using FeatBit.Sdk.Server.Evaluation;
+using FeatBit.Sdk.Server.Events;
 using FeatBit.Sdk.Server.Model;
 using FeatBit.Sdk.Server.Options;
 using FeatBit.Sdk.Server.Store;
@@ -40,23 +41,29 @@ public class FbClientTests
     [Fact]
     public void GetBoolVariation()
     {
-        var client = CreateTestFbClient();
+        var eventProcessorMock = new Mock<IEventProcessor>();
+        var client = CreateTestFbClient(eventProcessorMock.Object);
 
         var user = FbUser.Builder("u1").Build();
         var variation = client.BoolVariation("returns-true", user);
         Assert.True(variation);
+
+        eventProcessorMock.Verify(x => x.Record(It.IsAny<IEvent>()), Times.Once);
     }
 
     [Fact]
     public void GetBoolVariationDetail()
     {
-        var client = CreateTestFbClient();
+        var eventProcessorMock = new Mock<IEventProcessor>();
+        var client = CreateTestFbClient(eventProcessorMock.Object);
 
         var user = FbUser.Builder("u1").Build();
         var variationDetail = client.BoolVariationDetail("returns-true", user);
         Assert.True(variationDetail.Value);
         Assert.Equal(ReasonKind.Fallthrough, variationDetail.Kind);
         Assert.Equal("fall through targets and rules", variationDetail.Reason);
+
+        eventProcessorMock.Verify(x => x.Record(It.IsAny<IEvent>()), Times.Once);
     }
 
     [Fact]
@@ -74,7 +81,7 @@ public class FbClientTests
         Assert.Equal("fall through targets and rules", result0.Reason);
     }
 
-    private FbClient CreateTestFbClient()
+    private FbClient CreateTestFbClient(IEventProcessor processor = null)
     {
         var options = new FbOptionsBuilder("qJHQTVfsZUOu1Q54RLMuIQ-JtrIvNK-k-bARYicOTNQA")
             .Steaming(new Uri("ws://localhost/"))
@@ -83,7 +90,8 @@ public class FbClientTests
         var store = new DefaultMemoryStore();
         var synchronizer =
             new WebSocketDataSynchronizer(options, store, op => _app.CreateFbWebSocket(op));
-        var client = new FbClient(options, store, synchronizer);
+        var eventProcessor = processor ?? new DefaultEventProcessor(options);
+        var client = new FbClient(options, store, synchronizer, eventProcessor);
         return client;
     }
 }

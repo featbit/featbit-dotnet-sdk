@@ -16,7 +16,7 @@ public class EvaluatorTests
             FbUser = new FbUserBuilder("u1").Build()
         };
 
-        var result = evaluator.Evaluate(context);
+        var (result, _) = evaluator.Evaluate(context);
 
         Assert.Equal(ReasonKind.Error, result.Kind);
         Assert.Equal(string.Empty, result.Value);
@@ -42,7 +42,7 @@ public class EvaluatorTests
             FbUser = new FbUserBuilder("u1").Build()
         };
 
-        var result = evaluator.Evaluate(context);
+        var (result, _) = evaluator.Evaluate(context);
 
         Assert.Equal(ReasonKind.Error, result.Kind);
         Assert.Equal(string.Empty, result.Value);
@@ -68,7 +68,7 @@ public class EvaluatorTests
             FbUser = new FbUserBuilder("u1").Build()
         };
 
-        var result = evaluator.Evaluate(context);
+        var (result, _) = evaluator.Evaluate(context);
 
         Assert.Equal(ReasonKind.Off, result.Kind);
         Assert.Equal("true", result.Value);
@@ -105,7 +105,7 @@ public class EvaluatorTests
             FbUser = new FbUserBuilder("u1").Build()
         };
 
-        var result = evaluator.Evaluate(context);
+        var (result, _) = evaluator.Evaluate(context);
 
         Assert.Equal(ReasonKind.TargetMatch, result.Kind);
         Assert.Equal("false", result.Value);
@@ -164,7 +164,7 @@ public class EvaluatorTests
                 .Build()
         };
 
-        var result = evaluator.Evaluate(context);
+        var (result, _) = evaluator.Evaluate(context);
 
         Assert.Equal(ReasonKind.RuleMatch, result.Kind);
         Assert.Equal("true", result.Value);
@@ -212,7 +212,7 @@ public class EvaluatorTests
             FbUser = new FbUserBuilder("u1").Build()
         };
 
-        var result = evaluator.Evaluate(context);
+        var (result, _) = evaluator.Evaluate(context);
 
         Assert.Equal(ReasonKind.Fallthrough, result.Kind);
         Assert.Equal("false", result.Value);

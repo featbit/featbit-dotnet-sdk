@@ -1,4 +1,5 @@
 using System.Linq;
+using FeatBit.Sdk.Server.Events;
 using FeatBit.Sdk.Server.Model;
 using FeatBit.Sdk.Server.Store;
 
@@ -13,31 +14,35 @@ namespace FeatBit.Sdk.Server.Evaluation
             _store = store;
         }
 
-        public EvalResult Evaluate(EvaluationContext context)
+        public (EvalResult evalResult, EvalEvent evalEvent) Evaluate(EvaluationContext context)
         {
             var storeKey = StoreKeys.ForFeatureFlag(context.FlagKey);
 
             var flag = _store.Get<FeatureFlag>(storeKey);
             if (flag == null)
             {
-                return EvalResult.FlagNotFound;
+                return FlagNotFound();
             }
 
             return Evaluate(flag, context.FbUser);
+
+            (EvalResult EvalResult, EvalEvent evalEvent) FlagNotFound() => (EvalResult.FlagNotFound, null);
         }
 
-        public EvalResult Evaluate(FeatureFlag flag, FbUser user)
+        public (EvalResult evalResult, EvalEvent evalEvent) Evaluate(FeatureFlag flag, FbUser user)
         {
+            var flagKey = flag.Key;
+
             // if flag is disabled
             if (!flag.IsEnabled)
             {
                 var disabledVariation = flag.GetVariation(flag.DisabledVariationId);
                 if (disabledVariation == null)
                 {
-                    return EvalResult.MalformedFlag;
+                    return MalformedFlag();
                 }
 
-                return EvalResult.FlagOff(disabledVariation.Value);
+                return FlagOff(disabledVariation);
             }
 
             // if user is targeted
@@ -45,10 +50,9 @@ namespace FeatBit.Sdk.Server.Evaluation
             if (targetUser != null)
             {
                 var targetedVariation = flag.GetVariation(targetUser.VariationId);
-                return EvalResult.Targeted(targetedVariation.Value);
+                return Targeted(targetedVariation);
             }
 
-            var flagKey = flag.Key;
             string dispatchKey;
 
             // if user is rule matched
@@ -64,11 +68,11 @@ namespace FeatBit.Sdk.Server.Evaluation
                     var rolloutVariation = rule.Variations.FirstOrDefault(x => x.IsInRollout(dispatchKey));
                     if (rolloutVariation == null)
                     {
-                        return EvalResult.MalformedFlag;
+                        return MalformedFlag();
                     }
 
                     var ruleMatchedVariation = flag.GetVariation(rolloutVariation.Id);
-                    return EvalResult.RuleMatched(ruleMatchedVariation.Value, rule.Name);
+                    return RuleMatched(ruleMatchedVariation, rule.Name);
                 }
             }
 
@@ -82,11 +86,25 @@ namespace FeatBit.Sdk.Server.Evaluation
                 flag.Fallthrough.Variations.FirstOrDefault(x => x.IsInRollout(dispatchKey));
             if (defaultVariation == null)
             {
-                return EvalResult.MalformedFlag;
+                return MalformedFlag();
             }
 
             var defaultRuleVariation = flag.GetVariation(defaultVariation.Id);
-            return EvalResult.Fallthrough(defaultRuleVariation.Value);
+            return Fallthrough(defaultRuleVariation);
+
+            (EvalResult EvalResult, EvalEvent evalEvent) MalformedFlag() => (EvalResult.MalformedFlag, null);
+
+            (EvalResult EvalResult, EvalEvent evalEvent) FlagOff(Variation variation) =>
+                (EvalResult.FlagOff(variation.Value), new EvalEvent(user, flagKey, variation));
+
+            (EvalResult EvalResult, EvalEvent evalEvent) Targeted(Variation variation) =>
+                (EvalResult.Targeted(variation.Value), new EvalEvent(user, flagKey, variation));
+
+            (EvalResult EvalResult, EvalEvent evalEvent) RuleMatched(Variation variation, string ruleName) =>
+                (EvalResult.RuleMatched(variation.Value, ruleName), new EvalEvent(user, flagKey, variation));
+
+            (EvalResult EvalResult, EvalEvent evalEvent) Fallthrough(Variation variation) =>
+                (EvalResult.Fallthrough(variation.Value), new EvalEvent(user, flagKey, variation));
         }
     }
 }
