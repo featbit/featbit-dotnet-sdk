@@ -1,48 +1,27 @@
-﻿[
-  {
-    user: {
-      keyId: u2-Id,
-      name: u2-name,
-      customizedProperties: [
-        {
-          name: age,
-          value: 10
-        }
-      ]
-    },
-    variations: [
+﻿{
+  user: {
+    keyId: u1-Id,
+    name: u1-name,
+    customizedProperties: [
       {
-        featureFlagKey: hello,
-        variation: {
-          id: v2Id,
-          value: v2
-        },
-        timestamp: {Scrubbed},
-        sendToExperiment: false
+        name: custom,
+        value: value
+      },
+      {
+        name: country,
+        value: us
       }
     ]
   },
-  {
-    user: {
-      keyId: u3-Id,
-      name: u3-name,
-      customizedProperties: [
-        {
-          name: age,
-          value: 10
-        }
-      ]
-    },
-    variations: [
-      {
-        featureFlagKey: hello,
-        variation: {
-          id: v3Id,
-          value: v3
-        },
-        timestamp: {Scrubbed},
-        sendToExperiment: true
-      }
-    ]
-  }
-]
+  variations: [
+    {
+      featureFlagKey: hello,
+      variation: {
+        id: v1Id,
+        value: v1
+      },
+      timestamp: {Scrubbed},
+      sendToExperiment: true
+    }
+  ]
+}

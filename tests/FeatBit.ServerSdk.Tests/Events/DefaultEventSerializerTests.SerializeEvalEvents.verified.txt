@@ -1,0 +1,48 @@
+﻿[
+  {
+    user: {
+      keyId: u2-Id,
+      name: u2-name,
+      customizedProperties: [
+        {
+          name: age,
+          value: 10
+        }
+      ]
+    },
+    variations: [
+      {
+        featureFlagKey: hello,
+        variation: {
+          id: v2Id,
+          value: v2
+        },
+        timestamp: {Scrubbed},
+        sendToExperiment: false
+      }
+    ]
+  },
+  {
+    user: {
+      keyId: u3-Id,
+      name: u3-name,
+      customizedProperties: [
+        {
+          name: age,
+          value: 10
+        }
+      ]
+    },
+    variations: [
+      {
+        featureFlagKey: hello,
+        variation: {
+          id: v3Id,
+          value: v3
+        },
+        timestamp: {Scrubbed},
+        sendToExperiment: true
+      }
+    ]
+  }
+]

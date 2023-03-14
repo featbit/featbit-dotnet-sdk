@@ -11,6 +11,19 @@ public class DefaultEventSerializerTests
     {
         var serializer = new DefaultEventSerializer();
 
+        var @event = AllEvents()[0];
+
+        var jsonBytes = serializer.Serialize(@event);
+        var json = Encoding.UTF8.GetString(jsonBytes);
+
+        await VerifyJson(json).ScrubMember("timestamp");
+    }
+
+    [Fact]
+    public async Task SerializeEvalEvents()
+    {
+        var serializer = new DefaultEventSerializer();
+
         var events = AllEvents();
         var result = new ReadOnlyMemory<IEvent>(events, 1, 2);
 

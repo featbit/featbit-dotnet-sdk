@@ -7,6 +7,17 @@ namespace FeatBit.Sdk.Server.Events
 {
     internal class DefaultEventSerializer : IEventSerializer
     {
+        public byte[] Serialize(IEvent @event)
+        {
+            using var stream = new MemoryStream();
+            using var writer = new Utf8JsonWriter(stream);
+
+            WriteEvent(@event, writer);
+
+            writer.Flush();
+            return stream.ToArray();
+        }
+
         public byte[] Serialize(ReadOnlyMemory<IEvent> events)
         {
             var span = events.Span;
