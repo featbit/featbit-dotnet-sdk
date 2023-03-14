@@ -189,9 +189,9 @@ internet outage, but it will be resumed automatically once the problem is gone.
 
 ## What's Next
 
-- add feature flag insights support
-- support offline mode & bootstrapping
-- asp.net core integration & examples
+- [x] add feature flag insights support
+- [ ] support offline mode & bootstrapping
+- [ ] asp.net core integration & examples
 
 ## Getting support
 
