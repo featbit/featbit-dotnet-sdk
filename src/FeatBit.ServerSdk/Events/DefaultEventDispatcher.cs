@@ -45,7 +45,7 @@ namespace FeatBit.Sdk.Server.Events
 
             _logger = options.LoggerFactory.CreateLogger<DefaultEventDispatcher>();
 
-            _buffer = buffer ?? new DefaultEventBuffer(options.MaxEventsInQueue, _logger);
+            _buffer = buffer ?? new DefaultEventBuffer(options.MaxEventsInQueue);
             _sender = sender ?? new DefaultEventSender(options);
             _serializer = serializer ?? new DefaultEventSerializer();
             _stopped = new AtomicBoolean();

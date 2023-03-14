@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using Microsoft.Extensions.Logging;
 
 namespace FeatBit.Sdk.Server.Events
 {
@@ -7,27 +6,22 @@ namespace FeatBit.Sdk.Server.Events
     {
         private readonly int _capacity;
         private readonly List<IEvent> _events;
-        private readonly ILogger _logger;
 
-        public DefaultEventBuffer(int capacity, ILogger logger)
+        public DefaultEventBuffer(int capacity)
         {
             _capacity = capacity;
             _events = new List<IEvent>();
-            _logger = logger;
         }
 
-        public void AddEvent(IEvent @event)
+        public bool AddEvent(IEvent @event)
         {
             if (_events.Count >= _capacity)
             {
-                _logger.LogWarning(
-                    "Exceeded event queue capacity, event will be dropped. Increase capacity to avoid dropping events."
-                );
+                return false;
             }
-            else
-            {
-                _events.Add(@event);
-            }
+
+            _events.Add(@event);
+            return true;
         }
 
         public int Count => _events.Count;

@@ -2,7 +2,7 @@ namespace FeatBit.Sdk.Server.Events
 {
     internal interface IEventBuffer
     {
-        void AddEvent(IEvent @event);
+        bool AddEvent(IEvent @event);
 
         bool IsEmpty { get; }
 

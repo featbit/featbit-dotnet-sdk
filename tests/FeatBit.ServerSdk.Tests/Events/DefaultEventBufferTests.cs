@@ -1,6 +1,3 @@
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
-
 namespace FeatBit.Sdk.Server.Events;
 
 public class DefaultEventBufferTests
@@ -8,7 +5,7 @@ public class DefaultEventBufferTests
     [Fact]
     public void GetEventSnapshot()
     {
-        var buffer = new DefaultEventBuffer(2, NullLogger.Instance);
+        var buffer = new DefaultEventBuffer(2);
 
         buffer.AddEvent(new IntEvent(1));
         buffer.AddEvent(new IntEvent(2));
@@ -29,28 +26,15 @@ public class DefaultEventBufferTests
     [Fact]
     public void IgnoreNewEventAfterBufferIsFull()
     {
-        const int capacity = 2;
-        var loggerMock = new Mock<ILogger>();
+        var buffer = new DefaultEventBuffer(2);
 
-        var buffer = new DefaultEventBuffer(capacity, loggerMock.Object);
+        Assert.True(buffer.AddEvent(new IntEvent(1)));
+        Assert.True(buffer.AddEvent(new IntEvent(2)));
 
-        buffer.AddEvent(new IntEvent(1));
-        buffer.AddEvent(new IntEvent(2));
-
-        // buffer is full, the following events should be ignored and trigger an warning
-        buffer.AddEvent(new IntEvent(3));
-        buffer.AddEvent(new IntEvent(4));
+        // buffer is full, the following events should be ignored
+        Assert.False(buffer.AddEvent(new IntEvent(3)));
+        Assert.False(buffer.AddEvent(new IntEvent(4)));
 
         Assert.Equal(2, buffer.Count);
-        loggerMock.Verify(
-            logger => logger.Log(
-                LogLevel.Warning,
-                It.IsAny<EventId>(),
-                It.IsAny<It.IsAnyType>(),
-                null,
-                It.IsAny<Func<It.IsAnyType, Exception, string>>()
-            ),
-            Times.Exactly(2)
-        );
     }
 }
