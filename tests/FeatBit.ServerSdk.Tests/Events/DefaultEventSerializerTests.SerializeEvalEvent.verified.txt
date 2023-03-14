@@ -1,0 +1,27 @@
+﻿{
+  user: {
+    keyId: u1-Id,
+    name: u1-name,
+    customizedProperties: [
+      {
+        name: custom,
+        value: value
+      },
+      {
+        name: country,
+        value: us
+      }
+    ]
+  },
+  variations: [
+    {
+      featureFlagKey: hello,
+      variation: {
+        id: v1Id,
+        value: v1
+      },
+      timestamp: {Scrubbed},
+      sendToExperiment: true
+    }
+  ]
+}

@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using FeatBit.Sdk.Server.DataSynchronizer;
 using FeatBit.Sdk.Server.Evaluation;
+using FeatBit.Sdk.Server.Events;
 using FeatBit.Sdk.Server.Model;
 using FeatBit.Sdk.Server.Options;
 using FeatBit.Sdk.Server.Store;
@@ -17,7 +18,8 @@ namespace FeatBit.Sdk.Server
         private readonly FbOptions _options;
         private readonly IMemoryStore _store;
         private readonly IDataSynchronizer _dataSynchronizer;
-        private readonly Evaluator _evaluator;
+        private readonly IEvaluator _evaluator;
+        private readonly IEventProcessor _eventProcessor;
         private readonly ILogger _logger;
 
         #endregion
@@ -104,6 +106,7 @@ namespace FeatBit.Sdk.Server
             _store = new DefaultMemoryStore();
             _dataSynchronizer = new WebSocketDataSynchronizer(options, _store);
             _evaluator = new Evaluator(_store);
+            _eventProcessor = new DefaultEventProcessor(options);
             _logger = options.LoggerFactory.CreateLogger<FbClient>();
 
             // starts client
@@ -111,12 +114,17 @@ namespace FeatBit.Sdk.Server
         }
 
         // internal use for testing
-        internal FbClient(FbOptions options, IMemoryStore store, IDataSynchronizer synchronizer)
+        internal FbClient(
+            FbOptions options,
+            IMemoryStore store,
+            IDataSynchronizer synchronizer,
+            IEventProcessor eventProcessor)
         {
             _options = options;
             _store = store;
             _dataSynchronizer = synchronizer;
             _evaluator = new Evaluator(_store);
+            _eventProcessor = eventProcessor;
             _logger = options.LoggerFactory.CreateLogger<FbClient>();
 
             // starts client
@@ -230,11 +238,12 @@ namespace FeatBit.Sdk.Server
         /// </summary>
         /// <param name="user">a given user</param>
         /// <returns>an <see cref="EvalResult"/> array</returns>
-        public EvalResult[] GetAllVariations(FbUser user)
+        public EvalDetail<string>[] GetAllVariations(FbUser user)
         {
             var results = _store
                 .Find<FeatureFlag>(x => x.StoreKey.StartsWith(StoreKeys.FlagPrefix))
-                .Select(flag => _evaluator.Evaluate(flag, user))
+                .Select(flag => _evaluator.Evaluate(flag, user).evalResult)
+                .Select(x => new EvalDetail<string>(x.Kind, x.Reason, x.Value))
                 .ToArray();
 
             return results;
@@ -245,7 +254,10 @@ namespace FeatBit.Sdk.Server
         /// </summary>
         public async Task CloseAsync()
         {
+            _logger.LogInformation("Closing FbClient...");
             await _dataSynchronizer.StopAsync();
+            await _eventProcessor.FlushAndWaitAsync(_options.FlushTimeout);
+            _logger.LogInformation("FbClient successfully closed.");
         }
 
         private EvalDetail<TValue> EvaluateCore<TValue>(
@@ -266,17 +278,20 @@ namespace FeatBit.Sdk.Server
                 FbUser = user
             };
 
-            var result = _evaluator.Evaluate(ctx);
-            if (result.Kind == ReasonKind.Error)
+            var (evalResult, evalEvent) = _evaluator.Evaluate(ctx);
+            if (evalResult.Kind == ReasonKind.Error)
             {
                 // error happened when evaluate flag, return default value 
-                return new EvalDetail<TValue>(result.Kind, result.Reason, defaultValue);
+                return new EvalDetail<TValue>(evalResult.Kind, evalResult.Reason, defaultValue);
             }
+
+            // record evaluation event
+            _eventProcessor.Record(evalEvent);
 
             try
             {
-                var typedValue = converter(result.Value);
-                return new EvalDetail<TValue>(result.Kind, result.Reason, typedValue);
+                var typedValue = converter(evalResult.Value);
+                return new EvalDetail<TValue>(evalResult.Kind, evalResult.Reason, typedValue);
             }
             catch
             {

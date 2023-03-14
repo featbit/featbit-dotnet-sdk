@@ -16,11 +16,13 @@ public class EvaluatorTests
             FbUser = new FbUserBuilder("u1").Build()
         };
 
-        var result = evaluator.Evaluate(context);
+        var (evalResult, evalEvent) = evaluator.Evaluate(context);
 
-        Assert.Equal(ReasonKind.Error, result.Kind);
-        Assert.Equal(string.Empty, result.Value);
-        Assert.Equal("flag not found", result.Reason);
+        Assert.Equal(ReasonKind.Error, evalResult.Kind);
+        Assert.Equal(string.Empty, evalResult.Value);
+        Assert.Equal("flag not found", evalResult.Reason);
+
+        Assert.Null(evalEvent);
     }
 
     [Fact]
@@ -42,11 +44,13 @@ public class EvaluatorTests
             FbUser = new FbUserBuilder("u1").Build()
         };
 
-        var result = evaluator.Evaluate(context);
+        var (evalResult, evalEvent) = evaluator.Evaluate(context);
 
-        Assert.Equal(ReasonKind.Error, result.Kind);
-        Assert.Equal(string.Empty, result.Value);
-        Assert.Equal("malformed flag", result.Reason);
+        Assert.Equal(ReasonKind.Error, evalResult.Kind);
+        Assert.Equal(string.Empty, evalResult.Value);
+        Assert.Equal("malformed flag", evalResult.Reason);
+
+        Assert.Null(evalEvent);
     }
 
     [Fact]
@@ -68,11 +72,14 @@ public class EvaluatorTests
             FbUser = new FbUserBuilder("u1").Build()
         };
 
-        var result = evaluator.Evaluate(context);
+        var (evalResult, evalEvent) = evaluator.Evaluate(context);
 
-        Assert.Equal(ReasonKind.Off, result.Kind);
-        Assert.Equal("true", result.Value);
-        Assert.Equal("flag off", result.Reason);
+        Assert.Equal(ReasonKind.Off, evalResult.Kind);
+        Assert.Equal("true", evalResult.Value);
+        Assert.Equal("flag off", evalResult.Reason);
+
+        // flag is off
+        Assert.False(evalEvent.SendToExperiment);
     }
 
     [Fact]
@@ -105,11 +112,14 @@ public class EvaluatorTests
             FbUser = new FbUserBuilder("u1").Build()
         };
 
-        var result = evaluator.Evaluate(context);
+        var (evalResult, evalEvent) = evaluator.Evaluate(context);
 
-        Assert.Equal(ReasonKind.TargetMatch, result.Kind);
-        Assert.Equal("false", result.Value);
-        Assert.Equal("target match", result.Reason);
+        Assert.Equal(ReasonKind.TargetMatch, evalResult.Kind);
+        Assert.Equal("false", evalResult.Value);
+        Assert.Equal("target match", evalResult.Reason);
+
+        // ExptIncludeAllTargets is true by default
+        Assert.True(evalEvent.SendToExperiment);
     }
 
     [Fact]
@@ -135,7 +145,7 @@ public class EvaluatorTests
                 }
             },
             DispatchKey = "keyId",
-            IncludedInExpt = true,
+            IncludedInExpt = false,
             Variations = new List<RolloutVariation>
             {
                 new()
@@ -150,6 +160,7 @@ public class EvaluatorTests
         var flag = new FeatureFlagBuilder()
             .Key("hello")
             .IsEnabled(true)
+            .ExptIncludeAllTargets(false)
             .Rules(customRule)
             .Variations(variations)
             .Build();
@@ -164,11 +175,14 @@ public class EvaluatorTests
                 .Build()
         };
 
-        var result = evaluator.Evaluate(context);
+        var (evalResult, evalEvent) = evaluator.Evaluate(context);
 
-        Assert.Equal(ReasonKind.RuleMatch, result.Kind);
-        Assert.Equal("true", result.Value);
-        Assert.Equal($"match rule {customRule.Name}", result.Reason);
+        Assert.Equal(ReasonKind.RuleMatch, evalResult.Kind);
+        Assert.Equal("true", evalResult.Value);
+        Assert.Equal($"match rule {customRule.Name}", evalResult.Reason);
+
+        // customRule.IncludedInExpt is false
+        Assert.False(evalEvent.SendToExperiment);
     }
 
     [Fact]
@@ -200,6 +214,7 @@ public class EvaluatorTests
         var flag = new FeatureFlagBuilder()
             .Key("hello")
             .IsEnabled(true)
+            .ExptIncludeAllTargets(false)
             .Fallthrough(fallthrough)
             .Variations(variations)
             .Build();
@@ -212,10 +227,12 @@ public class EvaluatorTests
             FbUser = new FbUserBuilder("u1").Build()
         };
 
-        var result = evaluator.Evaluate(context);
+        var (evalResult, evalEvent) = evaluator.Evaluate(context);
 
-        Assert.Equal(ReasonKind.Fallthrough, result.Kind);
-        Assert.Equal("false", result.Value);
-        Assert.Equal("fall through targets and rules", result.Reason);
+        Assert.Equal(ReasonKind.Fallthrough, evalResult.Kind);
+        Assert.Equal("false", evalResult.Value);
+        Assert.Equal("fall through targets and rules", evalResult.Reason);
+
+        Assert.True(evalEvent.SendToExperiment);
     }
 }

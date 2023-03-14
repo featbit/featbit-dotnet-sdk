@@ -1,6 +1,6 @@
 namespace FeatBit.Sdk.Server.Evaluation
 {
-    public class EvalResult
+    internal class EvalResult
     {
         public ReasonKind Kind { get; set; }
 
