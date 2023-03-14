@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <PackageVersion>1.0.2</PackageVersion>
+        <PackageVersion>1.0.3</PackageVersion>
         <TargetFrameworks>netstandard2.0;netstandard2.1;netcoreapp3.1;net6.0;net462</TargetFrameworks>
         <DebugType>portable</DebugType>
         <AssemblyName>FeatBit.ServerSdk</AssemblyName>
@@ -37,7 +37,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="System.IO.Pipelines" Version="6.0.3"/>
+        <PackageReference Include="System.IO.Pipelines" Version="6.0.0"/>
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="6.0.0"/>
     </ItemGroup>
 
