@@ -100,5 +100,16 @@ namespace FeatBit.Sdk.Server.Model
         public double ExptRollout { get; set; }
 
         public bool IsInRollout(string key) => DispatchAlgorithm.IsInRollout(key, Rollout);
+
+        public double DispatchRollout()
+        {
+            if (Rollout is not { Length: 2 })
+            {
+                // malformed rollout
+                return 0.0;
+            }
+
+            return Rollout[1] - Rollout[0];
+        }
     }
 }

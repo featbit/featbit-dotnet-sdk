@@ -18,7 +18,7 @@
           value: v2
         },
         timestamp: {Scrubbed},
-        sendToExperiment: true
+        sendToExperiment: false
       }
     ]
   },

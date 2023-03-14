@@ -73,13 +73,13 @@ namespace FeatBit.Sdk.Server.Events
 
         public bool SendToExperiment { get; set; }
 
-        public EvalEvent(FbUser user, string flagKey, Variation variation)
+        public EvalEvent(FbUser user, string flagKey, Variation variation, bool sendToExperiment)
         {
             User = user;
             FlagKey = flagKey;
             Variation = variation;
             Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            SendToExperiment = true;
+            SendToExperiment = sendToExperiment;
         }
     }
 }

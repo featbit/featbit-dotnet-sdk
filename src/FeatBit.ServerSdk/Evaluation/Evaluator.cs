@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Runtime.CompilerServices;
 using FeatBit.Sdk.Server.Events;
 using FeatBit.Sdk.Server.Model;
 using FeatBit.Sdk.Server.Store;
@@ -50,7 +51,7 @@ namespace FeatBit.Sdk.Server.Evaluation
             if (targetUser != null)
             {
                 var targetedVariation = flag.GetVariation(targetUser.VariationId);
-                return Targeted(targetedVariation);
+                return Targeted(targetedVariation, flag.ExptIncludeAllTargets);
             }
 
             string dispatchKey;
@@ -71,8 +72,7 @@ namespace FeatBit.Sdk.Server.Evaluation
                         return MalformedFlag();
                     }
 
-                    var ruleMatchedVariation = flag.GetVariation(rolloutVariation.Id);
-                    return RuleMatched(ruleMatchedVariation, rule.Name);
+                    return RuleMatched(rule, rolloutVariation);
                 }
             }
 
@@ -89,22 +89,86 @@ namespace FeatBit.Sdk.Server.Evaluation
                 return MalformedFlag();
             }
 
-            var defaultRuleVariation = flag.GetVariation(defaultVariation.Id);
-            return Fallthrough(defaultRuleVariation);
+            return Fallthrough();
 
             (EvalResult EvalResult, EvalEvent evalEvent) MalformedFlag() => (EvalResult.MalformedFlag, null);
 
             (EvalResult EvalResult, EvalEvent evalEvent) FlagOff(Variation variation) =>
-                (EvalResult.FlagOff(variation.Value), new EvalEvent(user, flagKey, variation));
+                (EvalResult.FlagOff(variation.Value), new EvalEvent(user, flagKey, variation, false));
 
-            (EvalResult EvalResult, EvalEvent evalEvent) Targeted(Variation variation) =>
-                (EvalResult.Targeted(variation.Value), new EvalEvent(user, flagKey, variation));
+            (EvalResult EvalResult, EvalEvent evalEvent) Targeted(Variation variation, bool exptIncludeAllTargets) =>
+                (EvalResult.Targeted(variation.Value), new EvalEvent(user, flagKey, variation, exptIncludeAllTargets));
 
-            (EvalResult EvalResult, EvalEvent evalEvent) RuleMatched(Variation variation, string ruleName) =>
-                (EvalResult.RuleMatched(variation.Value, ruleName), new EvalEvent(user, flagKey, variation));
+            (EvalResult EvalResult, EvalEvent evalEvent) RuleMatched(TargetRule rule, RolloutVariation rolloutVariation)
+            {
+                var variation = flag.GetVariation(rolloutVariation.Id);
 
-            (EvalResult EvalResult, EvalEvent evalEvent) Fallthrough(Variation variation) =>
-                (EvalResult.Fallthrough(variation.Value), new EvalEvent(user, flagKey, variation));
+                var evalResult = EvalResult.RuleMatched(variation.Value, rule.Name);
+
+                var sendToExperiment = IsSendToExperiment(
+                    flag.ExptIncludeAllTargets,
+                    rule.IncludedInExpt,
+                    dispatchKey,
+                    rolloutVariation
+                );
+                var evalEvent = new EvalEvent(user, flagKey, variation, sendToExperiment);
+
+                return (evalResult, evalEvent);
+            }
+
+            (EvalResult EvalResult, EvalEvent evalEvent) Fallthrough()
+            {
+                var variation = flag.GetVariation(defaultVariation.Id);
+
+                var evalResult = EvalResult.Fallthrough(variation.Value);
+
+                var sendToExperiment = IsSendToExperiment(
+                    flag.ExptIncludeAllTargets,
+                    flag.Fallthrough.IncludedInExpt,
+                    dispatchKey,
+                    defaultVariation
+                );
+                var evalEvent = new EvalEvent(user, flagKey, variation, sendToExperiment);
+
+                return (evalResult, evalEvent);
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool IsSendToExperiment(
+            bool exptIncludeAllTargets,
+            bool thisRuleIncludeInExpt,
+            string dispatchKey,
+            RolloutVariation rolloutVariation)
+        {
+            if (exptIncludeAllTargets)
+            {
+                return true;
+            }
+
+            if (!thisRuleIncludeInExpt)
+            {
+                return false;
+            }
+
+            // create a new key to calculate the experiment dispatch percentage
+            const string exptDispatchKeyPrefix = "expt";
+            var sendToExptKey = $"{exptDispatchKeyPrefix}{dispatchKey}";
+
+            var exptRollout = rolloutVariation.ExptRollout;
+            var dispatchRollout = rolloutVariation.DispatchRollout();
+            if (exptRollout == 0.0 || dispatchRollout == 0.0)
+            {
+                return false;
+            }
+
+            var upperBound = exptRollout / dispatchRollout;
+            if (upperBound > 1.0)
+            {
+                upperBound = 1.0;
+            }
+
+            return DispatchAlgorithm.IsInRollout(sendToExptKey, new[] { 0.0, upperBound });
         }
     }
 }
