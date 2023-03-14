@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FeatBit.Sdk.Server.Events
 {
-    internal sealed class DefaultEventDispatcher : IEventDispatcher
+    internal sealed partial class DefaultEventDispatcher : IEventDispatcher
     {
         private readonly int _maxFlushWorkers;
         private readonly int _maxEventPerRequest;
@@ -35,6 +35,8 @@ namespace FeatBit.Sdk.Server.Events
             _maxEventPerRequest = options.MaxEventPerRequest;
             _flushWorkersCounter = new CountdownEvent(1);
 
+            _logger = options.LoggerFactory.CreateLogger<DefaultEventDispatcher>();
+
             // Here we use TaskFactory.StartNew instead of Task.Run() because that allows us to specify the
             // LongRunning option. This option tells the task scheduler that the task is likely to hang on
             // to a thread for a long time, so it should consider growing the thread pool.
@@ -42,8 +44,6 @@ namespace FeatBit.Sdk.Server.Events
                 () => DispatchLoop(queue),
                 TaskCreationOptions.LongRunning
             );
-
-            _logger = options.LoggerFactory.CreateLogger<DefaultEventDispatcher>();
 
             _buffer = buffer ?? new DefaultEventBuffer(options.MaxEventsInQueue);
             _sender = sender ?? new DefaultEventSender(options);
@@ -53,6 +53,8 @@ namespace FeatBit.Sdk.Server.Events
 
         private void DispatchLoop(BlockingCollection<IEvent> queue)
         {
+            Log.StartDispatchLoop(_logger);
+
             var running = true;
             while (running)
             {
@@ -76,9 +78,11 @@ namespace FeatBit.Sdk.Server.Events
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Unexpected error in event dispatcher thread");
+                    Log.DispatchError(_logger, ex);
                 }
             }
+
+            Log.FinishDispatchLoop(_logger);
         }
 
         private void AddEventToBuffer(IEvent @event)
@@ -88,7 +92,14 @@ namespace FeatBit.Sdk.Server.Events
                 return;
             }
 
-            _buffer.AddEvent(@event);
+            if (_buffer.AddEvent(@event))
+            {
+                Log.AddedEventToBuffer(_logger);
+            }
+            else
+            {
+                Log.ExceededCapacity(_logger);
+            }
         }
 
         private void TriggerFlush(AsyncEvent @event)
@@ -101,6 +112,7 @@ namespace FeatBit.Sdk.Server.Events
 
             if (_buffer.IsEmpty)
             {
+                Log.FlushEmptyBuffer(_logger);
                 // There are no events to flush. If we don't complete the message, then the async task may never
                 // complete (if it had a non-zero positive timeout, then it would complete after the timeout).
                 @event.Complete();
@@ -114,6 +126,7 @@ namespace FeatBit.Sdk.Server.Events
                 // it once it has gone to zero.
                 if (_flushWorkersCounter.CurrentCount >= _maxFlushWorkers + 1)
                 {
+                    Log.TooManyFlushWorkers(_logger);
                     // We already have too many workers, so just leave the events as is
                     @event.Complete();
                     return;
@@ -137,6 +150,7 @@ namespace FeatBit.Sdk.Server.Events
                 {
                     _flushWorkersCounter.Signal();
                     @event.Complete();
+                    Log.EventsFlushed(_logger, snapshot.Length);
                 }
             });
         }
