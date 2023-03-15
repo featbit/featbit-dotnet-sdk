@@ -17,9 +17,12 @@ namespace FeatBit.Sdk.Server
 
         private readonly FbOptions _options;
         private readonly IMemoryStore _store;
-        private readonly IDataSynchronizer _dataSynchronizer;
         private readonly IEvaluator _evaluator;
-        private readonly IEventProcessor _eventProcessor;
+
+        // internal for testing
+        internal readonly IDataSynchronizer _dataSynchronizer;
+        internal readonly IEventProcessor _eventProcessor;
+
         private readonly ILogger _logger;
 
         #endregion
@@ -28,7 +31,7 @@ namespace FeatBit.Sdk.Server
         /// Indicates whether the client is ready to be used.
         /// </summary>
         /// <value>true if the client is ready</value>
-        public bool Initialized => _store.Populated;
+        public bool Initialized => _dataSynchronizer.Initialized;
 
         /// <summary>
         /// Creates a new client instance that connects to FeatBit with the default option.
@@ -104,9 +107,19 @@ namespace FeatBit.Sdk.Server
         {
             _options = options;
             _store = new DefaultMemoryStore();
-            _dataSynchronizer = new WebSocketDataSynchronizer(options, _store);
             _evaluator = new Evaluator(_store);
-            _eventProcessor = new DefaultEventProcessor(options);
+
+            if (_options.Offline)
+            {
+                _dataSynchronizer = new NullDataSynchronizer();
+                _eventProcessor = new NullEventProcessor();
+            }
+            else
+            {
+                _dataSynchronizer = new WebSocketDataSynchronizer(options, _store);
+                _eventProcessor = new DefaultEventProcessor(options);
+            }
+
             _logger = options.LoggerFactory.CreateLogger<FbClient>();
 
             // starts client

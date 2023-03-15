@@ -7,12 +7,14 @@ namespace FeatBit.Sdk.Server.Options
 {
     public class FbOptionsBuilder
     {
+        private TimeSpan _startWaitTime;
+        private bool _offline;
+
         private readonly string _envSecret;
 
         private Uri _streamingUri;
         private Uri _eventUri;
 
-        private TimeSpan _startWaitTime;
         private TimeSpan _connectTimeout;
         private TimeSpan _closeTimeout;
         private TimeSpan _keepAliveInterval;
@@ -28,15 +30,20 @@ namespace FeatBit.Sdk.Server.Options
 
         private ILoggerFactory _loggerFactory;
 
+        public FbOptionsBuilder() : this(string.Empty)
+        {
+        }
+
         public FbOptionsBuilder(string envSecret)
         {
+            _startWaitTime = TimeSpan.FromSeconds(5);
+            _offline = false;
+
             _envSecret = envSecret;
 
             // uris
             _streamingUri = new Uri("ws://localhost:5100");
             _eventUri = new Uri("http://localhost:5100");
-
-            _startWaitTime = TimeSpan.FromSeconds(5);
 
             // websocket configs
             _connectTimeout = TimeSpan.FromSeconds(3);
@@ -58,9 +65,27 @@ namespace FeatBit.Sdk.Server.Options
 
         public FbOptions Build()
         {
-            return new FbOptions(_envSecret, _streamingUri, _eventUri, _startWaitTime, _connectTimeout, _closeTimeout,
-                _keepAliveInterval, _reconnectRetryDelays, _maxFlushWorker, _autoFlushInterval, _flushTimeout,
-                _maxEventsInQueue, _maxEventPerRequest, _maxSendEventAttempts, _sendEventRetryInterval, _loggerFactory);
+            return new FbOptions(_startWaitTime, _offline, _envSecret, _streamingUri, _eventUri, _connectTimeout,
+                _closeTimeout, _keepAliveInterval, _reconnectRetryDelays, _maxFlushWorker, _autoFlushInterval,
+                _flushTimeout, _maxEventsInQueue, _maxEventPerRequest, _maxSendEventAttempts, _sendEventRetryInterval,
+                _loggerFactory);
+        }
+
+        public FbOptionsBuilder StartWaitTime(TimeSpan waitTime)
+        {
+            if (_startWaitTime < _connectTimeout)
+            {
+                throw new InvalidOperationException("The start wait time must be bigger than the connect timeout.");
+            }
+
+            _startWaitTime = waitTime;
+            return this;
+        }
+
+        public FbOptionsBuilder Offline(bool offline)
+        {
+            _offline = offline;
+            return this;
         }
 
         public FbOptionsBuilder Steaming(Uri uri)
@@ -72,17 +97,6 @@ namespace FeatBit.Sdk.Server.Options
         public FbOptionsBuilder Event(Uri uri)
         {
             _eventUri = uri;
-            return this;
-        }
-
-        public FbOptionsBuilder StartWaitTime(TimeSpan waitTime)
-        {
-            if (_startWaitTime < _connectTimeout)
-            {
-                throw new InvalidOperationException("The start wait time must be bigger than the connect timeout.");
-            }
-
-            _startWaitTime = waitTime;
             return this;
         }
 

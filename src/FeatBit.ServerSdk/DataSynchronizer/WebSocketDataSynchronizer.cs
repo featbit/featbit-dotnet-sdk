@@ -14,7 +14,7 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
 {
     internal sealed class WebSocketDataSynchronizer : IDataSynchronizer
     {
-        internal bool Initialized { get; private set; }
+        public bool Initialized { get; private set; }
 
         private readonly IMemoryStore _store;
         private readonly FbOptions _options;
