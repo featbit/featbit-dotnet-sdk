@@ -8,22 +8,14 @@ platform [FeatBit](https://github.com/featbit/featbit).
 The FeatBit Server-Side SDK for .NET is designed primarily for use in multi-user systems such as web servers and
 applications. It is not intended for use in desktop and embedded systems applications.
 
-## Supported .NET versions
+## Data Synchronization
 
-This version of the SDK is built for the following targets:
+We use websocket to make the local data synchronized with the FeatBit server, and then store them in memory by
+default. Whenever there is any change to a feature flag or its related data, this change will be pushed to the SDK and
+the average synchronization time is less than 100 ms. Be aware the websocket connection may be interrupted due to
+internet outage, but it will be resumed automatically once the problem is gone.
 
-- .NET 6.0: runs on .NET 6.0 and above (including higher major versions).
-- .NET Core 3.1: runs on .NET Core 3.1+.
-- .NET Framework 4.6.2: runs on .NET Framework 4.6.2 and above.
-- .NET Standard 2.0/2.1: runs in any project that is targeted to .NET Standard 2.x rather than to a specific runtime
-  platform.
-
-The .NET build tools should automatically load the most appropriate build of the SDK for whatever platform your
-application or library is targeted to.
-
-> **_NOTE:_** This SDK requires the `System.Text.Json` API to be available, which is included in the runtime for .NET
-> Core 3.1 and later versions, but not on other platforms, so on other platforms the SDK brings
-> in `System.Text.Json` as a NuGet package dependency.
+We also support [Offline Mode](#offline-mode).
 
 ## Get Started
 
@@ -180,12 +172,34 @@ Console.WriteLine(
 );
 ```
 
-## Data Synchronization
+### Offline Mode
 
-We use websocket to make the local data synchronized with the FeatBit server, and then store them in memory by
-default. Whenever there is any change to a feature flag or its related data, this change will be pushed to the SDK and
-the average synchronization time is less than 100 ms. Be aware the websocket connection may be interrupted due to
-internet outage, but it will be resumed automatically once the problem is gone.
+In some situations, you might want to stop making remote calls to FeatBit. Here is how:
+
+```csharp
+var options = new FbOptionsBuilder()
+    .Offline(true)
+    .Build();
+
+var client = new FbClient(options);
+```
+
+## Supported .NET versions
+
+This version of the SDK is built for the following targets:
+
+- .NET 6.0: runs on .NET 6.0 and above (including higher major versions).
+- .NET Core 3.1: runs on .NET Core 3.1+.
+- .NET Framework 4.6.2: runs on .NET Framework 4.6.2 and above.
+- .NET Standard 2.0/2.1: runs in any project that is targeted to .NET Standard 2.x rather than to a specific runtime
+  platform.
+
+The .NET build tools should automatically load the most appropriate build of the SDK for whatever platform your
+application or library is targeted to.
+
+> **_NOTE:_** This SDK requires the `System.Text.Json` API to be available, which is included in the runtime for .NET
+> Core 3.1 and later versions, but not on other platforms, so on other platforms the SDK brings
+> in `System.Text.Json` as a NuGet package dependency.
 
 ## What's Next
 
