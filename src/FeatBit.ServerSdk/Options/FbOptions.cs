@@ -1,4 +1,5 @@
 using System;
+using FeatBit.Sdk.Server.Bootstrapping;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -20,6 +21,12 @@ namespace FeatBit.Sdk.Server.Options
         /// </summary>
         /// <value>Defaults to <c>false</c></value>
         public bool Offline { get; set; }
+
+        /// <summary>
+        /// The bootstrap provider.
+        /// </summary>
+        /// <value>Defaults to <see cref="NullBootstrapProvider"/></value>
+        internal IBootstrapProvider BootstrapProvider { get; set; }
 
         /// <summary>
         /// The SDK key for your FeatBit environment.
@@ -136,6 +143,7 @@ namespace FeatBit.Sdk.Server.Options
             int maxEventPerRequest,
             int maxSendEventAttempts,
             TimeSpan sendEventRetryInterval,
+            IBootstrapProvider bootstrapProvider,
             ILoggerFactory loggerFactory)
         {
             StartWaitTime = startWaitTime;
@@ -157,6 +165,8 @@ namespace FeatBit.Sdk.Server.Options
             MaxSendEventAttempts = maxSendEventAttempts;
             SendEventRetryInterval = sendEventRetryInterval;
 
+            BootstrapProvider = bootstrapProvider;
+
             LoggerFactory = loggerFactory;
         }
 
@@ -164,7 +174,8 @@ namespace FeatBit.Sdk.Server.Options
         {
             var newOptions = new FbOptions(StartWaitTime, Offline, EnvSecret, StreamingUri, EventUri, ConnectTimeout,
                 CloseTimeout, KeepAliveInterval, ReconnectRetryDelays, MaxFlushWorker, AutoFlushInterval, FlushTimeout,
-                MaxEventsInQueue, MaxEventPerRequest, MaxSendEventAttempts, SendEventRetryInterval, LoggerFactory);
+                MaxEventsInQueue, MaxEventPerRequest, MaxSendEventAttempts, SendEventRetryInterval, BootstrapProvider,
+                LoggerFactory);
 
             return newOptions;
         }

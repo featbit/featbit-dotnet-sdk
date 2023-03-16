@@ -4,7 +4,6 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using FeatBit.Sdk.Server.Json;
 using FeatBit.Sdk.Server.Options;
 using FeatBit.Sdk.Server.Store;
 using FeatBit.Sdk.Server.Transport;
@@ -133,13 +132,7 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
                 // handle 'data-sync' message
                 if (messageType == "data-sync")
                 {
-#if NETCOREAPP3_1
-                    // JsonElement.Deserialize<TValue> only available on .NET 6.0+
-                    var rawText = root.GetProperty("data").GetRawText();
-                    var dataSet = JsonSerializer.Deserialize<DataSet>(rawText, ReusableJsonSerializerOptions.Web);
-#else
-                    var dataSet = root.GetProperty("data").Deserialize<DataSet>(ReusableJsonSerializerOptions.Web);
-#endif
+                    var dataSet = DataSet.FromJsonElement(root.GetProperty("data"));
                     _logger.LogDebug("Received {Type} data-sync message", dataSet.EventType);
                     var objects = dataSet.GetStorableObjects();
                     // populate data store

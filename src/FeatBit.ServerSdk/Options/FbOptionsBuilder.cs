@@ -1,4 +1,5 @@
 using System;
+using FeatBit.Sdk.Server.Bootstrapping;
 using FeatBit.Sdk.Server.Retry;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -27,6 +28,8 @@ namespace FeatBit.Sdk.Server.Options
         private int _maxEventPerRequest;
         private int _maxSendEventAttempts;
         private TimeSpan _sendEventRetryInterval;
+
+        private IBootstrapProvider _bootstrapProvider;
 
         private ILoggerFactory _loggerFactory;
 
@@ -60,6 +63,8 @@ namespace FeatBit.Sdk.Server.Options
             _maxSendEventAttempts = 2;
             _sendEventRetryInterval = TimeSpan.FromMilliseconds(200);
 
+            _bootstrapProvider = new NullBootstrapProvider();
+
             _loggerFactory = NullLoggerFactory.Instance;
         }
 
@@ -68,7 +73,7 @@ namespace FeatBit.Sdk.Server.Options
             return new FbOptions(_startWaitTime, _offline, _envSecret, _streamingUri, _eventUri, _connectTimeout,
                 _closeTimeout, _keepAliveInterval, _reconnectRetryDelays, _maxFlushWorker, _autoFlushInterval,
                 _flushTimeout, _maxEventsInQueue, _maxEventPerRequest, _maxSendEventAttempts, _sendEventRetryInterval,
-                _loggerFactory);
+                _bootstrapProvider, _loggerFactory);
         }
 
         public FbOptionsBuilder StartWaitTime(TimeSpan waitTime)
@@ -174,6 +179,17 @@ namespace FeatBit.Sdk.Server.Options
         public FbOptionsBuilder LoggerFactory(ILoggerFactory loggerFactory)
         {
             _loggerFactory = loggerFactory;
+            return this;
+        }
+
+        public FbOptionsBuilder UseJsonBootstrapProvider(string json)
+        {
+            if (!_offline)
+            {
+                throw new InvalidOperationException("Bootstrap provider can only be set when offline mode is enabled.");
+            }
+
+            _bootstrapProvider = new JsonBootstrapProvider(json);
             return this;
         }
     }

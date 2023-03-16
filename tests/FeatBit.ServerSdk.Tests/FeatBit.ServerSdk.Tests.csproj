@@ -28,6 +28,7 @@
         <None Update="Model\one-segment.json" CopyToOutputDirectory="Always" />
         <None Update="DataSynchronizer\full-data-set.json" CopyToOutputDirectory="Always" />
         <None Update="DataSynchronizer\patch-data-set.json" CopyToOutputDirectory="Always" />
+        <None Update="Bootstrapping\featbit-bootstrap.json" CopyToOutputDirectory="Always" />
     </ItemGroup>
 
 </Project>
