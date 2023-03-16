@@ -184,6 +184,35 @@ var options = new FbOptionsBuilder()
 var client = new FbClient(options);
 ```
 
+### Bootstrapping
+
+The bootstrapping feature allows users to populate feature flags and segments data from a JSON string.
+
+> **_NOTE:_** Bootstrapping is only supported in offline mode.
+
+The format of the data in flags and segments is defined by FeatBit and is subject to change. Rather than trying to
+construct these objects yourself, it's simpler to request existing flags directly from the FeatBit server in JSON format
+and use this output as the starting point for your file. Here's how:
+
+```shell
+curl -H "Authorization: <your-env-secret>" https://<evaluation-server-domain>/api/public/sdk/server/latest-all > featbit-bootstrap.json
+```
+
+Then use the file to initialize FbClient:
+
+```csharp
+using FeatBit.Sdk.Server.Options;
+
+var json = File.ReadAllText("featbit-bootstrap.json");
+
+var options = new FbOptionsBuilder()
+    .Offline(true)
+    .UseJsonBootstrapProvider(json)
+    .Build();
+
+var client = new FbClient(options);
+```
+
 ## Supported .NET versions
 
 This version of the SDK is built for the following targets:
@@ -204,7 +233,7 @@ application or library is targeted to.
 ## What's Next
 
 - [x] add feature flag insights support
-- [ ] support offline mode & bootstrapping
+- [x] support offline mode & bootstrapping
 - [ ] asp.net core integration & examples
 
 ## Getting support
