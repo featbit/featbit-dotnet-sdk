@@ -195,7 +195,8 @@ construct these objects yourself, it's simpler to request existing flags directl
 and use this output as the starting point for your file. Here's how:
 
 ```shell
-curl -H "Authorization: <your-env-secret>" https://<evaluation-server-domain>/api/public/sdk/server/latest-all > featbit-bootstrap.json
+# replace http://localhost:5100 with your evaluation server url
+curl -H "Authorization: <your-env-secret>" http://localhost:5100/api/public/sdk/server/latest-all > featbit-bootstrap.json
 ```
 
 Then use the file to initialize FbClient:
