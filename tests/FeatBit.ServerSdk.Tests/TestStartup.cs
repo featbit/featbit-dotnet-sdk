@@ -1,5 +1,4 @@
 using System.Net.WebSockets;
-using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -9,20 +8,6 @@ namespace FeatBit.Sdk.Server;
 
 public class TestStartup : StartupBase
 {
-    private readonly byte[] _fullDataSet;
-    private readonly byte[] _patchDataSet;
-
-    public TestStartup()
-    {
-        _fullDataSet = Encoding.UTF8.GetBytes(
-            File.ReadAllText(Path.Combine(AppContext.BaseDirectory, @"DataSynchronizer\full-data-set.json"))
-        );
-
-        _patchDataSet = Encoding.UTF8.GetBytes(
-            File.ReadAllText(Path.Combine(AppContext.BaseDirectory, @"DataSynchronizer\patch-data-set.json"))
-        );
-    }
-
     public override void Configure(IApplicationBuilder app)
     {
         app.UseWebSockets();
@@ -116,7 +101,7 @@ public class TestStartup : StartupBase
                 if (messageType == "data-sync")
                 {
                     var timestamp = root.GetProperty("data").GetProperty("timestamp").GetInt64();
-                    var response = timestamp == 0 ? _fullDataSet : _patchDataSet;
+                    var response = timestamp == 0 ? TestData.FullDataSet : TestData.PatchDataSet;
 
                     await webSocket.SendAsync(response, WebSocketMessageType.Text, true, CancellationToken.None);
                 }

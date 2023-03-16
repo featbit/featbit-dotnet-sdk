@@ -1,4 +1,5 @@
 using FeatBit.Sdk.Server.DataSynchronizer;
+using FeatBit.Sdk.Server.Evaluation;
 using FeatBit.Sdk.Server.Events;
 using FeatBit.Sdk.Server.Model;
 using FeatBit.Sdk.Server.Options;
@@ -67,5 +68,23 @@ public class FbClientOfflineTests
 
         var variation = client.StringVariation("hello", user, "fallback-value");
         Assert.Equal("fallback-value", variation);
+    }
+
+    [Fact]
+    public void WithJsonBootstrapProvider()
+    {
+        var options = new FbOptionsBuilder()
+            .Offline(true)
+            .UseJsonBootstrapProvider(TestData.BootstrapJson)
+            .Build();
+
+        var client = new FbClient(options);
+
+        var user = FbUser.Builder("true-1").Build();
+        var variationDetail = client.BoolVariationDetail("example-flag", user);
+
+        Assert.True(variationDetail.Value);
+        Assert.Equal("target match", variationDetail.Reason);
+        Assert.Equal(ReasonKind.TargetMatch, variationDetail.Kind);
     }
 }

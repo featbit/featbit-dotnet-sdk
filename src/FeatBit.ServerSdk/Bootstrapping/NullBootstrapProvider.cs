@@ -1,6 +1,7 @@
 using System;
 using FeatBit.Sdk.Server.DataSynchronizer;
 using FeatBit.Sdk.Server.Model;
+using FeatBit.Sdk.Server.Store;
 
 namespace FeatBit.Sdk.Server.Bootstrapping;
 
@@ -19,4 +20,9 @@ internal sealed class NullBootstrapProvider : IBootstrapProvider
     }
 
     public DataSet DataSet() => _emptySet;
+
+    public void Populate(IMemoryStore store)
+    {
+        store.Populate(Array.Empty<StorableObject>());
+    }
 }

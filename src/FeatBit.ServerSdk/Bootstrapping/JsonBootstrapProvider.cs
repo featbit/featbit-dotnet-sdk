@@ -1,5 +1,6 @@
 using System.Text.Json;
 using FeatBit.Sdk.Server.DataSynchronizer;
+using FeatBit.Sdk.Server.Store;
 
 namespace FeatBit.Sdk.Server.Bootstrapping;
 
@@ -15,4 +16,10 @@ internal sealed class JsonBootstrapProvider : IBootstrapProvider
     }
 
     public DataSet DataSet() => _dataSet;
+
+    public void Populate(IMemoryStore store)
+    {
+        var objects = _dataSet.GetStorableObjects();
+        store.Populate(objects);
+    }
 }
