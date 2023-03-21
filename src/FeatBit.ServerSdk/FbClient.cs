@@ -192,8 +192,7 @@ namespace FeatBit.Sdk.Server
         /// <param name="key">the unique feature key for the feature flag</param>
         /// <param name="user">a given user</param>
         /// <param name="defaultValue">the default value of the flag</param>
-        /// <returns>the variation for the given user, or <c>defaultValue</c> if the flag cannot
-        /// be evaluated</returns>
+        /// <returns>the variation for the given user, or <c>defaultValue</c> if the flag cannot be evaluated</returns>
         /// <seealso cref="BoolVariationDetail(string, FbUser, bool)"/>
         public bool BoolVariation(string key, FbUser user, bool defaultValue = false)
             => EvaluateCore(key, user, defaultValue, ValueConverters.Bool).Value;
@@ -202,8 +201,6 @@ namespace FeatBit.Sdk.Server
         /// Calculates the boolean value of a feature flag for a given user, and returns an object that
         /// describes the way the value was determined.
         /// </summary>
-        /// <remarks>
-        /// </remarks>
         /// <param name="key">the unique feature key for the feature flag</param>
         /// <param name="user">a given user</param>
         /// <param name="defaultValue">the default value of the flag</param>
@@ -280,7 +277,7 @@ namespace FeatBit.Sdk.Server
             string key,
             FbUser user,
             TValue defaultValue,
-            Func<string, TValue> converter)
+            ValueConverter<TValue> converter)
         {
             if (!Initialized)
             {
@@ -304,16 +301,10 @@ namespace FeatBit.Sdk.Server
             // record evaluation event
             _eventProcessor.Record(evalEvent);
 
-            try
-            {
-                var typedValue = converter(evalResult.Value);
-                return new EvalDetail<TValue>(evalResult.Kind, evalResult.Reason, typedValue);
-            }
-            catch
-            {
+            return converter(evalResult.Value, out var typedValue)
+                ? new EvalDetail<TValue>(evalResult.Kind, evalResult.Reason, typedValue)
                 // type mismatch, return default value
-                return new EvalDetail<TValue>(ReasonKind.WrongType, "type mismatch", defaultValue);
-            }
+                : new EvalDetail<TValue>(ReasonKind.WrongType, "type mismatch", defaultValue);
         }
     }
 }

@@ -1,12 +1,16 @@
-using System;
-
 namespace FeatBit.Sdk.Server
 {
+    internal delegate bool ValueConverter<TValue>(string value, out TValue converted);
+
     internal static class ValueConverters
     {
-        internal static readonly Func<string, bool> Bool = value =>
-            string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
+        internal static readonly ValueConverter<bool> Bool = (string value, out bool converted) =>
+            bool.TryParse(value, out converted);
 
-        internal static readonly Func<string, string> String = value => value;
+        internal static readonly ValueConverter<string> String = (string value, out string converted) =>
+        {
+            converted = value;
+            return true;
+        };
     }
 }
