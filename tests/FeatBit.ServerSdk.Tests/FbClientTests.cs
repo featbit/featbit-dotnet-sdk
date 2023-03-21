@@ -39,7 +39,7 @@ public class FbClientTests
     }
 
     [Fact]
-    public void GetBoolVariation()
+    public void GetVariation()
     {
         var eventProcessorMock = new Mock<IEventProcessor>();
         var client = CreateTestFbClient(eventProcessorMock.Object);
@@ -52,7 +52,7 @@ public class FbClientTests
     }
 
     [Fact]
-    public void GetBoolVariationDetail()
+    public void GetVariationDetail()
     {
         var eventProcessorMock = new Mock<IEventProcessor>();
         var client = CreateTestFbClient(eventProcessorMock.Object);
