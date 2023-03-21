@@ -12,5 +12,8 @@ namespace FeatBit.Sdk.Server
             converted = value;
             return true;
         };
+
+        public static readonly ValueConverter<int> Int = (string value, out int converted) =>
+            int.TryParse(value, out converted);
     }
 }

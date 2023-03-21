@@ -210,6 +210,38 @@ namespace FeatBit.Sdk.Server
             => EvaluateCore(key, user, defaultValue, ValueConverters.Bool);
 
         /// <summary>
+        /// Calculates the integer value of a feature flag for a given user.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// If the flag variation does not have a integer value, <c>defaultValue</c> is returned.
+        /// </para>
+        /// <para>
+        /// If an error makes it impossible to evaluate the flag (for instance, the feature flag key
+        /// does not match any existing flag), <c>defaultValue</c> is returned.
+        /// </para>
+        /// </remarks>
+        /// <param name="key">the unique feature key for the feature flag</param>
+        /// <param name="user">a given user</param>
+        /// <param name="defaultValue">the default value of the flag</param>
+        /// <returns>the variation for the given user, or <c>defaultValue</c> if the flag cannot be evaluated</returns>
+        /// <seealso cref="IntVariationDetail(string, FbUser, int)"/>
+        public int IntVariation(string key, FbUser user, int defaultValue)
+            => EvaluateCore(key, user, defaultValue, ValueConverters.Int).Value;
+
+        /// <summary>
+        /// Calculates the integer value of a feature flag for a given context, and returns an object that
+        /// describes the way the value was determined.
+        /// </summary>
+        /// <param name="key">the unique feature key for the feature flag</param>
+        /// <param name="user">a given user</param>
+        /// <param name="defaultValue">the default value of the flag</param>
+        /// <returns>an <see cref="EvalDetail{T}"/> object</returns>
+        /// <seealso cref="IntVariation(string, FbUser, int)"/>
+        public EvalDetail<int> IntVariationDetail(string key, FbUser user, int defaultValue)
+            => EvaluateCore(key, user, defaultValue, ValueConverters.Int);
+
+        /// <summary>
         /// Calculates the string value of a feature flag for a given user.
         /// </summary>
         /// <remarks>

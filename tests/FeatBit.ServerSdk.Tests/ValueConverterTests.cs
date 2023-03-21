@@ -22,4 +22,15 @@ public class ValueConverterTests
         Assert.True(success);
         Assert.Equal("hello", converted);
     }
+
+    [Theory]
+    [InlineData("123", 123)]
+    [InlineData("123.4", 0)]
+    [InlineData("v123", 0)]
+    public void IntConverter(string value, int expected)
+    {
+        _ = ValueConverters.Int(value, out var converted);
+
+        Assert.Equal(expected, converted);
+    }
 }
