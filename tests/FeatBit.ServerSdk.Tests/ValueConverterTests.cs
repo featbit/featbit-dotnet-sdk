@@ -33,4 +33,15 @@ public class ValueConverterTests
 
         Assert.Equal(expected, converted);
     }
+
+    [Theory]
+    [InlineData("123", 123)]
+    [InlineData("123.45", 123.45)]
+    [InlineData("v123.4", 0)]
+    public void FloatConverter(string value, float expected)
+    {
+        _ = ValueConverters.Float(value, out var converted);
+
+        Assert.Equal(expected, converted);
+    }
 }
