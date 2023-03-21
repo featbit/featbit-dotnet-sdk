@@ -258,6 +258,7 @@ namespace FeatBit.Sdk.Server
         /// <param name="defaultValue">the default value of the flag</param>
         /// <returns>the variation for the given user, or <c>defaultValue</c> if the flag cannot be evaluated</returns>
         /// <seealso cref="FloatVariationDetail(string, FbUser, float)"/>
+        /// <seealso cref="DoubleVariation(string, FbUser, double)"/>
         public float FloatVariation(string key, FbUser user, float defaultValue)
             => EvaluateCore(key, user, defaultValue, ValueConverters.Float).Value;
 
@@ -270,8 +271,43 @@ namespace FeatBit.Sdk.Server
         /// <param name="defaultValue">the default value of the flag</param>
         /// <returns>an <see cref="EvalDetail{T}"/> object</returns>
         /// <seealso cref="FloatVariation(string, FbUser, float)"/>
+        /// <seealso cref="DoubleVariationDetail(string, FbUser, double)"/>
         public EvalDetail<float> FloatVariationDetail(string key, FbUser user, float defaultValue)
             => EvaluateCore(key, user, defaultValue, ValueConverters.Float);
+
+        /// <summary>
+        /// Calculates the double value of a feature flag for a given user.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// If the flag variation does not have a double value, <c>defaultValue</c> is returned.
+        /// </para>
+        /// <para>
+        /// If an error makes it impossible to evaluate the flag (for instance, the feature flag key
+        /// does not match any existing flag), <c>defaultValue</c> is returned.
+        /// </para>
+        /// </remarks>
+        /// <param name="key">the unique feature key for the feature flag</param>
+        /// <param name="user">a given user</param>
+        /// <param name="defaultValue">the default value of the flag</param>
+        /// <returns>the variation for the given user, or <c>defaultValue</c> if the flag cannot be evaluated</returns>
+        /// <seealso cref="DoubleVariationDetail(string, FbUser, double)"/>
+        /// <seealso cref="FloatVariation(string, FbUser, float)"/>
+        public double DoubleVariation(string key, FbUser user, double defaultValue)
+            => EvaluateCore(key, user, defaultValue, ValueConverters.Double).Value;
+
+        /// <summary>
+        /// Calculates the double value of a feature flag for a given user, and returns an object that
+        /// describes the way the value was determined.
+        /// </summary>
+        /// <param name="key">the unique feature key for the feature flag</param>
+        /// <param name="user">a given user</param>
+        /// <param name="defaultValue">the default value of the flag</param>
+        /// <returns>an <see cref="EvalDetail{T}"/> object</returns>
+        /// <seealso cref="DoubleVariation(string, FbUser, double)"/>
+        /// <seealso cref="FloatVariationDetail(string, FbUser, float)"/>
+        public EvalDetail<double> DoubleVariationDetail(string key, FbUser user, double defaultValue)
+            => EvaluateCore(key, user, defaultValue, ValueConverters.Double);
 
         /// <summary>
         /// Calculates the string value of a feature flag for a given user.
