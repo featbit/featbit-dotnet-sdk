@@ -56,7 +56,7 @@ public class FbClientOfflineTests
     }
 
     [Fact]
-    public void ReturnsDefaultValue()
+    public void EvaluationReturnsDefaultValue()
     {
         var options = new FbOptionsBuilder()
             .Offline(true)
@@ -66,8 +66,10 @@ public class FbClientOfflineTests
 
         var user = FbUser.Builder("tester").Build();
 
-        var variation = client.StringVariation("hello", user, "fallback-value");
-        Assert.Equal("fallback-value", variation);
+        var variationDetail = client.StringVariationDetail("hello", user, "fallback-value");
+        Assert.Equal("fallback-value", variationDetail.Value);
+        Assert.Equal(ReasonKind.Error, variationDetail.Kind);
+        Assert.Equal("flag not found", variationDetail.Reason);
     }
 
     [Fact]
