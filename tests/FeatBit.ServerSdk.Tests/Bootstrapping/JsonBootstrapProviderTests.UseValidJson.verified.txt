@@ -1,0 +1,149 @@
+﻿{
+  EventType: full,
+  FeatureFlags: [
+    {
+      StoreKey: ff_example-flag,
+      Id: Guid_1,
+      Key: example-flag,
+      VariationType: boolean,
+      Variations: [
+        {
+          Id: Guid_2,
+          Value: true
+        },
+        {
+          Id: Guid_3,
+          Value: false
+        }
+      ],
+      TargetUsers: [
+        {
+          KeyIds: [
+            true-1
+          ],
+          VariationId: Guid_2
+        },
+        {
+          KeyIds: [
+            false-1
+          ],
+          VariationId: Guid_3
+        }
+      ],
+      Rules: [
+        {
+          Name: Rule 1,
+          IncludedInExpt: false,
+          Conditions: [
+            {
+              Property: age,
+              Op: BiggerThan,
+              Value: 22
+            },
+            {
+              Property: name,
+              Op: EndsWith,
+              Value: _qa
+            }
+          ],
+          Variations: [
+            {
+              Id: Guid_2,
+              Rollout: [
+                0.0,
+                1.0
+              ],
+              ExptRollout: 1.0
+            }
+          ]
+        },
+        {
+          Name: Rule 2,
+          DispatchKey: keyId,
+          IncludedInExpt: false,
+          Conditions: [
+            {
+              Property: country,
+              Op: IsOneOf,
+              Value: ["cn","us","jp","gb","es","ss"]
+            }
+          ],
+          Variations: [
+            {
+              Id: Guid_2,
+              Rollout: [
+                0.0,
+                0.2
+              ],
+              ExptRollout: 1.0
+            },
+            {
+              Id: Guid_3,
+              Rollout: [
+                0.2,
+                1.0
+              ],
+              ExptRollout: 1.0
+            }
+          ]
+        }
+      ],
+      IsEnabled: true,
+      DisabledVariationId: Guid_3,
+      Fallthrough: {
+        IncludedInExpt: true,
+        Variations: [
+          {
+            Id: Guid_2,
+            Rollout: [
+              0.0,
+              1.0
+            ],
+            ExptRollout: 1.0
+          }
+        ]
+      },
+      ExptIncludeAllTargets: true,
+      Version: 1674871495616
+    }
+  ],
+  Segments: [
+    {
+      StoreKey: segment_0779d76b-afc6-4886-ab65-af8c004273ad,
+      Id: Guid_4,
+      Included: [
+        true-1
+      ],
+      Excluded: [
+        false-1
+      ],
+      Rules: [
+        {
+          Conditions: [
+            {
+              Property: age,
+              Op: LessEqualThan,
+              Value: 22
+            },
+            {
+              Property: country,
+              Op: IsOneOf,
+              Value: ["cn","us","es"]
+            },
+            {
+              Property: name,
+              Op: NotEqual,
+              Value: bob
+            },
+            {
+              Property: isMember,
+              Op: IsTrue,
+              Value: IsTrue
+            }
+          ]
+        }
+      ],
+      Version: 1674885283583
+    }
+  ]
+}

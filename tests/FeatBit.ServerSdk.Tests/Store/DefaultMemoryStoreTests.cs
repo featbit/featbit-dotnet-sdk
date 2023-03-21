@@ -2,7 +2,7 @@ using FeatBit.Sdk.Server.Model;
 
 namespace FeatBit.Sdk.Server.Store;
 
-public class MemoryStoreTests
+public class DefaultMemoryStoreTests
 {
     [Fact]
     public void CheckPopulated()

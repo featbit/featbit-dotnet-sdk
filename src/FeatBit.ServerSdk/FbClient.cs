@@ -113,6 +113,9 @@ namespace FeatBit.Sdk.Server
             {
                 _dataSynchronizer = new NullDataSynchronizer();
                 _eventProcessor = new NullEventProcessor();
+
+                // use bootstrap provider to populate store
+                _options.BootstrapProvider.Populate(_store);
             }
             else
             {

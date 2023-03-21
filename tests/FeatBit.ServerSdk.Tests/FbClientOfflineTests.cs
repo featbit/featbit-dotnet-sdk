@@ -1,4 +1,5 @@
 using FeatBit.Sdk.Server.DataSynchronizer;
+using FeatBit.Sdk.Server.Evaluation;
 using FeatBit.Sdk.Server.Events;
 using FeatBit.Sdk.Server.Model;
 using FeatBit.Sdk.Server.Options;
@@ -55,7 +56,7 @@ public class FbClientOfflineTests
     }
 
     [Fact]
-    public void ReturnsDefaultValue()
+    public void EvaluationReturnsDefaultValue()
     {
         var options = new FbOptionsBuilder()
             .Offline(true)
@@ -65,7 +66,27 @@ public class FbClientOfflineTests
 
         var user = FbUser.Builder("tester").Build();
 
-        var variation = client.StringVariation("hello", user, "fallback-value");
-        Assert.Equal("fallback-value", variation);
+        var variationDetail = client.StringVariationDetail("hello", user, "fallback-value");
+        Assert.Equal("fallback-value", variationDetail.Value);
+        Assert.Equal(ReasonKind.Error, variationDetail.Kind);
+        Assert.Equal("flag not found", variationDetail.Reason);
+    }
+
+    [Fact]
+    public void WithJsonBootstrapProvider()
+    {
+        var options = new FbOptionsBuilder()
+            .Offline(true)
+            .UseJsonBootstrapProvider(TestData.BootstrapJson)
+            .Build();
+
+        var client = new FbClient(options);
+
+        var user = FbUser.Builder("true-1").Build();
+        var variationDetail = client.BoolVariationDetail("example-flag", user);
+
+        Assert.True(variationDetail.Value);
+        Assert.Equal("target match", variationDetail.Reason);
+        Assert.Equal(ReasonKind.TargetMatch, variationDetail.Kind);
     }
 }

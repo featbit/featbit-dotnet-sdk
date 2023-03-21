@@ -1,0 +1,29 @@
+﻿{
+  StartWaitTime: 00:00:05,
+  Offline: false,
+  EnvSecret: secret,
+  StreamingUri: ws://localhost:5100,
+  EventUri: http://localhost:5100,
+  ConnectTimeout: 00:00:03,
+  CloseTimeout: 00:00:02,
+  KeepAliveInterval: 00:00:15,
+  ReconnectRetryDelays: [
+    00:00:00,
+    00:00:01,
+    00:00:02,
+    00:00:03,
+    00:00:05,
+    00:00:08,
+    00:00:13,
+    00:00:21,
+    00:00:34,
+    00:00:55
+  ],
+  FlushTimeout: 00:00:05,
+  MaxFlushWorker: {Scrubbed},
+  AutoFlushInterval: 00:00:05,
+  MaxEventsInQueue: 10000,
+  MaxEventPerRequest: 50,
+  MaxSendEventAttempts: 2,
+  SendEventRetryInterval: 00:00:00.2000000
+}

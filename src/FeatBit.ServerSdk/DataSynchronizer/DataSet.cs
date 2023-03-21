@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using System.Text.Json;
+using FeatBit.Sdk.Server.Json;
 using FeatBit.Sdk.Server.Model;
 using FeatBit.Sdk.Server.Store;
 
@@ -22,6 +24,18 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
             objects.AddRange(Segments);
 
             return objects;
+        }
+
+        internal static DataSet FromJsonElement(JsonElement jsonElement)
+        {
+#if NETCOREAPP3_1
+            var rawText = jsonElement.GetRawText();
+            var dataSet = JsonSerializer.Deserialize<DataSet>(rawText, ReusableJsonSerializerOptions.Web);
+#else
+            // JsonElement.Deserialize<TValue> only available on .NET 6.0+
+            var dataSet = jsonElement.Deserialize<DataSet>(ReusableJsonSerializerOptions.Web);
+#endif
+            return dataSet;
         }
     }
 }
