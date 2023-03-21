@@ -192,8 +192,7 @@ namespace FeatBit.Sdk.Server
         /// <param name="key">the unique feature key for the feature flag</param>
         /// <param name="user">a given user</param>
         /// <param name="defaultValue">the default value of the flag</param>
-        /// <returns>the variation for the given user, or <c>defaultValue</c> if the flag cannot
-        /// be evaluated</returns>
+        /// <returns>the variation for the given user, or <c>defaultValue</c> if the flag cannot be evaluated</returns>
         /// <seealso cref="BoolVariationDetail(string, FbUser, bool)"/>
         public bool BoolVariation(string key, FbUser user, bool defaultValue = false)
             => EvaluateCore(key, user, defaultValue, ValueConverters.Bool).Value;
@@ -202,8 +201,6 @@ namespace FeatBit.Sdk.Server
         /// Calculates the boolean value of a feature flag for a given user, and returns an object that
         /// describes the way the value was determined.
         /// </summary>
-        /// <remarks>
-        /// </remarks>
         /// <param name="key">the unique feature key for the feature flag</param>
         /// <param name="user">a given user</param>
         /// <param name="defaultValue">the default value of the flag</param>
@@ -211,6 +208,106 @@ namespace FeatBit.Sdk.Server
         /// <seealso cref="BoolVariation(string, FbUser, bool)"/>
         public EvalDetail<bool> BoolVariationDetail(string key, FbUser user, bool defaultValue = false)
             => EvaluateCore(key, user, defaultValue, ValueConverters.Bool);
+
+        /// <summary>
+        /// Calculates the integer value of a feature flag for a given user.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// If the flag variation does not have a integer value, <c>defaultValue</c> is returned.
+        /// </para>
+        /// <para>
+        /// If an error makes it impossible to evaluate the flag (for instance, the feature flag key
+        /// does not match any existing flag), <c>defaultValue</c> is returned.
+        /// </para>
+        /// </remarks>
+        /// <param name="key">the unique feature key for the feature flag</param>
+        /// <param name="user">a given user</param>
+        /// <param name="defaultValue">the default value of the flag</param>
+        /// <returns>the variation for the given user, or <c>defaultValue</c> if the flag cannot be evaluated</returns>
+        /// <seealso cref="IntVariationDetail(string, FbUser, int)"/>
+        public int IntVariation(string key, FbUser user, int defaultValue)
+            => EvaluateCore(key, user, defaultValue, ValueConverters.Int).Value;
+
+        /// <summary>
+        /// Calculates the integer value of a feature flag for a given user, and returns an object that
+        /// describes the way the value was determined.
+        /// </summary>
+        /// <param name="key">the unique feature key for the feature flag</param>
+        /// <param name="user">a given user</param>
+        /// <param name="defaultValue">the default value of the flag</param>
+        /// <returns>an <see cref="EvalDetail{T}"/> object</returns>
+        /// <seealso cref="IntVariation(string, FbUser, int)"/>
+        public EvalDetail<int> IntVariationDetail(string key, FbUser user, int defaultValue)
+            => EvaluateCore(key, user, defaultValue, ValueConverters.Int);
+
+        /// <summary>
+        /// Calculates the float value of a feature flag for a given user.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// If the flag variation does not have a float value, <c>defaultValue</c> is returned.
+        /// </para>
+        /// <para>
+        /// If an error makes it impossible to evaluate the flag (for instance, the feature flag key
+        /// does not match any existing flag), <c>defaultValue</c> is returned.
+        /// </para>
+        /// </remarks>
+        /// <param name="key">the unique feature key for the feature flag</param>
+        /// <param name="user">a given user</param>
+        /// <param name="defaultValue">the default value of the flag</param>
+        /// <returns>the variation for the given user, or <c>defaultValue</c> if the flag cannot be evaluated</returns>
+        /// <seealso cref="FloatVariationDetail(string, FbUser, float)"/>
+        /// <seealso cref="DoubleVariation(string, FbUser, double)"/>
+        public float FloatVariation(string key, FbUser user, float defaultValue)
+            => EvaluateCore(key, user, defaultValue, ValueConverters.Float).Value;
+
+        /// <summary>
+        /// Calculates the float value of a feature flag for a given user, and returns an object that
+        /// describes the way the value was determined.
+        /// </summary>
+        /// <param name="key">the unique feature key for the feature flag</param>
+        /// <param name="user">a given user</param>
+        /// <param name="defaultValue">the default value of the flag</param>
+        /// <returns>an <see cref="EvalDetail{T}"/> object</returns>
+        /// <seealso cref="FloatVariation(string, FbUser, float)"/>
+        /// <seealso cref="DoubleVariationDetail(string, FbUser, double)"/>
+        public EvalDetail<float> FloatVariationDetail(string key, FbUser user, float defaultValue)
+            => EvaluateCore(key, user, defaultValue, ValueConverters.Float);
+
+        /// <summary>
+        /// Calculates the double value of a feature flag for a given user.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// If the flag variation does not have a double value, <c>defaultValue</c> is returned.
+        /// </para>
+        /// <para>
+        /// If an error makes it impossible to evaluate the flag (for instance, the feature flag key
+        /// does not match any existing flag), <c>defaultValue</c> is returned.
+        /// </para>
+        /// </remarks>
+        /// <param name="key">the unique feature key for the feature flag</param>
+        /// <param name="user">a given user</param>
+        /// <param name="defaultValue">the default value of the flag</param>
+        /// <returns>the variation for the given user, or <c>defaultValue</c> if the flag cannot be evaluated</returns>
+        /// <seealso cref="DoubleVariationDetail(string, FbUser, double)"/>
+        /// <seealso cref="FloatVariation(string, FbUser, float)"/>
+        public double DoubleVariation(string key, FbUser user, double defaultValue)
+            => EvaluateCore(key, user, defaultValue, ValueConverters.Double).Value;
+
+        /// <summary>
+        /// Calculates the double value of a feature flag for a given user, and returns an object that
+        /// describes the way the value was determined.
+        /// </summary>
+        /// <param name="key">the unique feature key for the feature flag</param>
+        /// <param name="user">a given user</param>
+        /// <param name="defaultValue">the default value of the flag</param>
+        /// <returns>an <see cref="EvalDetail{T}"/> object</returns>
+        /// <seealso cref="DoubleVariation(string, FbUser, double)"/>
+        /// <seealso cref="FloatVariationDetail(string, FbUser, float)"/>
+        public EvalDetail<double> DoubleVariationDetail(string key, FbUser user, double defaultValue)
+            => EvaluateCore(key, user, defaultValue, ValueConverters.Double);
 
         /// <summary>
         /// Calculates the string value of a feature flag for a given user.
@@ -280,7 +377,7 @@ namespace FeatBit.Sdk.Server
             string key,
             FbUser user,
             TValue defaultValue,
-            Func<string, TValue> converter)
+            ValueConverter<TValue> converter)
         {
             if (!Initialized)
             {
@@ -304,16 +401,10 @@ namespace FeatBit.Sdk.Server
             // record evaluation event
             _eventProcessor.Record(evalEvent);
 
-            try
-            {
-                var typedValue = converter(evalResult.Value);
-                return new EvalDetail<TValue>(evalResult.Kind, evalResult.Reason, typedValue);
-            }
-            catch
-            {
+            return converter(evalResult.Value, out var typedValue)
+                ? new EvalDetail<TValue>(evalResult.Kind, evalResult.Reason, typedValue)
                 // type mismatch, return default value
-                return new EvalDetail<TValue>(ReasonKind.WrongType, "type mismatch", defaultValue);
-            }
+                : new EvalDetail<TValue>(ReasonKind.WrongType, "type mismatch", defaultValue);
         }
     }
 }

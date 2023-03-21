@@ -139,10 +139,10 @@ describing how the value was determined for each type.
 
 - BoolVariation/BoolVariationDetail
 - StringVariation/StringVariationDetail
-- DoubleVariation/DoubleVariationDetail (will be added in v1.1.0)
-- FloatVariation/FloatVariationDetail (will be added in v1.1.0)
-- IntVariation/IntVariationDetail (will be added in v1.1.0)
-- JsonVariation/JsonVariationDetail (will be added in v1.1.0)
+- DoubleVariation/DoubleVariationDetail
+- FloatVariation/FloatVariationDetail
+- IntVariation/IntVariationDetail
+- JsonVariation/JsonVariationDetail (in consideration)
 
 Variation calls take the feature flag key, a FbUser, and a default value. If any error makes it impossible to
 evaluate the flag (for instance, the feature flag key does not match any existing flag), default value is returned.
