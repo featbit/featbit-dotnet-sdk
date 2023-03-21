@@ -15,7 +15,7 @@ default. Whenever there is any change to a feature flag or its related data, thi
 the average synchronization time is less than 100 ms. Be aware the websocket connection may be interrupted due to
 internet outage, but it will be resumed automatically once the problem is gone.
 
-We also support [Offline Mode](#offline-mode).
+If you want to use your own data source, see [Bootstrapping](#bootstrapping).
 
 ## Get Started
 
@@ -183,6 +183,10 @@ var options = new FbOptionsBuilder()
 
 var client = new FbClient(options);
 ```
+
+When you put the SDK in offline mode, no insight message is sent to the server and all feature flag evaluations return
+fallback values because there are no feature flags or segments available. If you want to use your own data source in
+this case, use [Bootstrapping](#bootstrapping).
 
 ### Bootstrapping
 
