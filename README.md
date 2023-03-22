@@ -190,7 +190,7 @@ this case, use [Bootstrapping](#bootstrapping).
 
 ### Bootstrapping
 
-The bootstrapping feature allows users to populate feature flags and segments data from a JSON string.
+The bootstrapping feature allows users to populate feature flags and segments data from a JSON string. Here is an example: [featbit-bootstrap.json](/tests/FeatBit.ServerSdk.Tests/Bootstrapping/featbit-bootstrap.json).
 
 > **_NOTE:_** Bootstrapping is only supported in offline mode.
 
