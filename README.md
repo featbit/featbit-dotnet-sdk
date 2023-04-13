@@ -15,7 +15,7 @@ default. Whenever there is any change to a feature flag or its related data, thi
 the average synchronization time is less than 100 ms. Be aware the websocket connection may be interrupted due to
 internet outage, but it will be resumed automatically once the problem is gone.
 
-If you want to use your own data source, see [Bootstrapping](#bootstrapping).
+If you want to use your own data source, see [Offline Mode](#offline-mode).
 
 ## Get Started
 
@@ -30,7 +30,7 @@ dotnet add package FeatBit.ServerSdk
 Use the `--version` option to specify
 a [preview version](https://www.nuget.org/packages/FeatBit.ServerSdk/absoluteLatest) to install.
 
-### Basic usage
+### Quick Start
 
 The following code demonstrates basic usage of FeatBit.ServerSdk.
 
@@ -68,13 +68,16 @@ else
         $"Reason Kind: {boolVariationDetail.Kind}, Reason Description: {boolVariationDetail.Reason}"
     );
 }
+
+// close the client to ensure that all insights are sent out before the app exits
+await client.CloseAsync();
 ```
 
 ### Examples
 
 - [Console App](https://github.com/featbit/dotnet-server-sdk/blob/main/examples/ConsoleApp/Program.cs)
 
-## Core Concepts
+## SDK
 
 ### FbClient
 
@@ -186,13 +189,10 @@ var client = new FbClient(options);
 
 When you put the SDK in offline mode, no insight message is sent to the server and all feature flag evaluations return
 fallback values because there are no feature flags or segments available. If you want to use your own data source in
-this case, use [Bootstrapping](#bootstrapping).
+this case, the sdk allows users to populate feature flags and segments data from a JSON string. Here is an
+example: [featbit-bootstrap.json](/tests/FeatBit.ServerSdk.Tests/Bootstrapping/featbit-bootstrap.json).
 
-### Bootstrapping
-
-The bootstrapping feature allows users to populate feature flags and segments data from a JSON string. Here is an example: [featbit-bootstrap.json](/tests/FeatBit.ServerSdk.Tests/Bootstrapping/featbit-bootstrap.json).
-
-> **_NOTE:_** Bootstrapping is only supported in offline mode.
+> **_NOTE:_** Populating data from a JSON string is only supported in offline mode.
 
 The format of the data in flags and segments is defined by FeatBit and is subject to change. Rather than trying to
 construct these objects yourself, it's simpler to request existing flags directly from the FeatBit server in JSON format
@@ -203,7 +203,7 @@ and use this output as the starting point for your file. Here's how:
 curl -H "Authorization: <your-env-secret>" http://localhost:5100/api/public/sdk/server/latest-all > featbit-bootstrap.json
 ```
 
-Then use the file to initialize FbClient:
+Then use that file to initialize FbClient:
 
 ```csharp
 using FeatBit.Sdk.Server.Options;
