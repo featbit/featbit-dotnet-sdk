@@ -45,29 +45,29 @@ const string secret = "<replace-with-your-env-secret>";
 var client = new FbClient(secret);
 if (!client.Initialized)
 {
-    Console.WriteLine("FbClient failed to initialize. Exiting...");
+    Console.WriteLine("FbClient failed to initialize. All Variation calls will use fallback value.");
 }
 else
 {
     Console.WriteLine("FbClient successfully initialized!");
-
-    // flag to be evaluated
-    const string flagKey = "game-runner";
-
-    // create a user
-    var user = FbUser.Builder("anonymous").Build();
-
-    // evaluate a boolean flag for a given user
-    var boolVariation = client.BoolVariation(flagKey, user, defaultValue: false);
-    Console.WriteLine($"flag '{flagKey}' returns {boolVariation} for user {user.Key}");
-
-    // evaluate a boolean flag for a given user with evaluation detail
-    var boolVariationDetail = client.BoolVariationDetail(flagKey, user, defaultValue: false);
-    Console.WriteLine(
-        $"flag '{flagKey}' returns {boolVariationDetail.Value} for user {user.Key}. " +
-        $"Reason Kind: {boolVariationDetail.Kind}, Reason Description: {boolVariationDetail.Reason}"
-    );
 }
+
+// flag to be evaluated
+const string flagKey = "game-runner";
+
+// create a user
+var user = FbUser.Builder("anonymous").Build();
+
+// evaluate a boolean flag for a given user
+var boolVariation = client.BoolVariation(flagKey, user, defaultValue: false);
+Console.WriteLine($"flag '{flagKey}' returns {boolVariation} for user {user.Key}");
+
+// evaluate a boolean flag for a given user with evaluation detail
+var boolVariationDetail = client.BoolVariationDetail(flagKey, user, defaultValue: false);
+Console.WriteLine(
+    $"flag '{flagKey}' returns {boolVariationDetail.Value} for user {user.Key}. " +
+    $"Reason Kind: {boolVariationDetail.Kind}, Reason Description: {boolVariationDetail.Reason}"
+);
 
 // close the client to ensure that all insights are sent out before the app exits
 await client.CloseAsync();
