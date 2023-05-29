@@ -6,12 +6,13 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddFeatBit(options =>
 {
-    options.EnvSecret = "<replace-with-your-env-secret>";
+    options.EnvSecret = "replace-with-your-env-secret";
     options.StartWaitTime = TimeSpan.FromSeconds(3);
 });
 
 var app = builder.Build();
 
+// curl -X GET --location "http://localhost:5014/variation-detail/game-runner?fallbackValue=lol"
 app.MapGet("/variation-detail/{flagKey}", (IFbClient fbClient, string flagKey, string fallbackValue) =>
 {
     var user = FbUser.Builder("tester-id").Name("tester").Build();
