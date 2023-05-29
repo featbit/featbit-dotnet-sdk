@@ -14,7 +14,7 @@ namespace FeatBit.Sdk.Server.Options
         /// This value must greater equal than 1 second.
         /// </remarks>
         /// <value>Defaults to 5 seconds</value>
-        public TimeSpan StartWaitTime { get; }
+        public TimeSpan StartWaitTime { get; set; }
 
         /// <summary>
         /// Whether or not this client is offline. If true, no calls to FeatBit will be made.
@@ -31,42 +31,42 @@ namespace FeatBit.Sdk.Server.Options
         /// <summary>
         /// The SDK key for your FeatBit environment.
         /// </summary>
-        public string EnvSecret { get; }
+        public string EnvSecret { get; set; }
 
         /// <summary>
         /// The base URI of the streaming service
         /// </summary>
         /// <value>Defaults to ws://localhost:5100</value>
-        public Uri StreamingUri { get; }
+        public Uri StreamingUri { get; set; }
 
         /// <summary>
         /// The base URI of the event service
         /// </summary>
         /// <value>Defaults to http://localhost:5100</value>
-        public Uri EventUri { get; }
+        public Uri EventUri { get; set; }
 
         /// <summary>
         /// The connection timeout. This is the time allowed for the WebSocket client to connect to the server.
         /// </summary>
         /// <value>Defaults to 3 seconds</value>
-        public TimeSpan ConnectTimeout { get; }
+        public TimeSpan ConnectTimeout { get; set; }
 
         /// <summary>
         /// The close timeout. This is the time allowed for the WebSocket client to perform a graceful shutdown.
         /// </summary>
         /// <value>Defaults to 2 seconds</value>
-        public TimeSpan CloseTimeout { get; }
+        public TimeSpan CloseTimeout { get; set; }
 
         /// <summary>
         /// The frequency at which to send Ping message.
         /// </summary>
         /// <value>Defaults to 15 seconds</value>
-        public TimeSpan KeepAliveInterval { get; }
+        public TimeSpan KeepAliveInterval { get; set; }
 
         /// <summary>
         /// The connection retry delays.
         /// </summary>
-        public TimeSpan[] ReconnectRetryDelays { get; }
+        public TimeSpan[] ReconnectRetryDelays { get; set; }
 
         /// <summary>
         /// The event flush timeout.
@@ -114,7 +114,7 @@ namespace FeatBit.Sdk.Server.Options
         /// The logger factory used by FbClient.
         /// </summary>
         /// <value>Defaults to <see cref="NullLoggerFactory.Instance"/></value>
-        public ILoggerFactory LoggerFactory { get; }
+        public ILoggerFactory LoggerFactory { get; set; }
 
         /// <summary>
         /// Creates an option with all parameters set to the default.

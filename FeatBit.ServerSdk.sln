@@ -17,8 +17,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleApp", "examples\Cons
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebApiApp", "examples\WebApiApp\WebApiApp.csproj", "{68C5EB7D-A4A6-4A86-B38C-C15765F6B883}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FeatBit.ServerSdk.AspNetCore", "src\FeatBit.ServerSdk.AspNetCore\FeatBit.ServerSdk.AspNetCore.csproj", "{E6E8A813-8575-416C-8F07-45AF4D52034E}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -32,7 +30,6 @@ Global
 		{63F37641-2F11-4B0D-8A88-D345FF03822E} = {5AFEEA5E-0264-4EF0-AB21-FB6C1EE46754}
 		{1DC2EE80-678C-4DF1-9298-0465E64B4FDB} = {F6B47580-EB54-432C-AD5A-B918DF4B4C9C}
 		{68C5EB7D-A4A6-4A86-B38C-C15765F6B883} = {F6B47580-EB54-432C-AD5A-B918DF4B4C9C}
-		{E6E8A813-8575-416C-8F07-45AF4D52034E} = {AF2C39EB-C569-437A-863D-8E2ACB81621D}
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{BC91B3B1-D996-4F01-9C10-69B05E37A90D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
@@ -51,9 +48,5 @@ Global
 		{68C5EB7D-A4A6-4A86-B38C-C15765F6B883}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{68C5EB7D-A4A6-4A86-B38C-C15765F6B883}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{68C5EB7D-A4A6-4A86-B38C-C15765F6B883}.Release|Any CPU.Build.0 = Release|Any CPU
-		{E6E8A813-8575-416C-8F07-45AF4D52034E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{E6E8A813-8575-416C-8F07-45AF4D52034E}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{E6E8A813-8575-416C-8F07-45AF4D52034E}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{E6E8A813-8575-416C-8F07-45AF4D52034E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

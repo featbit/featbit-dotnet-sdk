@@ -1,25 +1,23 @@
+using FeatBit.Sdk.Server;
+using FeatBit.Sdk.Server.Model;
+using FeatBit.Sdk.Server.DependencyInjection;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-
-builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddFeatBit(options =>
+{
+    options.EnvSecret = "V_QtCb3oQkSWeSD7sya1ug2ExZ3qAofkazo0VHUeKkng";
+    options.StartWaitTime = TimeSpan.FromSeconds(3);
+    options.LoggerFactory = LoggerFactory.Create(x => x.AddConsole());
+});
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+app.MapGet("/variation-detail/{flagKey}", (IFbClient fbClient, string flagKey, string fallbackValue) =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    var user = FbUser.Builder("tester-id").Name("tester").Build();
 
-app.UseHttpsRedirection();
-
-app.UseAuthorization();
-
-app.MapControllers();
+    return fbClient.StringVariationDetail(flagKey, user, defaultValue: fallbackValue);
+});
 
 app.Run();
