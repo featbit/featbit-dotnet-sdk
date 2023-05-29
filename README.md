@@ -118,7 +118,7 @@ var client = new FbClient(options);
 We can register the FeatBit services using standard conventions.
 
 > **Note**
-> The `AddFeatBit` extension method will block the current thread for the duration specified in `FbOptions.StartWaitTime`.
+> The `AddFeatBit` extension method will block the current thread for a maximum duration specified in `FbOptions.StartWaitTime`.
 
 ```csharp
 using FeatBit.Sdk.Server.DependencyInjection;
