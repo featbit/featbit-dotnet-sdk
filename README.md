@@ -75,7 +75,8 @@ await client.CloseAsync();
 
 ### Examples
 
-- [Console App](https://github.com/featbit/dotnet-server-sdk/blob/main/examples/ConsoleApp/Program.cs)
+- [Console App](/examples/ConsoleApp/Program.cs)
+- [ASP.NET Core](/examples/WebApiApp/Program.cs)
 
 ## SDK
 
