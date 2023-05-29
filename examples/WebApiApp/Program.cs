@@ -8,7 +8,6 @@ builder.Services.AddFeatBit(options =>
 {
     options.EnvSecret = "V_QtCb3oQkSWeSD7sya1ug2ExZ3qAofkazo0VHUeKkng";
     options.StartWaitTime = TimeSpan.FromSeconds(3);
-    options.LoggerFactory = LoggerFactory.Create(x => x.AddConsole());
 });
 
 var app = builder.Build();
