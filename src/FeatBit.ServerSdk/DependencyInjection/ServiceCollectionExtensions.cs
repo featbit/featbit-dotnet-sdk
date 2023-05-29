@@ -32,6 +32,7 @@ public static class ServiceCollectionExtensions
             typeof(IFbClient),
             serviceProvider =>
             {
+                // Configure the logger factory if not provided or set to NullLoggerFactory
                 if (options.LoggerFactory is null)
                 {
                     options.LoggerFactory = NullLoggerFactory.Instance;
@@ -52,7 +53,9 @@ public static class ServiceCollectionExtensions
         );
         services.Add(serviceDescriptor);
 
-        // Ensure FbClient is created before the application starts.
+        // The FbClientHostedService ensures:
+        // 1. FbClient is created before the application starts.
+        // 2. FbClient is closed when the application host performs a graceful shutdown.
         services.AddHostedService<FbClientHostedService>();
     }
 }
