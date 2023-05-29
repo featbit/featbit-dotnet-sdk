@@ -11,7 +11,7 @@ namespace FeatBit.Sdk.Server.Options
         /// How long the client constructor will block awaiting a successful connection to FeatBit.
         /// </summary>
         /// <remarks>
-        /// This value must greater equal than 1 second.
+        /// This value must greater than <see cref="ConnectTimeout"/>.
         /// </remarks>
         /// <value>Defaults to 5 seconds</value>
         public TimeSpan StartWaitTime { get; set; }
@@ -48,6 +48,9 @@ namespace FeatBit.Sdk.Server.Options
         /// <summary>
         /// The connection timeout. This is the time allowed for the WebSocket client to connect to the server.
         /// </summary>
+        /// <remarks>
+        /// This value must lower then <see cref="StartWaitTime"/>.
+        /// </remarks>
         /// <value>Defaults to 3 seconds</value>
         public TimeSpan ConnectTimeout { get; set; }
 

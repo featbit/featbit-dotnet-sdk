@@ -80,7 +80,7 @@ namespace FeatBit.Sdk.Server.Options
         {
             if (_startWaitTime < _connectTimeout)
             {
-                throw new InvalidOperationException("The start wait time must be bigger than the connect timeout.");
+                throw new InvalidOperationException("The start wait time must be greater than the connect timeout.");
             }
 
             _startWaitTime = waitTime;

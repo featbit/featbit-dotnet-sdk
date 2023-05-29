@@ -13,6 +13,7 @@ public static class ServiceCollectionExtensions
     /// </summary>
     /// <param name="services">The <see cref="IServiceCollection" /> to add services to.</param>
     /// <param name="configureOptions">An <see cref="Action{FbOptions}"/> to configure the provided <see cref="FbOptions"/>.</param>
+    /// <remarks>This method will block the current thread for the duration specified in <see cref="FbOptions.StartWaitTime"/>.</remarks>
     public static void AddFeatBit(this IServiceCollection services, Action<FbOptions> configureOptions)
     {
         var options = new FbOptionsBuilder().Build();
@@ -26,6 +27,7 @@ public static class ServiceCollectionExtensions
     /// </summary>
     /// <param name="services">The <see cref="IServiceCollection" /> to add services to.</param>
     /// <param name="options">The options for configuring FeatBit.</param>
+    /// <remarks>This method will block the current thread for the duration specified in <see cref="FbOptions.StartWaitTime"/>.</remarks>
     public static void AddFeatBit(this IServiceCollection services, FbOptions options)
     {
         var serviceDescriptor = new ServiceDescriptor(
