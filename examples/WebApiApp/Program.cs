@@ -6,7 +6,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddFeatBit(options =>
 {
-    options.EnvSecret = "V_QtCb3oQkSWeSD7sya1ug2ExZ3qAofkazo0VHUeKkng";
+    options.EnvSecret = "<replace-with-your-env-secret>";
     options.StartWaitTime = TimeSpan.FromSeconds(3);
 });
 
