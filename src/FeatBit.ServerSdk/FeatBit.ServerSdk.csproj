@@ -12,8 +12,6 @@
         <Authors>FeatBit</Authors>
         <Owners>FeatBit</Owners>
         <Company>FeatBit</Company>
-        <Authors>FeatBit</Authors>
-        <Owners>FeatBit</Owners>
         <Copyright>Copyright 2023 FeatBit</Copyright>
         <IncludeSymbols>true</IncludeSymbols>
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
