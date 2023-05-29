@@ -236,12 +236,6 @@ application or library is targeted to.
 > Core 3.1 and later versions, but not on other platforms, so on other platforms the SDK brings
 > in `System.Text.Json` as a NuGet package dependency.
 
-## What's Next
-
-- [x] add feature flag insights support
-- [x] support offline mode & bootstrapping
-- [ ] asp.net core integration & examples
-
 ## Getting support
 
 - If you have a specific question about using this sdk, we encourage you
