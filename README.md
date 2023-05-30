@@ -75,7 +75,8 @@ await client.CloseAsync();
 
 ### Examples
 
-- [Console App](https://github.com/featbit/dotnet-server-sdk/blob/main/examples/ConsoleApp/Program.cs)
+- [Console App](/examples/ConsoleApp/Program.cs)
+- [ASP.NET Core](/examples/WebApiApp/Program.cs)
 
 ## SDK
 
@@ -110,6 +111,44 @@ var options = new FbOptionsBuilder("<replace-with-your-env-secret>")
 
 // Creates a new client instance that connects to FeatBit with the custom option.
 var client = new FbClient(options);
+```
+
+#### Dependency Injection
+
+We can register the FeatBit services using standard conventions.
+
+> **Note**
+> The `AddFeatBit` extension method will block the current thread for a maximum duration specified in `FbOptions.StartWaitTime`.
+
+```csharp
+using FeatBit.Sdk.Server.DependencyInjection;
+
+var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddControllers();
+
+// add FeatBit service
+builder.Services.AddFeatBit(options =>
+{
+    options.EnvSecret = "<replace-with-your-env-secret>";
+    options.StartWaitTime = TimeSpan.FromSeconds(3);
+});
+
+var app = builder.Build();
+app.Run();
+```
+
+Then the `IFbClient` interface can be obtained through dependency injection.
+
+```csharp
+public class HomeController : ControllerBase
+{
+    private readonly IFbClient _fbClient;
+
+    public HomeController(IFbClient fbClient)
+    {
+        _fbClient = fbClient;
+    }
+}
 ```
 
 ### FbUser
@@ -234,12 +273,6 @@ application or library is targeted to.
 > **_NOTE:_** This SDK requires the `System.Text.Json` API to be available, which is included in the runtime for .NET
 > Core 3.1 and later versions, but not on other platforms, so on other platforms the SDK brings
 > in `System.Text.Json` as a NuGet package dependency.
-
-## What's Next
-
-- [x] add feature flag insights support
-- [x] support offline mode & bootstrapping
-- [ ] asp.net core integration & examples
 
 ## Getting support
 

@@ -12,8 +12,6 @@
         <Authors>FeatBit</Authors>
         <Owners>FeatBit</Owners>
         <Company>FeatBit</Company>
-        <Authors>FeatBit</Authors>
-        <Owners>FeatBit</Owners>
         <Copyright>Copyright 2023 FeatBit</Copyright>
         <IncludeSymbols>true</IncludeSymbols>
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
@@ -39,6 +37,7 @@
     <ItemGroup>
         <PackageReference Include="System.IO.Pipelines" Version="6.0.0"/>
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="6.0.0"/>
+        <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="6.0.0"/>
     </ItemGroup>
 
     <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'
