@@ -304,6 +304,7 @@ namespace FeatBit.Sdk.Server.Transport
 
             Log.InvokingEventHandler(_logger, nameof(OnClosed));
             _ = OnClosed?.Invoke(exception, _transport.CloseStatus, _transport.CloseDescription).ConfigureAwait(false);
+            Log.Closed(_logger);
         }
 
         private async Task KeepAliveAsync(CancellationToken ct = default)
@@ -342,7 +343,7 @@ namespace FeatBit.Sdk.Server.Transport
             }
 
             _transport = null;
-            Log.Stopped(_logger);
+            Log.Closed(_logger);
         }
     }
 }

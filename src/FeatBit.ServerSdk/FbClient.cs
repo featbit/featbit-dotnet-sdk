@@ -154,7 +154,7 @@ namespace FeatBit.Sdk.Server
             try
             {
                 _logger.LogInformation(
-                    "Waiting up to {0} milliseconds for FbClient to start...",
+                    "Waiting up to {StartWaitTime} milliseconds for FbClient to start...",
                     _options.StartWaitTime.TotalMilliseconds
                 );
                 var success = task.Wait(_options.StartWaitTime);
@@ -164,13 +164,17 @@ namespace FeatBit.Sdk.Server
                 }
                 else
                 {
-                    _logger.LogWarning("Timeout encountered waiting for FbClient initialization");
+                    _logger.LogError(
+                        "Timeout encountered while waiting for FbClient initialization. " +
+                        "This error typically occurs when we are unable to connect to FeatBit or the provided secret is invalid. " +
+                        "Please double-check your EnvSecret and StreamingUri configuration."
+                    );
                 }
             }
             catch (Exception ex)
             {
                 // we do not want to throw exceptions from the FbClient constructor, so we'll just swallow this.
-                _logger.LogWarning("Exception occurs when initialize FbClient", ex);
+                _logger.LogError(ex, "An exception occurred during FbClient initialization.");
             }
         }
 

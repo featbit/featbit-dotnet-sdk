@@ -104,10 +104,10 @@ namespace FeatBit.Sdk.Server.Transport
                 EventName = "WaitingForReceiveLoopToTerminate")]
             public static partial void WaitingForReceiveLoopToTerminate(ILogger logger);
 
-            [LoggerMessage(27, LogLevel.Information, "FbWebSocket stopped.", EventName = "Stopped")]
-            public static partial void Stopped(ILogger logger);
+            [LoggerMessage(27, LogLevel.Information, "FbWebSocket closed.", EventName = "Closed")]
+            public static partial void Closed(ILogger logger);
 
-            [LoggerMessage(28, LogLevel.Debug, "Failed to send message, transport state: {TransportState}")]
+            [LoggerMessage(28, LogLevel.Debug, "Failed to send message, transport state: {TransportState}", EventName = "FailedToSendMessage")]
             public static partial void FailedToSendMessage(ILogger logger, WebSocketState transportState);
         }
     }
