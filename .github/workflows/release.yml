@@ -1,0 +1,42 @@
+name: release
+
+on:
+  release:
+    types:
+      - published
+
+env:
+  VERSION: 1.0.0
+
+jobs:
+  build:
+    environment: Production
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: '6.0.x'
+
+      - name: Restore Packages
+        run: dotnet restore
+
+      - name: Build Solution
+        run: dotnet build --no-restore --configuration Release /p:Version=$VERSION
+
+      - name: Run Tests
+        run: dotnet test --no-build --verbosity normal
+
+      - name: Set Version Variable
+        env:
+          TAG: ${{ github.ref_name }}
+        run: echo "VERSION=${TAG#v}" >> $GITHUB_ENV
+
+      - name: Pack NuGet Package
+        run: dotnet pack --configuration Release --no-restore --no-build --output ${VERSION} /p:Version=${VERSION}
+
+      - name: Publish NuGet Package
+        run: dotnet nuget push ${VERSION}/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
