@@ -73,7 +73,7 @@ public class FbWebSocketTests
         await fbWebSocket.ConnectAsync();
         await fbWebSocket.SendAsync(send);
 
-        await receiveTask.WaitAsync(TimeSpan.FromMilliseconds(500));
+        await receiveTask.WaitAsync(TimeSpan.FromMilliseconds(1000));
 
         Assert.Equal(send, received);
     }

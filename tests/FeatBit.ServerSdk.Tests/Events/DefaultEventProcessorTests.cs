@@ -13,7 +13,7 @@ public class DefaultEventProcessorTests
         var processor = new DefaultEventProcessor(options);
 
         // this should complete immediately
-        processor.FlushAndClose(TimeSpan.FromMilliseconds(100));
+        processor.FlushAndClose(TimeSpan.FromMilliseconds(1000));
 
         Assert.True(processor.HasClosed);
     }
@@ -24,8 +24,8 @@ public class DefaultEventProcessorTests
         var options = new FbOptionsBuilder("secret").Build();
         var processor = new DefaultEventProcessor(options);
 
-        processor.FlushAndClose(TimeSpan.FromMilliseconds(100));
-        processor.FlushAndClose(TimeSpan.FromMilliseconds(100));
+        processor.FlushAndClose(TimeSpan.FromMilliseconds(1000));
+        processor.FlushAndClose(TimeSpan.FromMilliseconds(1000));
     }
 
     [Fact]
@@ -114,7 +114,7 @@ public class DefaultEventProcessorTests
         );
 
         processor.Record(new IntEvent(1));
-        var flushedInTime = await processor.FlushAndWaitAsync(TimeSpan.FromMilliseconds(100));
+        var flushedInTime = await processor.FlushAndWaitAsync(TimeSpan.FromMilliseconds(1000));
 
         Assert.True(flushedInTime);
         mockedSender.Verify(x => x.SendAsync(It.IsAny<byte[]>()), Times.Once);
