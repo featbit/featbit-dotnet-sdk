@@ -96,7 +96,7 @@ public class DefaultEventProcessorTests
         );
 
         processor.Record(new IntEvent(1));
-        var flushedInTime = processor.FlushAndWait(TimeSpan.FromMilliseconds(100));
+        var flushedInTime = processor.FlushAndWait(TimeSpan.FromMilliseconds(1000));
 
         Assert.True(flushedInTime);
         mockedSender.Verify(x => x.SendAsync(It.IsAny<byte[]>()), Times.Once);

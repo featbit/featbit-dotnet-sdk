@@ -27,6 +27,7 @@ public class DefaultEventDispatcherTests
         queue.Add(new IntEvent(1));
         queue.Add(new IntEvent(2));
 
+        Assert.True(SpinWait.SpinUntil(() => mockBuffer.Invocations.Count > 0, 1000));
         mockBuffer.Verify(x => x.AddEvent(It.IsAny<IEvent>()), Times.Exactly(2));
     }
 
