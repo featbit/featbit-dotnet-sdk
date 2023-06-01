@@ -25,10 +25,10 @@ jobs:
         run: dotnet restore
 
       - name: Build Solution
-        run: dotnet build --no-restore /p:Version=$VERSION
+        run: dotnet build -c Release --no-restore /p:Version=$VERSION
 
       - name: Run Tests
-        run: dotnet test --no-build --verbosity normal
+        run: dotnet test -c Release --no-build --verbosity normal
 
       - name: Set Version Variable
         env:
@@ -36,7 +36,7 @@ jobs:
         run: echo "VERSION=${TAG#v}" >> $GITHUB_ENV
 
       - name: Pack FeatBit.ServerSdk
-        run: dotnet pack ./src/FeatBit.ServerSdk/FeatBit.ServerSdk.csproj --configuration Release --no-restore --no-build --output ${VERSION} /p:PackageVersion=$VERSION
+        run: dotnet pack ./src/FeatBit.ServerSdk/FeatBit.ServerSdk.csproj -c Release --no-restore --no-build --output ${VERSION} /p:PackageVersion=$VERSION
 
       - name: Publish NuGet Package
         run: dotnet nuget push ${VERSION}/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
