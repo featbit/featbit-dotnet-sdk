@@ -104,20 +104,32 @@ namespace FeatBit.Sdk.Server.Events
         {
             if (_closed.GetAndSet(true))
             {
+                // already closed, nothing more to do
                 return;
             }
 
+            // stop flush timer if it was running
             _flushTimer?.Dispose();
-            _eventDispatcher?.Dispose();
 
+            // flush remaining events
             Record(new FlushEvent());
 
+            // send an shutdown event to dispatcher
             var shutdown = new ShutdownEvent();
             Record(shutdown);
 
-            shutdown.WaitForCompletion(timeout);
+            // wait for the shutdown event to complete within the specified timeout
+            var successfullyShutdown = shutdown.WaitForCompletion(timeout);
+            if (!successfullyShutdown)
+            {
+                _logger.LogWarning("Event processor shutdown did not complete within the specified timeout.");
+            }
 
+            // mark the event queue as complete for adding
             _eventQueue.CompleteAdding();
+
+            // dispose resources
+            _eventDispatcher?.Dispose();
             _eventQueue.Dispose();
         }
 
