@@ -30,7 +30,8 @@ public class FbClientTests
     public async Task CloseUninitializedFbClient()
     {
         var options = new FbOptionsBuilder("fake-secret")
-            .StartWaitTime(TimeSpan.FromMilliseconds(1000))
+            .ConnectTimeout(TimeSpan.FromMilliseconds(50))
+            .StartWaitTime(TimeSpan.FromMilliseconds(100))
             .Build();
         var client = new FbClient(options);
         Assert.False(client.Initialized);

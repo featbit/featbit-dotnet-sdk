@@ -76,14 +76,14 @@ namespace FeatBit.Sdk.Server.Options
                 _bootstrapProvider, _loggerFactory);
         }
 
-        public FbOptionsBuilder StartWaitTime(TimeSpan waitTime)
+        public FbOptionsBuilder StartWaitTime(TimeSpan timeout)
         {
-            if (_startWaitTime < _connectTimeout)
+            if (timeout < _connectTimeout)
             {
                 throw new InvalidOperationException("The start wait time must be greater than the connect timeout.");
             }
 
-            _startWaitTime = waitTime;
+            _startWaitTime = timeout;
             return this;
         }
 
@@ -107,7 +107,7 @@ namespace FeatBit.Sdk.Server.Options
 
         public FbOptionsBuilder ConnectTimeout(TimeSpan timeout)
         {
-            if (_connectTimeout > _startWaitTime)
+            if (timeout > _startWaitTime)
             {
                 throw new InvalidOperationException("The connect timeout must be lower than the start wait time.");
             }

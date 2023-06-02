@@ -15,7 +15,7 @@ namespace FeatBit.Sdk.Server.Transport
                 EventName = "StartingTransport")]
             public static partial void StartingTransport(ILogger logger, string transport, Uri url);
 
-            [LoggerMessage(3, LogLevel.Error, "Error starting transport.", EventName = "ErrorStartingTransport")]
+            [LoggerMessage(3, LogLevel.Debug, "Error starting transport.", EventName = "ErrorStartingTransport")]
             public static partial void ErrorStartingTransport(ILogger logger, Exception ex);
 
             [LoggerMessage(4, LogLevel.Debug, "Starting receive loop.", EventName = "ReceiveLoopStarting")]
