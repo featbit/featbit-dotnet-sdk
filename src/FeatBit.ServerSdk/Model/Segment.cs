@@ -15,6 +15,12 @@ namespace FeatBit.Sdk.Server.Model
         public ICollection<string> Excluded { get; set; }
 
         public ICollection<MatchRule> Rules { get; set; }
+        
+#if NETCOREAPP3_1
+        public Segment()
+        {
+        }
+#endif
 
         public Segment(
             Guid id,

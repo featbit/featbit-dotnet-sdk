@@ -30,6 +30,13 @@ namespace FeatBit.Sdk.Server.Model
 
         public bool ExptIncludeAllTargets { get; set; }
 
+#if NETCOREAPP3_1
+        // for deserialization
+        public FeatureFlag()
+        {
+        }
+#endif
+
         public FeatureFlag(
             Guid id,
             string key,
