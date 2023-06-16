@@ -47,11 +47,14 @@ The following code demonstrates basic usage of FeatBit.ServerSdk.
 using FeatBit.Sdk.Server;
 using FeatBit.Sdk.Server.Model;
 
-// Set secret to your FeatBit SDK secret.
-const string secret = "<replace-with-your-env-secret>";
+// setup sdk options
+var options = new FbOptionsBuilder("<replace-with-your-env-secret>")
+    .Event(new Uri("<replace-with-your-event-url>"))
+    .Steaming(new Uri("<replace-with-your-streaming-url>"))
+    .Build();
 
-// Creates a new client instance that connects to FeatBit with the default option.
-var client = new FbClient(secret);
+// Creates a new client instance that connects to FeatBit with the custom option.
+var client = new FbClient(options);
 if (!client.Initialized)
 {
     Console.WriteLine("FbClient failed to initialize. All Variation calls will use fallback value.");
