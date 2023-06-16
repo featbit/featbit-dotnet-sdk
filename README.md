@@ -30,6 +30,15 @@ dotnet add package FeatBit.ServerSdk
 Use the `--version` option to specify
 a [preview version](https://www.nuget.org/packages/FeatBit.ServerSdk/absoluteLatest) to install.
 
+### Prerequisite
+
+Before using the SDK, you need to obtain the environment secret and SDK URLs. 
+
+Follow the documentation below to retrieve these values
+
+- [How to get the environment secret](https://docs.featbit.co/docs/sdk/faq#how-to-get-the-environment-secret)
+- [How to get the SDK URLs](https://docs.featbit.co/docs/sdk/faq#how-to-get-the-sdk-urls)
+  
 ### Quick Start
 
 The following code demonstrates basic usage of FeatBit.ServerSdk.
@@ -37,12 +46,16 @@ The following code demonstrates basic usage of FeatBit.ServerSdk.
 ```cs
 using FeatBit.Sdk.Server;
 using FeatBit.Sdk.Server.Model;
+using FeatBit.Sdk.Server.Options;
 
-// Set secret to your FeatBit SDK secret.
-const string secret = "<replace-with-your-env-secret>";
+// setup SDK options
+var options = new FbOptionsBuilder("<replace-with-your-env-secret>")
+    .Event(new Uri("<replace-with-your-event-url>"))
+    .Steaming(new Uri("<replace-with-your-streaming-url>"))
+    .Build();
 
-// Creates a new client instance that connects to FeatBit with the default option.
-var client = new FbClient(secret);
+// Creates a new client instance that connects to FeatBit with the custom option.
+var client = new FbClient(options);
 if (!client.Initialized)
 {
     Console.WriteLine("FbClient failed to initialize. All Variation calls will use fallback value.");
