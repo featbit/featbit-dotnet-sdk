@@ -46,8 +46,9 @@ The following code demonstrates basic usage of FeatBit.ServerSdk.
 ```cs
 using FeatBit.Sdk.Server;
 using FeatBit.Sdk.Server.Model;
+using FeatBit.Sdk.Server.Options;
 
-// setup sdk options
+// setup SDK options
 var options = new FbOptionsBuilder("<replace-with-your-env-secret>")
     .Event(new Uri("<replace-with-your-event-url>"))
     .Steaming(new Uri("<replace-with-your-streaming-url>"))
