@@ -199,6 +199,9 @@ describing how the value was determined for each type.
 - IntVariation/IntVariationDetail
 - JsonVariation/JsonVariationDetail (in consideration)
 
+> **Note**
+> Since the current version does not have native support for retrieving JSON variations, you can utilize the `StringVariation` method as an alternative to obtain the JSON string.
+
 Variation calls take the feature flag key, a FbUser, and a default value. If any error makes it impossible to
 evaluate the flag (for instance, the feature flag key does not match any existing flag), default value is returned.
 
