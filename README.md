@@ -273,6 +273,22 @@ var options = new FbOptionsBuilder()
 var client = new FbClient(options);
 ```
 
+### Experiments (A/B/n Testing)
+
+We support automatic experiments for pageviews and clicks, you just need to set your experiment on our SaaS platform,
+then you should be able to see the result in near real time after the experiment is started.
+
+In case you need more control over the experiment data sent to our server, we offer a method to send custom event.
+
+```csharp
+client.Track(user, eventName, numericValue);
+```
+
+**numericValue** is not mandatory, the default value is **1.0**.
+
+Make sure `track` is called after the related feature flag is called, otherwise the custom event won't be included
+into the experiment result.
+
 ## Supported .NET versions
 
 This version of the SDK is built for the following targets:
