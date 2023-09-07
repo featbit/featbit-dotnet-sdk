@@ -1,0 +1,26 @@
+{
+  user: {
+    keyId: u1-Id,
+    name: u1-name,
+    customizedProperties: [
+      {
+        name: custom,
+        value: value
+      },
+      {
+        name: country,
+        value: us
+      }
+    ]
+  },
+  metrics: [
+    {
+      appType: dotnet-server-side,
+      route: index/metric,
+      type: CustomEvent,
+      eventName: click-button,
+      numericValue: 1.5,
+      timestamp: {Scrubbed}
+    }
+  ]
+}

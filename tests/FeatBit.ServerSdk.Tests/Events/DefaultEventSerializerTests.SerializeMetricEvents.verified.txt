@@ -1,0 +1,50 @@
+[
+  {
+    user: {
+      keyId: u1-Id,
+      name: u1-name,
+      customizedProperties: [
+        {
+          name: custom,
+          value: value
+        },
+        {
+          name: country,
+          value: us
+        }
+      ]
+    },
+    metrics: [
+      {
+        appType: dotnet-server-side,
+        route: index/metric,
+        type: CustomEvent,
+        eventName: click-button,
+        numericValue: 1.5,
+        timestamp: {Scrubbed}
+      }
+    ]
+  },
+  {
+    user: {
+      keyId: u2-Id,
+      name: u2-name,
+      customizedProperties: [
+        {
+          name: age,
+          value: 10
+        }
+      ]
+    },
+    metrics: [
+      {
+        appType: dotnet-server-side,
+        route: index/metric,
+        type: CustomEvent,
+        eventName: click-button,
+        numericValue: 32.5,
+        timestamp: {Scrubbed}
+      }
+    ]
+  }
+]
