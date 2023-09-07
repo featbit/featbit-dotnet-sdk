@@ -44,6 +44,9 @@ namespace FeatBit.Sdk.Server.Events
                 case EvalEvent ee:
                     WriteEvalEvent(ee, writer);
                     break;
+                case MetricEvent me:
+                    WriteMetricEvent(me, writer);
+                    break;
             }
         }
 
@@ -92,6 +95,28 @@ namespace FeatBit.Sdk.Server.Events
                 writer.WriteString("value", kv.Value);
                 writer.WriteEndObject();
             }
+
+            writer.WriteEndArray();
+
+            writer.WriteEndObject();
+        }
+
+        private static void WriteMetricEvent(MetricEvent ee, Utf8JsonWriter writer)
+        {
+            writer.WriteStartObject();
+
+            WriteUser(ee.User, writer);
+
+            writer.WriteStartArray("metrics");
+
+            writer.WriteStartObject();
+            writer.WriteString("appType", MetricEvent.AppType);
+            writer.WriteString("route", MetricEvent.Route);
+            writer.WriteString("type", MetricEvent.Type);
+            writer.WriteString("eventName", ee.EventName);
+            writer.WriteNumber("numericValue", ee.NumericValue);
+            writer.WriteNumber("timestamp", ee.Timestamp);
+            writer.WriteEndObject();
 
             writer.WriteEndArray();
 

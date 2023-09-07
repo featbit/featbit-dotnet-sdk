@@ -82,4 +82,27 @@ namespace FeatBit.Sdk.Server.Events
             SendToExperiment = sendToExperiment;
         }
     }
+
+    internal sealed class MetricEvent : PayloadEvent
+    {
+        public const string AppType = "dotnet-server-side";
+        public const string Route = "index/metric";
+        public const string Type = "CustomEvent";
+
+        public FbUser User { get; set; }
+
+        public string EventName { get; set; }
+
+        public double NumericValue { get; set; }
+
+        public long Timestamp { get; set; }
+
+        public MetricEvent(FbUser user, string eventName, double numericValue)
+        {
+            User = user;
+            EventName = eventName;
+            NumericValue = numericValue;
+            Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        }
+    }
 }

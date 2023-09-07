@@ -232,6 +232,22 @@ namespace FeatBit.Sdk.Server
         }
 
         /// <inheritdoc/>
+        public void Track(FbUser user, string eventName) => Track(user, eventName, 1.0d);
+
+        /// <inheritdoc/>
+        public void Track(FbUser user, string eventName, double metricValue)
+        {
+            var metricEvent = new MetricEvent(user, eventName, metricValue);
+            _eventProcessor.Record(metricEvent);
+        }
+
+        /// <inheritdoc/>
+        public void Flush() => _eventProcessor.Flush();
+
+        /// <inheritdoc/>
+        public bool FlushAndWait(TimeSpan timeout) => _eventProcessor.FlushAndWait(timeout);
+
+        /// <inheritdoc/>
         public async Task CloseAsync()
         {
             _logger.LogInformation("Closing FbClient...");
