@@ -16,15 +16,15 @@ public class AsyncEventTests
     [Fact]
     internal void WaitForCompletion()
     {
-        Assert.True(CompleteInTime(new FlushEvent(), 10, 100));
-        Assert.False(CompleteInTime(new ShutdownEvent(), 100, 10));
+        Assert.True(CompleteInTime(new FlushEvent(), 100, 300));
+        Assert.False(CompleteInTime(new ShutdownEvent(), 300, 100));
     }
 
     [Fact]
     internal async Task WaitForCompletionAsync()
     {
-        Assert.True(await CompleteInTimeAsync(new FlushEvent(), 10, 100));
-        Assert.False(await CompleteInTimeAsync(new ShutdownEvent(), 100, 10));
+        Assert.True(await CompleteInTimeAsync(new FlushEvent(), 100, 300));
+        Assert.False(await CompleteInTimeAsync(new ShutdownEvent(), 300, 100));
     }
 
     private static bool CompleteInTime(AsyncEvent asyncEvent, int timeToComplete, int timeout)

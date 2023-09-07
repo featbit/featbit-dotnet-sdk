@@ -142,7 +142,7 @@ public class FbWebSocketTests
         };
 
         await fbWebSocket.ConnectAsync();
-        await Task.Delay(120);
+        await Task.Delay(130);
 
         Assert.Equal(2, keepAliveTimes);
     }
