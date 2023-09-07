@@ -281,7 +281,7 @@ then you should be able to see the result in near real time after the experiment
 In case you need more control over the experiment data sent to our server, we offer a method to send custom event.
 
 ```csharp
-client.track(user, eventName, numericValue);
+client.Track(user, eventName, numericValue);
 ```
 
 **numericValue** is not mandatory, the default value is **1.0**.
