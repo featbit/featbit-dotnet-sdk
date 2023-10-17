@@ -93,7 +93,7 @@ namespace FeatBit.Sdk.Server.Options
             return this;
         }
 
-        public FbOptionsBuilder Steaming(Uri uri)
+        public FbOptionsBuilder Streaming(Uri uri)
         {
             _streamingUri = uri;
             return this;

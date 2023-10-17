@@ -51,7 +51,7 @@ using FeatBit.Sdk.Server.Options;
 // setup SDK options
 var options = new FbOptionsBuilder("<replace-with-your-env-secret>")
     .Event(new Uri("<replace-with-your-event-url>"))
-    .Steaming(new Uri("<replace-with-your-streaming-url>"))
+    .Streaming(new Uri("<replace-with-your-streaming-url>"))
     .Build();
 
 // Creates a new client instance that connects to FeatBit with the custom option.
@@ -116,7 +116,7 @@ using Microsoft.Extensions.Logging;
 var consoleLoggerFactory = LoggerFactory.Create(x => x.AddConsole());
 
 var options = new FbOptionsBuilder("<replace-with-your-env-secret>")
-    .Steaming(new Uri("ws://localhost:5100"))
+    .Streaming(new Uri("ws://localhost:5100"))
     .Event(new Uri("http://localhost:5100"))
     .StartWaitTime(TimeSpan.FromSeconds(3))
     .LoggerFactory(consoleLoggerFactory)

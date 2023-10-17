@@ -36,7 +36,7 @@ public class FbWebSocketTests
     {
         var fbWebSocket = _app.CreateFbWebSocket(
             "echo",
-            builder => builder.Steaming(new Uri("ws://localhost/not-found"))
+            builder => builder.Streaming(new Uri("ws://localhost/not-found"))
         );
 
         Exception connectException = null;

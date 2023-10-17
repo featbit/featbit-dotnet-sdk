@@ -85,7 +85,7 @@ public class FbClientTests
     private FbClient CreateTestFbClient(IEventProcessor processor = null)
     {
         var options = new FbOptionsBuilder("qJHQTVfsZUOu1Q54RLMuIQ-JtrIvNK-k-bARYicOTNQA")
-            .Steaming(new Uri("ws://localhost/"))
+            .Streaming(new Uri("ws://localhost/"))
             .Build();
 
         var store = new DefaultMemoryStore();
