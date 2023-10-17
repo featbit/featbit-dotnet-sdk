@@ -38,7 +38,7 @@ Follow the documentation below to retrieve these values
 
 - [How to get the environment secret](https://docs.featbit.co/docs/sdk/faq#how-to-get-the-environment-secret)
 - [How to get the SDK URLs](https://docs.featbit.co/docs/sdk/faq#how-to-get-the-sdk-urls)
-  
+
 ### Quick Start
 
 The following code demonstrates basic usage of FeatBit.ServerSdk.
@@ -143,6 +143,8 @@ builder.Services.AddControllers();
 builder.Services.AddFeatBit(options =>
 {
     options.EnvSecret = "<replace-with-your-env-secret>";
+    options.StreamingUri = new Uri("ws://localhost:5100");
+    options.EventUri = new Uri("http://localhost:5100");
     options.StartWaitTime = TimeSpan.FromSeconds(3);
 });
 
