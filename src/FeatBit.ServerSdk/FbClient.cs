@@ -252,7 +252,7 @@ namespace FeatBit.Sdk.Server
         {
             _logger.LogInformation("Closing FbClient...");
             await _dataSynchronizer.StopAsync();
-            await _eventProcessor.FlushAndWaitAsync(_options.FlushTimeout);
+            _eventProcessor.FlushAndClose(_options.FlushTimeout);
             _logger.LogInformation("FbClient successfully closed.");
         }
 
