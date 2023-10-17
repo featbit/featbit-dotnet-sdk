@@ -142,6 +142,8 @@ builder.Services.AddControllers();
 // add FeatBit service
 builder.Services.AddFeatBit(options =>
 {
+    options.EventUri = new Uri("http://localhost:5100");
+    options.StreamingUri = new Uri("ws://localhost:5100");
     options.EnvSecret = "<replace-with-your-env-secret>";
     options.StartWaitTime = TimeSpan.FromSeconds(3);
 });
