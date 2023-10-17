@@ -19,7 +19,7 @@ public class WebSocketDataSynchronizerTests
     public async Task StartWithEmptyStoreAsync()
     {
         var options = new FbOptionsBuilder("qJHQTVfsZUOu1Q54RLMuIQ-JtrIvNK-k-bARYicOTNQA")
-            .Steaming(new Uri("ws://localhost/"))
+            .Streaming(new Uri("ws://localhost/"))
             .Build();
 
         var store = new DefaultMemoryStore();
@@ -42,7 +42,7 @@ public class WebSocketDataSynchronizerTests
     public async Task StartWithPopulatedStoreAsync()
     {
         var options = new FbOptionsBuilder("qJHQTVfsZUOu1Q54RLMuIQ-JtrIvNK-k-bARYicOTNQA")
-            .Steaming(new Uri("ws://localhost/"))
+            .Streaming(new Uri("ws://localhost/"))
             .Build();
 
         var store = new DefaultMemoryStore();
