@@ -74,17 +74,17 @@ namespace FeatBit.Sdk.Server.Transport
             // - subscribe to incoming messages from the caller
             // - proxy incoming data from the websocket back to the subscriber
             _application = pair.Application;
-            
-            var factory = _webSocketFactory ?? DefaultWebSocketFactory;
 
+            var factory = _webSocketFactory ?? DefaultWebSocketFactory;
             _webSocket = await factory(uri, cancellationToken);
             if (_webSocket == null)
             {
                 throw new InvalidOperationException("Configured WebSocketFactory did not return a value.");
             }
-            Log.StartedTransport(_logger);
-            
+
             Running = ProcessSocketAsync(_webSocket);
+
+            Log.StartedTransport(_logger);
         }
 
         private static async Task<WebSocket> DefaultWebSocketFactory(Uri uri, CancellationToken cancellationToken)
