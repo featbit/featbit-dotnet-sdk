@@ -107,6 +107,11 @@ namespace FeatBit.Sdk.Server.Transport
 
             [LoggerMessage(28, LogLevel.Debug, "Failed to send message, transport state: {TransportState}", EventName = "FailedToSendMessage")]
             public static partial void FailedToSendMessage(ILogger logger, WebSocketState transportState);
+
+            [LoggerMessage(29, LogLevel.Warning,
+                "FbWebSocket closed abnormally with status: {Status}, description: {Description}.",
+                EventName = "AbnormallyClosed")]
+            public static partial void AbnormallyClosed(ILogger logger, WebSocketCloseStatus? status, string description);
         }
     }
 }

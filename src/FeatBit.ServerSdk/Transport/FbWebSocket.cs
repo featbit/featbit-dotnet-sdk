@@ -206,7 +206,6 @@ namespace FeatBit.Sdk.Server.Transport
             }
             else
             {
-                Log.GiveUpReconnect(_logger, _transport.CloseStatus);
                 CompleteClose(_closeException);
             }
         }
@@ -305,7 +304,11 @@ namespace FeatBit.Sdk.Server.Transport
 
             Log.InvokingEventHandler(_logger, nameof(OnClosed));
             _ = OnClosed?.Invoke(exception, _transport.CloseStatus, _transport.CloseDescription).ConfigureAwait(false);
-            Log.Closed(_logger, _transport.CloseStatus);
+
+            if (_transport.CloseStatus.HasValue && _transport.CloseStatus != WebSocketCloseStatus.NormalClosure)
+            {
+                Log.AbnormallyClosed(_logger, _transport.CloseStatus, _transport.CloseDescription);
+            }
         }
 
         private async Task KeepAliveAsync(CancellationToken ct = default)
