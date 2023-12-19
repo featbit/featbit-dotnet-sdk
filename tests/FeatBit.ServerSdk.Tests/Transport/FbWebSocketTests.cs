@@ -148,6 +148,41 @@ public class FbWebSocketTests
     }
 
     [Fact]
+    public async Task TestReconnectOnConnectError()
+    {
+        var fbWebSocket = _app.CreateFbWebSocket(
+            "echo",
+            builder => builder.Streaming(new Uri("ws://localhost/not-found"))
+        );
+
+        var tcs = new TaskCompletionSource();
+        var reconnectingTask = tcs.Task;
+        var onReconnectingCalled = false;
+        fbWebSocket.OnReconnecting += closeException =>
+        {
+            // we never connected, so closeException should be null
+            Assert.Null(closeException);
+            onReconnectingCalled = true;
+            tcs.SetResult();
+            return Task.CompletedTask;
+        };
+
+        try
+        {
+            await fbWebSocket.ConnectAsync();
+        }
+        catch (Exception ex)
+        {
+            // connect error happened since the streaming url is not valid
+            Assert.NotNull(ex);
+        }
+
+        await reconnectingTask.WaitAsync(TimeSpan.FromSeconds(1));
+
+        Assert.True(onReconnectingCalled);
+    }
+
+    [Fact]
     public async Task TestReconnectOnUnexpectedClose()
     {
         var fbWebSocket = _app.CreateFbWebSocket("close-unexpectedly");
