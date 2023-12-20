@@ -4,8 +4,11 @@ using FeatBit.Sdk.Server.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var consoleLogger = LoggerFactory.Create(x => x.AddConsole().SetMinimumLevel(LogLevel.Information));
+
 builder.Services.AddFeatBit(options =>
 {
+    options.LoggerFactory = consoleLogger;
     options.EnvSecret = "replace-with-your-env-secret";
     options.StartWaitTime = TimeSpan.FromSeconds(3);
 });

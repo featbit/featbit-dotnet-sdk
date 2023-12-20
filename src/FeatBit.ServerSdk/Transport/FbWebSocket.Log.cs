@@ -55,25 +55,23 @@ namespace FeatBit.Sdk.Server.Transport
             [LoggerMessage(14, LogLevel.Debug, "Stopping keep alive timer.", EventName = "StopKeepAliveTimer")]
             public static partial void StoppingKeepAliveTimer(ILogger logger);
 
-            [LoggerMessage(15, LogLevel.Error, "FbWebSocket reconnecting due to an error.",
+            [LoggerMessage(15, LogLevel.Warning, "FbWebSocket is trying to reconnect due to an exception. Flag evaluation results may be stale until reconnected.",
                 EventName = "ReconnectingWithError")]
             public static partial void ReconnectingWithError(ILogger logger, Exception exception);
 
-            [LoggerMessage(16, LogLevel.Information, "FbWebSocket reconnecting.", EventName = "Reconnecting")]
+            [LoggerMessage(16, LogLevel.Warning, "FbWebSocket is trying to reconnect. Flag evaluation results may be stale until reconnected.",
+                EventName = "Reconnecting")]
             public static partial void Reconnecting(ILogger logger);
 
-            [LoggerMessage(17, LogLevel.Trace,
-                "Connection met specified close status {CloseStatus}. Done reconnecting.",
-                EventName = "StopReconnectDueToSpecifiedCloseStatus")]
-            public static partial void StopReconnectDueToSpecifiedCloseStatus(ILogger logger,
-                WebSocketCloseStatus closeStatus);
+            [LoggerMessage(17, LogLevel.Warning, "Give up reconnecting due to the close status {CloseStatus}.",
+                EventName = "GiveUpReconnect")]
+            public static partial void GiveUpReconnect(ILogger logger, WebSocketCloseStatus? closeStatus);
 
-            [LoggerMessage(18, LogLevel.Trace, "Reconnect attempt number {RetryTimes} will start in {RetryDelay}.",
+            [LoggerMessage(18, LogLevel.Information, "Reconnect attempt number {RetryTimes} will start in {RetryDelay}.",
                 EventName = "AwaitingReconnectRetryDelay")]
-            public static partial void
-                AwaitingReconnectRetryDelay(ILogger logger, long retryTimes, TimeSpan retryDelay);
+            public static partial void AwaitingReconnectRetryDelay(ILogger logger, long retryTimes, TimeSpan retryDelay);
 
-            [LoggerMessage(19, LogLevel.Trace, "Connection stopped during reconnect delay. Done reconnecting.",
+            [LoggerMessage(19, LogLevel.Warning, "Connection stopped during reconnect delay. Done reconnecting.",
                 EventName = "ReconnectingStoppedDuringRetryDelay")]
             public static partial void ReconnectingStoppedDuringRetryDelay(ILogger logger);
 
@@ -82,10 +80,10 @@ namespace FeatBit.Sdk.Server.Transport
                 EventName = "Reconnected")]
             public static partial void Reconnected(ILogger logger, long retryTimes, TimeSpan elapsedTime);
 
-            [LoggerMessage(21, LogLevel.Trace, "Reconnect attempt failed.", EventName = "ReconnectAttemptFailed")]
+            [LoggerMessage(21, LogLevel.Debug, "Reconnect attempt failed.", EventName = "ReconnectAttemptFailed")]
             public static partial void ReconnectAttemptFailed(ILogger logger, Exception exception);
 
-            [LoggerMessage(22, LogLevel.Trace, "Connection stopped during reconnect attempt. Done reconnecting.",
+            [LoggerMessage(22, LogLevel.Warning, "Connection stopped during reconnect attempt. Done reconnecting.",
                 EventName = "ReconnectingStoppedDuringReconnectAttempt")]
             public static partial void ReconnectingStoppedDuringReconnectAttempt(ILogger logger);
 
@@ -104,11 +102,16 @@ namespace FeatBit.Sdk.Server.Transport
                 EventName = "WaitingForReceiveLoopToTerminate")]
             public static partial void WaitingForReceiveLoopToTerminate(ILogger logger);
 
-            [LoggerMessage(27, LogLevel.Information, "FbWebSocket closed.", EventName = "Closed")]
-            public static partial void Closed(ILogger logger);
+            [LoggerMessage(27, LogLevel.Information, "FbWebSocket closed. Status: {CloseStatus}.", EventName = "Closed")]
+            public static partial void Closed(ILogger logger, WebSocketCloseStatus? closeStatus);
 
             [LoggerMessage(28, LogLevel.Debug, "Failed to send message, transport state: {TransportState}", EventName = "FailedToSendMessage")]
             public static partial void FailedToSendMessage(ILogger logger, WebSocketState transportState);
+
+            [LoggerMessage(29, LogLevel.Warning,
+                "FbWebSocket closed abnormally with status: {Status}, description: {Description}.",
+                EventName = "AbnormallyClosed")]
+            public static partial void AbnormallyClosed(ILogger logger, WebSocketCloseStatus? status, string description);
         }
     }
 }

@@ -70,6 +70,7 @@ namespace FeatBit.Sdk.Server.Transport
                 throw new InvalidOperationException("Configured WebSocketTransportFactory did not return a value.");
             }
 
+            _transport = transport;
             try
             {
                 // starts the transport
@@ -82,14 +83,13 @@ namespace FeatBit.Sdk.Server.Transport
                 if (!isReconnecting)
                 {
                     Log.ErrorStartingTransport(_logger, ex);
+
+                    // reconnect if we failed to start the transport
+                    _ = ReconnectAsync();
                 }
 
-                await transport.StopAsync();
                 throw;
             }
-
-            // We successfully started, set the transport properties (we don't want to set these until the transport is definitely running).
-            _transport = transport;
 
             Log.StartingReceiveLoop(_logger);
             _receiveTask = ReceiveLoop();
@@ -236,7 +236,7 @@ namespace FeatBit.Sdk.Server.Transport
             {
                 if (!ShouldReconnect())
                 {
-                    Log.StopReconnectDueToSpecifiedCloseStatus(_logger, _transport.CloseStatus!.Value);
+                    Log.GiveUpReconnect(_logger, _transport.CloseStatus);
                     CompleteClose(_closeException);
                     return;
                 }
@@ -259,7 +259,7 @@ namespace FeatBit.Sdk.Server.Transport
 
                 try
                 {
-                    await ConnectAsync(_stopCts.Token, true).ConfigureAwait(false);
+                    await ConnectAsync(_stopCts.Token, isReconnecting: true).ConfigureAwait(false);
 
                     Log.Reconnected(_logger, retryTimes, DateTime.UtcNow - reconnectStartTime);
 
@@ -304,7 +304,11 @@ namespace FeatBit.Sdk.Server.Transport
 
             Log.InvokingEventHandler(_logger, nameof(OnClosed));
             _ = OnClosed?.Invoke(exception, _transport.CloseStatus, _transport.CloseDescription).ConfigureAwait(false);
-            Log.Closed(_logger);
+
+            if (_transport.CloseStatus.HasValue && _transport.CloseStatus != WebSocketCloseStatus.NormalClosure)
+            {
+                Log.AbnormallyClosed(_logger, _transport.CloseStatus, _transport.CloseDescription);
+            }
         }
 
         private async Task KeepAliveAsync(CancellationToken ct = default)
@@ -342,8 +346,8 @@ namespace FeatBit.Sdk.Server.Transport
                 await (_receiveTask ?? Task.CompletedTask).ConfigureAwait(false);
             }
 
+            Log.Closed(_logger, _transport?.CloseStatus);
             _transport = null;
-            Log.Closed(_logger);
         }
     }
 }
