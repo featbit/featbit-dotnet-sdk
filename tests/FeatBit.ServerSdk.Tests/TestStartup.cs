@@ -68,6 +68,7 @@ public class TestStartup : StartupBase
 
         if (op == "close-unexpectedly")
         {
+            await Task.Delay(50);
             await webSocket.CloseOutputAsync(
                 WebSocketCloseStatus.EndpointUnavailable,
                 "server going down",
