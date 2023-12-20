@@ -8,7 +8,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="FeatBit.ServerSdk" Version="1.1.3"/>
+        <PackageReference Include="FeatBit.ServerSdk" Version="1.1.4"/>
         <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="6.0.0"/>
     </ItemGroup>
 
