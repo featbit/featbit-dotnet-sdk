@@ -37,7 +37,7 @@ namespace FeatBit.Sdk.Server.Events
             _httpClient = httpClient ?? NewHttpClient();
             AddDefaultHeaders(options);
 
-            _eventUri = new Uri(options.EventUri, EventPath);
+            _eventUri = new Uri(options.EventUri, $"{options.EventUri.LocalPath.TrimEnd('/')}{EventPath}");
             _maxAttempts = options.MaxSendEventAttempts;
             _retryInterval = options.SendEventRetryInterval;
 

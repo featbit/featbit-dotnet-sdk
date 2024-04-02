@@ -118,7 +118,7 @@ namespace FeatBit.Sdk.Server.Transport
             var token = ConnectionToken.New(options.EnvSecret);
             var webSocketUri = new UriBuilder(options.StreamingUri)
             {
-                Path = "streaming",
+                Path = $"{options.StreamingUri.LocalPath.TrimEnd('/')}/streaming",
                 Query = $"type=server&token={token}"
             }.Uri;
 
