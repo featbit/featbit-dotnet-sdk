@@ -16,8 +16,9 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
     internal sealed class WebSocketDataSynchronizer : IDataSynchronizer
     {
         private readonly StatusManager<DataSynchronizerStatus> _statusManager;
+        private readonly AtomicBoolean _initialized;
 
-        public bool Initialized { get; private set; }
+        public bool Initialized => _initialized.Value;
         public DataSynchronizerStatus Status => _statusManager.Status;
         public event Action<DataSynchronizerStatus> StatusChanged;
 
@@ -55,7 +56,7 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
             _webSocket.OnClosed += OnClosed;
 
             _initTcs = new TaskCompletionSource<bool>();
-            Initialized = false;
+            _initialized = new AtomicBoolean();
 
             _logger = options.LoggerFactory.CreateLogger<WebSocketDataSynchronizer>();
         }
@@ -183,18 +184,12 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
                         }
                     }
 
-                    if (!Initialized)
+                    if (_initialized.CompareAndSet(false, true))
                     {
-                        CompleteInitialize();
+                        _initTcs.TrySetResult(true);
                     }
                 }
             }
-        }
-
-        private void CompleteInitialize()
-        {
-            Initialized = true;
-            _initTcs.TrySetResult(true);
         }
 
         public async Task StopAsync()
