@@ -1,9 +1,11 @@
 using System;
 using System.Buffers;
+using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using FeatBit.Sdk.Server.Concurrent;
 using FeatBit.Sdk.Server.Options;
 using FeatBit.Sdk.Server.Store;
 using FeatBit.Sdk.Server.Transport;
@@ -13,7 +15,11 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
 {
     internal sealed class WebSocketDataSynchronizer : IDataSynchronizer
     {
+        private readonly StatusManager<DataSynchronizerStatus> _statusManager;
+
         public bool Initialized { get; private set; }
+        public DataSynchronizerStatus Status => _statusManager.Status;
+        public event Action<DataSynchronizerStatus> StatusChanged;
 
         private readonly IMemoryStore _store;
         private readonly FbOptions _options;
@@ -30,6 +36,10 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
             Func<FbOptions, FbWebSocket> fbWebSocketFactory = null)
         {
             _store = store;
+            _statusManager = new StatusManager<DataSynchronizerStatus>(
+                DataSynchronizerStatus.Starting,
+                OnStatusChanged
+            );
 
             // Shallow copy so we don't mutate the user-defined options object.
             var shallowCopiedOptions = options.ShallowCopy();
@@ -40,6 +50,9 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
 
             _webSocket.OnConnected += OnConnected;
             _webSocket.OnReceived += OnReceived;
+            _webSocket.OnReconnecting += OnReconnecting;
+            _webSocket.OnReconnected += OnReconnected;
+            _webSocket.OnClosed += OnClosed;
 
             _initTcs = new TaskCompletionSource<bool>();
             Initialized = false;
@@ -69,6 +82,7 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
             {
                 // do data-sync once the connection is established
                 await DoDataSyncAsync();
+                _statusManager.SetStatus(DataSynchronizerStatus.Stable);
             }
             catch (Exception ex)
             {
@@ -89,6 +103,26 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
 
             return Task.CompletedTask;
         }
+
+        private Task OnReconnecting(Exception ex)
+        {
+            _statusManager.SetStatus(DataSynchronizerStatus.Interrupted);
+            return Task.CompletedTask;
+        }
+
+        private Task OnReconnected()
+        {
+            _statusManager.SetStatus(DataSynchronizerStatus.Stable);
+            return Task.CompletedTask;
+        }
+
+        private Task OnClosed(Exception ex, WebSocketCloseStatus? closeStatus, string closeStatusDescription)
+        {
+            _statusManager.SetStatus(DataSynchronizerStatus.Stopped);
+            return Task.CompletedTask;
+        }
+
+        private void OnStatusChanged(DataSynchronizerStatus status) => StatusChanged?.Invoke(status);
 
         private async Task DoDataSyncAsync()
         {
@@ -167,6 +201,9 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
         {
             _webSocket.OnConnected -= OnConnected;
             _webSocket.OnReceived -= OnReceived;
+            _webSocket.OnReconnecting -= OnReconnecting;
+            _webSocket.OnReconnected -= OnReconnected;
+            _webSocket.OnClosed -= OnClosed;
 
             await _webSocket.CloseAsync();
         }
