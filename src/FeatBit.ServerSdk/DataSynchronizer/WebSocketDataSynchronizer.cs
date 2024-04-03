@@ -83,7 +83,6 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
             {
                 // do data-sync once the connection is established
                 await DoDataSyncAsync();
-                _statusManager.SetStatus(DataSynchronizerStatus.Stable);
             }
             catch (Exception ex)
             {
@@ -96,6 +95,7 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
             try
             {
                 HandleMessage(bytes);
+                _statusManager.SetStatus(DataSynchronizerStatus.Stable);
             }
             catch (Exception ex)
             {
@@ -194,13 +194,13 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
 
         public async Task StopAsync()
         {
+            await _webSocket.CloseAsync();
+
             _webSocket.OnConnected -= OnConnected;
             _webSocket.OnReceived -= OnReceived;
             _webSocket.OnReconnecting -= OnReconnecting;
             _webSocket.OnReconnected -= OnReconnected;
             _webSocket.OnClosed -= OnClosed;
-
-            await _webSocket.CloseAsync();
         }
     }
 }

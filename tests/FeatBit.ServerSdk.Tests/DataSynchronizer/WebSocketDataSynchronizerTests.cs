@@ -30,6 +30,7 @@ public class WebSocketDataSynchronizerTests
 
         Assert.True(store.Populated);
         Assert.True(synchronizer.Initialized);
+        Assert.True(synchronizer.Status == DataSynchronizerStatus.Stable);
 
         var flag = store.Get<FeatureFlag>("ff_returns-true");
         Assert.NotNull(flag);
@@ -55,6 +56,7 @@ public class WebSocketDataSynchronizerTests
         await startTask.WaitAsync(options.StartWaitTime);
 
         Assert.True(synchronizer.Initialized);
+        Assert.True(synchronizer.Status == DataSynchronizerStatus.Stable);
 
         var flag = store.Get<FeatureFlag>("ff_returns-true");
         Assert.NotNull(flag);
