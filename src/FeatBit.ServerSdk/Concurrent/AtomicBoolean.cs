@@ -10,7 +10,7 @@ namespace FeatBit.Sdk.Server.Concurrent
     /// without any explicit locking. .NET's strong memory on write guarantees might already enforce
     /// this ordering, but the addition of the MemoryBarrier guarantees it.
     /// </summary>
-    public class AtomicBoolean
+    public sealed class AtomicBoolean
     {
         private const int FalseValue = 0;
         private const int TrueValue = 1;
