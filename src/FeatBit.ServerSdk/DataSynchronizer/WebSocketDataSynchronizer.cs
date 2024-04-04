@@ -105,7 +105,7 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
 
         private Task OnReconnecting(Exception ex)
         {
-            _statusManager.SetStatus(DataSynchronizerStatus.Interrupted);
+            _statusManager.CompareAndSet(DataSynchronizerStatus.Stable, DataSynchronizerStatus.Interrupted);
             return Task.CompletedTask;
         }
 

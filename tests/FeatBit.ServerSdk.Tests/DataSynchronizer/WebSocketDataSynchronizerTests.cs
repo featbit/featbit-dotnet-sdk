@@ -1,6 +1,7 @@
 using FeatBit.Sdk.Server.Model;
 using FeatBit.Sdk.Server.Options;
 using FeatBit.Sdk.Server.Store;
+using Xunit.Abstractions;
 
 namespace FeatBit.Sdk.Server.DataSynchronizer;
 
@@ -24,13 +25,14 @@ public class WebSocketDataSynchronizerTests
 
         var store = new DefaultMemoryStore();
         var synchronizer = new WebSocketDataSynchronizer(options, store, op => _app.CreateFbWebSocket(op));
+        Assert.Equal(DataSynchronizerStatus.Starting, synchronizer.Status);
 
         var startTask = synchronizer.StartAsync();
         await startTask.WaitAsync(options.StartWaitTime);
 
         Assert.True(store.Populated);
         Assert.True(synchronizer.Initialized);
-        Assert.True(synchronizer.Status == DataSynchronizerStatus.Stable);
+        Assert.Equal(DataSynchronizerStatus.Stable, synchronizer.Status);
 
         var flag = store.Get<FeatureFlag>("ff_returns-true");
         Assert.NotNull(flag);
@@ -51,14 +53,38 @@ public class WebSocketDataSynchronizerTests
         store.Populate(new[] { hello });
 
         var synchronizer = new WebSocketDataSynchronizer(options, store, op => _app.CreateFbWebSocket(op));
+        Assert.Equal(DataSynchronizerStatus.Starting, synchronizer.Status);
 
         var startTask = synchronizer.StartAsync();
         await startTask.WaitAsync(options.StartWaitTime);
 
         Assert.True(synchronizer.Initialized);
-        Assert.True(synchronizer.Status == DataSynchronizerStatus.Stable);
+        Assert.Equal(DataSynchronizerStatus.Stable, synchronizer.Status);
 
         var flag = store.Get<FeatureFlag>("ff_returns-true");
         Assert.NotNull(flag);
+    }
+
+    [Fact]
+    public async Task ServerRejectConnection()
+    {
+        var options = new FbOptionsBuilder().Build();
+        var store = new DefaultMemoryStore();
+
+        var synchronizer =
+            new WebSocketDataSynchronizer(options, store, _ => _app.CreateFbWebSocket("close-with-4003"));
+        Assert.Equal(DataSynchronizerStatus.Starting, synchronizer.Status);
+
+        _ = synchronizer.StartAsync();
+
+        var tcs = new TaskCompletionSource();
+        var onStatusChangedTask = tcs.Task;
+        synchronizer.StatusChanged += _ =>
+        {
+            Assert.False(synchronizer.Initialized);
+            Assert.Equal(DataSynchronizerStatus.Stopped, synchronizer.Status);
+            tcs.SetResult();
+        };
+        await onStatusChangedTask.WaitAsync(TimeSpan.FromSeconds(1));
     }
 }

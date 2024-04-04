@@ -38,4 +38,16 @@ public class StatusManagerTests
 
         Assert.Equal(changed, eventTriggered);
     }
+
+    [Theory]
+    [InlineData(TestStatus.A, TestStatus.B, true)]
+    [InlineData(TestStatus.B, TestStatus.A, false)]
+    public void CompareAndSetStatus(TestStatus expected, TestStatus newStatus, bool setSuccess)
+    {
+        var statusManager = new StatusManager<TestStatus>(TestStatus.A);
+        var compareAndSetSuccess = statusManager.CompareAndSet(expected, newStatus);
+
+        Assert.Equal(setSuccess, compareAndSetSuccess);
+        Assert.Equal(newStatus, statusManager.Status);
+    }
 }

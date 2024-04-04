@@ -26,6 +26,20 @@ public sealed class StatusManager<TStatus> where TStatus : Enum
         }
     }
 
+    public bool CompareAndSet(TStatus expected, TStatus newStatus)
+    {
+        lock (_statusLock)
+        {
+            if (!EqualityComparer<TStatus>.Default.Equals(_status, expected))
+            {
+                return false;
+            }
+
+            SetStatus(newStatus);
+            return true;
+        }
+    }
+
     public void SetStatus(TStatus newStatus)
     {
         lock (_statusLock)
