@@ -77,10 +77,10 @@ namespace FeatBit.Sdk.Server
         /// </para>
         /// <list type="number">
         /// <item><description> It has successfully connected to FeatBit and received feature flag data. In this
-        /// case, <see cref="Initialized"/> will be true. </description></item>
+        /// case, <see cref="Initialized"/> will be true and the <see cref="Status"/> will be <see cref="FbClientStatus.Ready"/>. </description></item>
         /// <item><description> It has not succeeded in connecting within the <see cref="FbOptionsBuilder.StartWaitTime(TimeSpan)"/>
         /// timeout (the default for this is 3 seconds). This could happen due to a network problem or a
-        /// temporary service outage. In this case, <see cref="Initialized"/> will be false, 
+        /// temporary service outage. In this case, <see cref="Initialized"/> will be false, and the <see cref="Status"/> will be <see cref="FbClientStatus.NotReady"/>,
         /// indicating that the SDK will still continue trying to connect in the background. </description></item>
         /// <item><description> It has encountered an unrecoverable error: for instance, FeatBit has rejected the
         /// sdk secret. Since an invalid key will not become valid, the SDK will not retry in this case.
