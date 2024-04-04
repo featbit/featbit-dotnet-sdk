@@ -52,7 +52,6 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
             _webSocket.OnConnected += OnConnected;
             _webSocket.OnReceived += OnReceived;
             _webSocket.OnReconnecting += OnReconnecting;
-            _webSocket.OnReconnected += OnReconnected;
             _webSocket.OnClosed += OnClosed;
 
             _initTcs = new TaskCompletionSource<bool>();
@@ -108,12 +107,6 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
         private Task OnReconnecting(Exception ex)
         {
             _statusManager.SetStatus(DataSynchronizerStatus.Interrupted);
-            return Task.CompletedTask;
-        }
-
-        private Task OnReconnected()
-        {
-            _statusManager.SetStatus(DataSynchronizerStatus.Stable);
             return Task.CompletedTask;
         }
 
@@ -199,7 +192,6 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
             _webSocket.OnConnected -= OnConnected;
             _webSocket.OnReceived -= OnReceived;
             _webSocket.OnReconnecting -= OnReconnecting;
-            _webSocket.OnReconnected -= OnReconnected;
             _webSocket.OnClosed -= OnClosed;
         }
     }
