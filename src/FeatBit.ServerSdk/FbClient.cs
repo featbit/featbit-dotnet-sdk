@@ -126,7 +126,6 @@ namespace FeatBit.Sdk.Server
                 _dataSynchronizer = new WebSocketDataSynchronizer(options, _store);
                 _eventProcessor = new DefaultEventProcessor(options);
             }
-
             _dataSynchronizer.StatusChanged += OnDataSynchronizerStatusChanged;
 
             _logger = options.LoggerFactory.CreateLogger<FbClient>();
@@ -145,6 +144,7 @@ namespace FeatBit.Sdk.Server
             _options = options;
             _store = store;
             _dataSynchronizer = synchronizer;
+            _dataSynchronizer.StatusChanged += OnDataSynchronizerStatusChanged;
             _evaluator = new Evaluator(_store);
             _eventProcessor = eventProcessor;
             _logger = options.LoggerFactory.CreateLogger<FbClient>();
@@ -186,7 +186,7 @@ namespace FeatBit.Sdk.Server
             {
                 // we do not want to throw exceptions from the FbClient constructor, so we'll just swallow this.
                 _logger.LogError(ex, "An exception occurred during FbClient initialization.");
-                _statusManager.SetStatus(FbClientStatus.Fatal);
+                _statusManager.SetStatus(FbClientStatus.Closed);
             }
         }
 
@@ -263,9 +263,8 @@ namespace FeatBit.Sdk.Server
         {
             _logger.LogInformation("Closing FbClient...");
             await _dataSynchronizer.StopAsync();
-            _eventProcessor.FlushAndClose(_options.FlushTimeout);
-            _statusManager.SetStatus(FbClientStatus.NotReady);
             _dataSynchronizer.StatusChanged -= OnDataSynchronizerStatusChanged;
+            _eventProcessor.FlushAndClose(_options.FlushTimeout);
             _logger.LogInformation("FbClient successfully closed.");
         }
 
@@ -316,7 +315,7 @@ namespace FeatBit.Sdk.Server
                     _statusManager.SetStatus(FbClientStatus.Stale);
                     break;
                 case DataSynchronizerStatus.Stopped:
-                    _statusManager.SetStatus(FbClientStatus.Fatal);
+                    _statusManager.SetStatus(FbClientStatus.Closed);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(status), status, "Unknown state");

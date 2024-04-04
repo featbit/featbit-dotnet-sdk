@@ -194,12 +194,14 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
 
         public async Task StopAsync()
         {
-            await _webSocket.CloseAsync();
-
             _webSocket.OnConnected -= OnConnected;
             _webSocket.OnReceived -= OnReceived;
             _webSocket.OnReconnecting -= OnReconnecting;
             _webSocket.OnClosed -= OnClosed;
+
+            await _webSocket.CloseAsync();
+
+            _statusManager.SetStatus(DataSynchronizerStatus.Stopped);
         }
     }
 }

@@ -18,7 +18,7 @@ public enum FbClientStatus
     Stale,
 
     /// <summary>
-    /// FbClient has entered an irrecoverable error state.
+    /// FbClient has entered an irrecoverable error state or has been explicitly shut down.
     /// </summary>
-    Fatal
+    Closed
 }
