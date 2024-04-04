@@ -1,9 +1,11 @@
 using System;
 using System.Buffers;
+using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using FeatBit.Sdk.Server.Concurrent;
 using FeatBit.Sdk.Server.Options;
 using FeatBit.Sdk.Server.Store;
 using FeatBit.Sdk.Server.Transport;
@@ -13,7 +15,12 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
 {
     internal sealed class WebSocketDataSynchronizer : IDataSynchronizer
     {
-        public bool Initialized { get; private set; }
+        private readonly StatusManager<DataSynchronizerStatus> _statusManager;
+        private readonly AtomicBoolean _initialized;
+
+        public bool Initialized => _initialized.Value;
+        public DataSynchronizerStatus Status => _statusManager.Status;
+        public event Action<DataSynchronizerStatus> StatusChanged;
 
         private readonly IMemoryStore _store;
         private readonly FbOptions _options;
@@ -30,6 +37,10 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
             Func<FbOptions, FbWebSocket> fbWebSocketFactory = null)
         {
             _store = store;
+            _statusManager = new StatusManager<DataSynchronizerStatus>(
+                DataSynchronizerStatus.Starting,
+                OnStatusChanged
+            );
 
             // Shallow copy so we don't mutate the user-defined options object.
             var shallowCopiedOptions = options.ShallowCopy();
@@ -40,9 +51,11 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
 
             _webSocket.OnConnected += OnConnected;
             _webSocket.OnReceived += OnReceived;
+            _webSocket.OnReconnecting += OnReconnecting;
+            _webSocket.OnClosed += OnClosed;
 
             _initTcs = new TaskCompletionSource<bool>();
-            Initialized = false;
+            _initialized = new AtomicBoolean();
 
             _logger = options.LoggerFactory.CreateLogger<WebSocketDataSynchronizer>();
         }
@@ -90,6 +103,20 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
             return Task.CompletedTask;
         }
 
+        private Task OnReconnecting(Exception ex)
+        {
+            _statusManager.CompareAndSet(DataSynchronizerStatus.Stable, DataSynchronizerStatus.Interrupted);
+            return Task.CompletedTask;
+        }
+
+        private Task OnClosed(Exception ex, WebSocketCloseStatus? closeStatus, string closeStatusDescription)
+        {
+            _statusManager.SetStatus(DataSynchronizerStatus.Stopped);
+            return Task.CompletedTask;
+        }
+
+        private void OnStatusChanged(DataSynchronizerStatus status) => StatusChanged?.Invoke(status);
+
         private async Task DoDataSyncAsync()
         {
             byte[] request;
@@ -132,43 +159,49 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
                 // handle 'data-sync' message
                 if (messageType == "data-sync")
                 {
-                    var dataSet = DataSet.FromJsonElement(root.GetProperty("data"));
-                    _logger.LogDebug("Received {Type} data-sync message", dataSet.EventType);
-                    var objects = dataSet.GetStorableObjects();
-                    // populate data store
-                    if (dataSet.EventType == DataSet.Full)
-                    {
-                        _store.Populate(objects);
-                    }
-                    // upsert objects
-                    else if (dataSet.EventType == DataSet.Patch)
-                    {
-                        foreach (var storableObject in objects)
-                        {
-                            _store.Upsert(storableObject);
-                        }
-                    }
-
-                    if (!Initialized)
-                    {
-                        CompleteInitialize();
-                    }
+                    HandleDataSyncMessage(root);
                 }
             }
-        }
 
-        private void CompleteInitialize()
-        {
-            Initialized = true;
-            _initTcs.TrySetResult(true);
+            return;
+
+            void HandleDataSyncMessage(JsonElement root)
+            {
+                var dataSet = DataSet.FromJsonElement(root.GetProperty("data"));
+                _logger.LogDebug("Received {Type} data-sync message", dataSet.EventType);
+                var objects = dataSet.GetStorableObjects();
+                // populate data store
+                if (dataSet.EventType == DataSet.Full)
+                {
+                    _store.Populate(objects);
+                }
+                // upsert objects
+                else if (dataSet.EventType == DataSet.Patch)
+                {
+                    foreach (var storableObject in objects)
+                    {
+                        _store.Upsert(storableObject);
+                    }
+                }
+
+                _statusManager.SetStatus(DataSynchronizerStatus.Stable);
+                if (_initialized.CompareAndSet(false, true))
+                {
+                    _initTcs.TrySetResult(true);
+                }
+            }
         }
 
         public async Task StopAsync()
         {
             _webSocket.OnConnected -= OnConnected;
             _webSocket.OnReceived -= OnReceived;
+            _webSocket.OnReconnecting -= OnReconnecting;
+            _webSocket.OnClosed -= OnClosed;
 
             await _webSocket.CloseAsync();
+
+            _statusManager.SetStatus(DataSynchronizerStatus.Stopped);
         }
     }
 }

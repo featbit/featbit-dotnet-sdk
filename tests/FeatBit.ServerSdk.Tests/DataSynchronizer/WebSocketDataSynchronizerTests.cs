@@ -24,12 +24,14 @@ public class WebSocketDataSynchronizerTests
 
         var store = new DefaultMemoryStore();
         var synchronizer = new WebSocketDataSynchronizer(options, store, op => _app.CreateFbWebSocket(op));
+        Assert.Equal(DataSynchronizerStatus.Starting, synchronizer.Status);
 
         var startTask = synchronizer.StartAsync();
         await startTask.WaitAsync(options.StartWaitTime);
 
         Assert.True(store.Populated);
         Assert.True(synchronizer.Initialized);
+        Assert.Equal(DataSynchronizerStatus.Stable, synchronizer.Status);
 
         var flag = store.Get<FeatureFlag>("ff_returns-true");
         Assert.NotNull(flag);
@@ -50,13 +52,67 @@ public class WebSocketDataSynchronizerTests
         store.Populate(new[] { hello });
 
         var synchronizer = new WebSocketDataSynchronizer(options, store, op => _app.CreateFbWebSocket(op));
+        Assert.Equal(DataSynchronizerStatus.Starting, synchronizer.Status);
 
         var startTask = synchronizer.StartAsync();
         await startTask.WaitAsync(options.StartWaitTime);
 
         Assert.True(synchronizer.Initialized);
+        Assert.Equal(DataSynchronizerStatus.Stable, synchronizer.Status);
 
         var flag = store.Get<FeatureFlag>("ff_returns-true");
         Assert.NotNull(flag);
+    }
+
+    [Fact]
+    public async Task ServerRejectConnection()
+    {
+        var options = new FbOptionsBuilder().Build();
+        var store = new DefaultMemoryStore();
+
+        var synchronizer =
+            new WebSocketDataSynchronizer(options, store, _ => _app.CreateFbWebSocket("close-with-4003"));
+        Assert.Equal(DataSynchronizerStatus.Starting, synchronizer.Status);
+
+        _ = synchronizer.StartAsync();
+
+        var tcs = new TaskCompletionSource();
+        var onStatusChangedTask = tcs.Task;
+        synchronizer.StatusChanged += _ =>
+        {
+            Assert.False(synchronizer.Initialized);
+            Assert.Equal(DataSynchronizerStatus.Stopped, synchronizer.Status);
+            tcs.SetResult();
+        };
+        await onStatusChangedTask.WaitAsync(TimeSpan.FromSeconds(1));
+    }
+
+    [Fact]
+    public async Task ServerDisconnectedAfterStable()
+    {
+        var options = new FbOptionsBuilder()
+            .ReconnectRetryDelays(new[] { TimeSpan.FromMilliseconds(200) })
+            .Build();
+        var store = new DefaultMemoryStore();
+
+        var webSocketUri = new Uri("ws://localhost/streaming?type=server&token=close-after-first-datasync");
+        var synchronizer =
+            new WebSocketDataSynchronizer(options, store, op => _app.CreateFbWebSocket(op, webSocketUri));
+        Assert.Equal(DataSynchronizerStatus.Starting, synchronizer.Status);
+
+        var startTask = synchronizer.StartAsync();
+        await startTask.WaitAsync(options.StartWaitTime);
+
+        Assert.True(synchronizer.Initialized);
+        Assert.Equal(DataSynchronizerStatus.Stable, synchronizer.Status);
+
+        var tcs = new TaskCompletionSource();
+        var onStatusChangedTask = tcs.Task;
+        synchronizer.StatusChanged += _ =>
+        {
+            Assert.Equal(DataSynchronizerStatus.Interrupted, synchronizer.Status);
+            tcs.SetResult();
+        };
+        await onStatusChangedTask.WaitAsync(TimeSpan.FromSeconds(1));
     }
 }

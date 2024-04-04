@@ -7,13 +7,12 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="FeatBit.ServerSdk" Version="1.1.4"/>
+        <!--        <PackageReference Include="FeatBit.ServerSdk" Version="1.1.4"/>-->
+        <PackageReference Include="AspNetCore.HealthChecks.UI.Client" Version="6.0.5"/>
     </ItemGroup>
 
-    <!--
-        <ItemGroup>
-            <ProjectReference Include="..\..\src\FeatBit.ServerSdk\FeatBit.ServerSdk.csproj"/>
-        </ItemGroup>
-    -->
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\FeatBit.ServerSdk\FeatBit.ServerSdk.csproj"/>
+    </ItemGroup>
 
 </Project>

@@ -30,6 +30,22 @@ namespace FeatBit.Sdk.Server
         /// <inheritdoc/>
         public bool Initialized => _dataSynchronizer.Initialized;
 
+        /// <inheritdoc/>
+        public FbClientStatus Status
+        {
+            get
+            {
+                return _dataSynchronizer.Status switch
+                {
+                    DataSynchronizerStatus.Starting => FbClientStatus.NotReady,
+                    DataSynchronizerStatus.Stable => FbClientStatus.Ready,
+                    DataSynchronizerStatus.Interrupted => FbClientStatus.Stale,
+                    DataSynchronizerStatus.Stopped => FbClientStatus.Closed,
+                    _ => FbClientStatus.NotReady
+                };
+            }
+        }
+
         /// <summary>
         /// Creates a new client instance that connects to FeatBit with the default option.
         /// </summary>
@@ -72,10 +88,10 @@ namespace FeatBit.Sdk.Server
         /// </para>
         /// <list type="number">
         /// <item><description> It has successfully connected to FeatBit and received feature flag data. In this
-        /// case, <see cref="Initialized"/> will be true. </description></item>
+        /// case, <see cref="Initialized"/> will be true and the <see cref="Status"/> will be <see cref="FbClientStatus.Ready"/>. </description></item>
         /// <item><description> It has not succeeded in connecting within the <see cref="FbOptionsBuilder.StartWaitTime(TimeSpan)"/>
         /// timeout (the default for this is 3 seconds). This could happen due to a network problem or a
-        /// temporary service outage. In this case, <see cref="Initialized"/> will be false, 
+        /// temporary service outage. In this case, <see cref="Initialized"/> will be false, and the <see cref="Status"/> will be <see cref="FbClientStatus.NotReady"/>,
         /// indicating that the SDK will still continue trying to connect in the background. </description></item>
         /// <item><description> It has encountered an unrecoverable error: for instance, FeatBit has rejected the
         /// sdk secret. Since an invalid key will not become valid, the SDK will not retry in this case.
@@ -103,6 +119,7 @@ namespace FeatBit.Sdk.Server
         public FbClient(FbOptions options)
         {
             _options = options;
+
             _store = new DefaultMemoryStore();
             _evaluator = new Evaluator(_store);
 
@@ -134,10 +151,13 @@ namespace FeatBit.Sdk.Server
             IEventProcessor eventProcessor)
         {
             _options = options;
+
             _store = store;
-            _dataSynchronizer = synchronizer;
             _evaluator = new Evaluator(_store);
+
+            _dataSynchronizer = synchronizer;
             _eventProcessor = eventProcessor;
+
             _logger = options.LoggerFactory.CreateLogger<FbClient>();
 
             // starts client

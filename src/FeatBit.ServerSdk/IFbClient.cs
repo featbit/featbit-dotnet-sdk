@@ -15,6 +15,11 @@ public interface IFbClient
     bool Initialized { get; }
 
     /// <summary>
+    /// Indicates the current status of the client.
+    /// </summary>
+    FbClientStatus Status { get; }
+
+    /// <summary>
     /// Calculates the boolean value of a feature flag for a given user.
     /// </summary>
     /// <remarks>
