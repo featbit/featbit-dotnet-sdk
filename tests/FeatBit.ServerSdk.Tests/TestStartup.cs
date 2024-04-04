@@ -105,6 +105,15 @@ public class TestStartup : StartupBase
                     var response = timestamp == 0 ? TestData.FullDataSet : TestData.PatchDataSet;
 
                     await webSocket.SendAsync(response, WebSocketMessageType.Text, true, CancellationToken.None);
+
+                    if (token == "close-after-first-datasync")
+                    {
+                        await webSocket.CloseOutputAsync(
+                            WebSocketCloseStatus.EndpointUnavailable,
+                            "server goes down",
+                            CancellationToken.None
+                        );
+                    }
                 }
             }
             catch
