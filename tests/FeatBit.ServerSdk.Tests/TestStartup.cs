@@ -108,6 +108,7 @@ public class TestStartup : StartupBase
 
                     if (token == "close-after-first-datasync")
                     {
+                        await Task.Delay(100);
                         await webSocket.CloseOutputAsync(
                             WebSocketCloseStatus.EndpointUnavailable,
                             "server goes down",

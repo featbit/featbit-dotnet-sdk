@@ -91,6 +91,7 @@ public class WebSocketDataSynchronizerTests
     public async Task ServerDisconnectedAfterStable()
     {
         var options = new FbOptionsBuilder()
+            .ReconnectRetryDelays(new[] { TimeSpan.FromMilliseconds(200) })
             .Build();
         var store = new DefaultMemoryStore();
 
