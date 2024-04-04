@@ -126,6 +126,7 @@ namespace FeatBit.Sdk.Server
                 _dataSynchronizer = new WebSocketDataSynchronizer(options, _store);
                 _eventProcessor = new DefaultEventProcessor(options);
             }
+
             _dataSynchronizer.StatusChanged += OnDataSynchronizerStatusChanged;
 
             _logger = options.LoggerFactory.CreateLogger<FbClient>();
@@ -142,13 +143,16 @@ namespace FeatBit.Sdk.Server
             IEventProcessor eventProcessor)
         {
             _options = options;
+            _statusManager = new StatusManager<FbClientStatus>(FbClientStatus.NotReady);
+
             _store = store;
+            _evaluator = new Evaluator(_store);
+
             _dataSynchronizer = synchronizer;
             _dataSynchronizer.StatusChanged += OnDataSynchronizerStatusChanged;
-            _evaluator = new Evaluator(_store);
             _eventProcessor = eventProcessor;
+
             _logger = options.LoggerFactory.CreateLogger<FbClient>();
-            _statusManager = new StatusManager<FbClientStatus>(FbClientStatus.NotReady);
 
             // starts client
             Start();
