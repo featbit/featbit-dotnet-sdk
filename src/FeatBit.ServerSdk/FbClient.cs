@@ -1,7 +1,6 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
-using FeatBit.Sdk.Server.Concurrent;
 using FeatBit.Sdk.Server.DataSynchronizer;
 using FeatBit.Sdk.Server.Evaluation;
 using FeatBit.Sdk.Server.Events;
@@ -19,7 +18,6 @@ namespace FeatBit.Sdk.Server
         private readonly FbOptions _options;
         private readonly IMemoryStore _store;
         private readonly IEvaluator _evaluator;
-        private readonly StatusManager<FbClientStatus> _statusManager;
 
         // internal for testing
         internal readonly IDataSynchronizer _dataSynchronizer;
@@ -33,7 +31,20 @@ namespace FeatBit.Sdk.Server
         public bool Initialized => _dataSynchronizer.Initialized;
 
         /// <inheritdoc/>
-        public FbClientStatus Status => _statusManager.Status;
+        public FbClientStatus Status
+        {
+            get
+            {
+                return _dataSynchronizer.Status switch
+                {
+                    DataSynchronizerStatus.Starting => FbClientStatus.NotReady,
+                    DataSynchronizerStatus.Stable => FbClientStatus.Ready,
+                    DataSynchronizerStatus.Interrupted => FbClientStatus.Stale,
+                    DataSynchronizerStatus.Stopped => FbClientStatus.Closed,
+                    _ => FbClientStatus.NotReady
+                };
+            }
+        }
 
         /// <summary>
         /// Creates a new client instance that connects to FeatBit with the default option.
@@ -108,7 +119,6 @@ namespace FeatBit.Sdk.Server
         public FbClient(FbOptions options)
         {
             _options = options;
-            _statusManager = new StatusManager<FbClientStatus>(FbClientStatus.NotReady);
 
             _store = new DefaultMemoryStore();
             _evaluator = new Evaluator(_store);
@@ -127,8 +137,6 @@ namespace FeatBit.Sdk.Server
                 _eventProcessor = new DefaultEventProcessor(options);
             }
 
-            _dataSynchronizer.StatusChanged += OnDataSynchronizerStatusChanged;
-
             _logger = options.LoggerFactory.CreateLogger<FbClient>();
 
             // starts client
@@ -143,13 +151,11 @@ namespace FeatBit.Sdk.Server
             IEventProcessor eventProcessor)
         {
             _options = options;
-            _statusManager = new StatusManager<FbClientStatus>(FbClientStatus.NotReady);
 
             _store = store;
             _evaluator = new Evaluator(_store);
 
             _dataSynchronizer = synchronizer;
-            _dataSynchronizer.StatusChanged += OnDataSynchronizerStatusChanged;
             _eventProcessor = eventProcessor;
 
             _logger = options.LoggerFactory.CreateLogger<FbClient>();
@@ -190,7 +196,6 @@ namespace FeatBit.Sdk.Server
             {
                 // we do not want to throw exceptions from the FbClient constructor, so we'll just swallow this.
                 _logger.LogError(ex, "An exception occurred during FbClient initialization.");
-                _statusManager.SetStatus(FbClientStatus.Closed);
             }
         }
 
@@ -267,7 +272,6 @@ namespace FeatBit.Sdk.Server
         {
             _logger.LogInformation("Closing FbClient...");
             await _dataSynchronizer.StopAsync();
-            _dataSynchronizer.StatusChanged -= OnDataSynchronizerStatusChanged;
             _eventProcessor.FlushAndClose(_options.FlushTimeout);
             _logger.LogInformation("FbClient successfully closed.");
         }
@@ -304,26 +308,6 @@ namespace FeatBit.Sdk.Server
                 ? new EvalDetail<TValue>(evalResult.Kind, evalResult.Reason, typedValue)
                 // type mismatch, return default value
                 : new EvalDetail<TValue>(ReasonKind.WrongType, "type mismatch", defaultValue);
-        }
-
-        private void OnDataSynchronizerStatusChanged(DataSynchronizerStatus status)
-        {
-            switch (status)
-            {
-                case DataSynchronizerStatus.Starting:
-                    break;
-                case DataSynchronizerStatus.Stable:
-                    _statusManager.SetStatus(FbClientStatus.Ready);
-                    break;
-                case DataSynchronizerStatus.Interrupted:
-                    _statusManager.SetStatus(FbClientStatus.Stale);
-                    break;
-                case DataSynchronizerStatus.Stopped:
-                    _statusManager.SetStatus(FbClientStatus.Closed);
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(status), status, "Unknown state");
-            }
         }
     }
 }
