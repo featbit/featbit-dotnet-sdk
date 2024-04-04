@@ -94,7 +94,6 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
             try
             {
                 HandleMessage(bytes);
-                _statusManager.SetStatus(DataSynchronizerStatus.Stable);
             }
             catch (Exception ex)
             {
@@ -160,27 +159,35 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
                 // handle 'data-sync' message
                 if (messageType == "data-sync")
                 {
-                    var dataSet = DataSet.FromJsonElement(root.GetProperty("data"));
-                    _logger.LogDebug("Received {Type} data-sync message", dataSet.EventType);
-                    var objects = dataSet.GetStorableObjects();
-                    // populate data store
-                    if (dataSet.EventType == DataSet.Full)
-                    {
-                        _store.Populate(objects);
-                    }
-                    // upsert objects
-                    else if (dataSet.EventType == DataSet.Patch)
-                    {
-                        foreach (var storableObject in objects)
-                        {
-                            _store.Upsert(storableObject);
-                        }
-                    }
+                    HandleDataSyncMessage(root);
+                }
+            }
 
-                    if (_initialized.CompareAndSet(false, true))
+            return;
+
+            void HandleDataSyncMessage(JsonElement root)
+            {
+                var dataSet = DataSet.FromJsonElement(root.GetProperty("data"));
+                _logger.LogDebug("Received {Type} data-sync message", dataSet.EventType);
+                var objects = dataSet.GetStorableObjects();
+                // populate data store
+                if (dataSet.EventType == DataSet.Full)
+                {
+                    _store.Populate(objects);
+                }
+                // upsert objects
+                else if (dataSet.EventType == DataSet.Patch)
+                {
+                    foreach (var storableObject in objects)
                     {
-                        _initTcs.TrySetResult(true);
+                        _store.Upsert(storableObject);
                     }
+                }
+
+                _statusManager.SetStatus(DataSynchronizerStatus.Stable);
+                if (_initialized.CompareAndSet(false, true))
+                {
+                    _initTcs.TrySetResult(true);
                 }
             }
         }
