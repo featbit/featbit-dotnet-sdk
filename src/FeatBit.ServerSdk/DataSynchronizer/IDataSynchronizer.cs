@@ -23,8 +23,7 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
         /// to change.
         /// </para>
         /// <para>
-        /// Notifications will be dispatched on a background task. It is the listener's responsibility to return
-        /// as soon as possible so as not to block subsequent notifications.
+        /// The listener should return as soon as possible so as not to block subsequent notifications.
         /// </para>
         /// </remarks>
         event Action<DataSynchronizerStatus> StatusChanged;
