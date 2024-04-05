@@ -18,7 +18,7 @@ namespace FeatBit.Sdk.Server.Events
         private static readonly TimeSpan DefaultTimeout = DefaultConnectTimeout + DefaultReadTimeout;
 
         private readonly Uri _eventUri;
-        private const string EventPath = "/api/public/insight/track";
+        private const string EventPath = "api/public/insight/track";
         private readonly int _maxAttempts;
         private readonly TimeSpan _retryInterval;
 

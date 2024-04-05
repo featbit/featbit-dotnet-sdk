@@ -116,13 +116,8 @@ namespace FeatBit.Sdk.Server.Transport
         private static Uri DefaultWebSocketUriResolver(FbOptions options)
         {
             var token = ConnectionToken.New(options.EnvSecret);
-            var webSocketUri = new UriBuilder(options.StreamingUri)
-            {
-                Path = "streaming",
-                Query = $"type=server&token={token}"
-            }.Uri;
-
-            return webSocketUri;
+            var websocketUri = new Uri(options.StreamingUri, $"streaming?type=server&token={token}");
+            return websocketUri;
         }
 
         private async Task ReceiveLoop()
