@@ -7,6 +7,7 @@ public class UriTests
     // the baseUri has relative parts (like /api), then the relative part must be terminated with a slash, (like /api/) 
     [Theory]
     [InlineData("https://contoso.com/featbit/", "relative", "https://contoso.com/featbit/relative")]
+    [InlineData("https://contoso.com/featbit/", "/relative", "https://contoso.com/relative")]
     [InlineData("https://contoso.com/featbit/", "relative?type=server", "https://contoso.com/featbit/relative?type=server")]
     [InlineData("https://contoso.com", "relative", "https://contoso.com/relative")]
     [InlineData("https://contoso.com", "/relative", "https://contoso.com/relative")]
