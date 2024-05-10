@@ -8,6 +8,9 @@ platform [FeatBit](https://github.com/featbit/featbit).
 The FeatBit Server-Side SDK for .NET is designed primarily for use in multi-user systems such as web servers and
 applications. It is not intended for use in desktop and embedded systems applications.
 
+For using FeatBit in *client-side* .NET applications, refer to
+our [Client-Side .NET SDK](https://github.com/featbit/featbit-dotnet-client-sdk).
+
 ## Data Synchronization
 
 We use websocket to make the local data synchronized with the FeatBit server, and then store them in memory by
