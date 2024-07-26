@@ -60,6 +60,7 @@ public class FbClientTests
 
         var user = FbUser.Builder("u1").Build();
         var variationDetail = client.BoolVariationDetail("returns-true", user);
+        Assert.Equal("returns-true", variationDetail.Key);
         Assert.True(variationDetail.Value);
         Assert.Equal(ReasonKind.Fallthrough, variationDetail.Kind);
         Assert.Equal("fall through targets and rules", variationDetail.Reason);
@@ -77,6 +78,7 @@ public class FbClientTests
         Assert.Single(results);
 
         var result0 = results[0];
+        Assert.Equal("returns-true", result0.Key);
         Assert.Equal("true", result0.Value);
         Assert.Equal(ReasonKind.Fallthrough, result0.Kind);
         Assert.Equal("fall through targets and rules", result0.Reason);

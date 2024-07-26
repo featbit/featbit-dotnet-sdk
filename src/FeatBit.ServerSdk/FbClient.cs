@@ -244,8 +244,11 @@ namespace FeatBit.Sdk.Server
         {
             var results = _store
                 .Find<FeatureFlag>(x => x.StoreKey.StartsWith(StoreKeys.FlagPrefix))
-                .Select(flag => _evaluator.Evaluate(flag, user).evalResult)
-                .Select(x => new EvalDetail<string>(x.Kind, x.Reason, x.Value))
+                .Select(flag =>
+                {
+                    var evalResult = _evaluator.Evaluate(flag, user).evalResult;
+                    return new EvalDetail<string>(flag.Key, evalResult.Kind, evalResult.Reason, evalResult.Value);
+                })
                 .ToArray();
 
             return results;
@@ -285,7 +288,7 @@ namespace FeatBit.Sdk.Server
             if (!Initialized)
             {
                 // Flag evaluation before client initialized; always returning default value
-                return new EvalDetail<TValue>(ReasonKind.ClientNotReady, "client not ready", defaultValue);
+                return new EvalDetail<TValue>(key, ReasonKind.ClientNotReady, "client not ready", defaultValue);
             }
 
             var ctx = new EvaluationContext
@@ -298,16 +301,16 @@ namespace FeatBit.Sdk.Server
             if (evalResult.Kind == ReasonKind.Error)
             {
                 // error happened when evaluate flag, return default value 
-                return new EvalDetail<TValue>(evalResult.Kind, evalResult.Reason, defaultValue);
+                return new EvalDetail<TValue>(key, evalResult.Kind, evalResult.Reason, defaultValue);
             }
 
             // record evaluation event
             _eventProcessor.Record(evalEvent);
 
             return converter(evalResult.Value, out var typedValue)
-                ? new EvalDetail<TValue>(evalResult.Kind, evalResult.Reason, typedValue)
+                ? new EvalDetail<TValue>(key, evalResult.Kind, evalResult.Reason, typedValue)
                 // type mismatch, return default value
-                : new EvalDetail<TValue>(ReasonKind.WrongType, "type mismatch", defaultValue);
+                : new EvalDetail<TValue>(key, ReasonKind.WrongType, "type mismatch", defaultValue);
         }
     }
 }
