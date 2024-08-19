@@ -29,6 +29,11 @@ namespace FeatBit.Sdk.Server.Options
         internal IBootstrapProvider BootstrapProvider { get; set; }
 
         /// <summary>
+        /// Disables event collection.
+        /// </summary>
+        public bool DisableEvents { get; set; }
+
+        /// <summary>
         /// The SDK key for your FeatBit environment.
         /// </summary>
         public string EnvSecret { get; set; }
@@ -147,7 +152,8 @@ namespace FeatBit.Sdk.Server.Options
             int maxSendEventAttempts,
             TimeSpan sendEventRetryInterval,
             IBootstrapProvider bootstrapProvider,
-            ILoggerFactory loggerFactory)
+            ILoggerFactory loggerFactory,
+            bool disableEvents)
         {
             StartWaitTime = startWaitTime;
             Offline = offline;
@@ -171,6 +177,8 @@ namespace FeatBit.Sdk.Server.Options
             BootstrapProvider = bootstrapProvider;
 
             LoggerFactory = loggerFactory;
+
+            DisableEvents = disableEvents;
         }
 
         internal FbOptions ShallowCopy()
@@ -178,7 +186,7 @@ namespace FeatBit.Sdk.Server.Options
             var newOptions = new FbOptions(StartWaitTime, Offline, EnvSecret, StreamingUri, EventUri, ConnectTimeout,
                 CloseTimeout, KeepAliveInterval, ReconnectRetryDelays, MaxFlushWorker, AutoFlushInterval, FlushTimeout,
                 MaxEventsInQueue, MaxEventPerRequest, MaxSendEventAttempts, SendEventRetryInterval, BootstrapProvider,
-                LoggerFactory);
+                LoggerFactory, DisableEvents);
 
             return newOptions;
         }

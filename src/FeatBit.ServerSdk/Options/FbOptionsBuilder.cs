@@ -10,6 +10,7 @@ namespace FeatBit.Sdk.Server.Options
     {
         private TimeSpan _startWaitTime;
         private bool _offline;
+        private bool _disableEvents;
 
         private readonly string _envSecret;
 
@@ -41,6 +42,7 @@ namespace FeatBit.Sdk.Server.Options
         {
             _startWaitTime = TimeSpan.FromSeconds(5);
             _offline = false;
+            _disableEvents = false;
 
             _envSecret = envSecret;
 
@@ -73,7 +75,7 @@ namespace FeatBit.Sdk.Server.Options
             return new FbOptions(_startWaitTime, _offline, _envSecret, _streamingUri, _eventUri, _connectTimeout,
                 _closeTimeout, _keepAliveInterval, _reconnectRetryDelays, _maxFlushWorker, _autoFlushInterval,
                 _flushTimeout, _maxEventsInQueue, _maxEventPerRequest, _maxSendEventAttempts, _sendEventRetryInterval,
-                _bootstrapProvider, _loggerFactory);
+                _bootstrapProvider, _loggerFactory, _disableEvents);
         }
 
         public FbOptionsBuilder StartWaitTime(TimeSpan timeout)
@@ -119,6 +121,12 @@ namespace FeatBit.Sdk.Server.Options
         public FbOptionsBuilder CloseTimeout(TimeSpan timeout)
         {
             _closeTimeout = timeout;
+            return this;
+        }
+
+        public FbOptionsBuilder DisableEvents(bool disableEvents)
+        {
+            _disableEvents = disableEvents;
             return this;
         }
 
