@@ -98,8 +98,7 @@ await client.CloseAsync();
 
 ### FbClient
 
-The FbClient is the heart of the SDK which providing access to FeatBit server. Applications should instantiate a *
-*single instance** for the lifetime of the application.
+The FbClient is the heart of the SDK which providing access to FeatBit server. Applications should instantiate a **single instance** for the lifetime of the application.
 
 #### FbClient Using Default Options
 
@@ -135,8 +134,7 @@ var client = new FbClient(options);
 We can register the FeatBit services using standard conventions.
 
 > **Note**
-> The `AddFeatBit` extension method will block the current thread for a maximum duration specified
-> in `FbOptions.StartWaitTime`.
+> The `AddFeatBit` extension method will block the current thread for a maximum duration specified in `FbOptions.StartWaitTime`.
 
 ```csharp
 using FeatBit.Sdk.Server.DependencyInjection;
@@ -207,8 +205,7 @@ describing how the value was determined for each type.
 - JsonVariation/JsonVariationDetail (in consideration)
 
 > **Note**
-> Since the current version does not have native support for retrieving JSON variations, you can utilize
-> the `StringVariation` method as an alternative to obtain the JSON string.
+> Since the current version does not have native support for retrieving JSON variations, you can use the `StringVariation` method as an alternative to get the JSON string.
 
 Variation calls take the feature flag key, a FbUser, and a default value. If any error makes it impossible to
 evaluate the flag (for instance, the feature flag key does not match any existing flag), default value is returned.
