@@ -29,7 +29,7 @@ namespace FeatBit.Sdk.Server.Options
         internal IBootstrapProvider BootstrapProvider { get; set; }
 
         /// <summary>
-        /// Whether to disable events collections.
+        /// Whether to disable events collection.
         /// </summary>
         public bool DisableEvents { get; set; }
 
