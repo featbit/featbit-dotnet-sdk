@@ -17,7 +17,7 @@ namespace FeatBit.Sdk.Server.Options
         public TimeSpan StartWaitTime { get; set; }
 
         /// <summary>
-        /// Whether or not this client is offline. If true, no calls to FeatBit will be made.
+        /// Whether this client is offline. If true, no calls to FeatBit will be made.
         /// </summary>
         /// <value>Defaults to <c>false</c></value>
         public bool Offline { get; set; }
@@ -27,6 +27,11 @@ namespace FeatBit.Sdk.Server.Options
         /// </summary>
         /// <value>Defaults to <see cref="NullBootstrapProvider"/></value>
         internal IBootstrapProvider BootstrapProvider { get; set; }
+
+        /// <summary>
+        /// Whether to disable events collection.
+        /// </summary>
+        public bool DisableEvents { get; set; }
 
         /// <summary>
         /// The SDK key for your FeatBit environment.
@@ -132,6 +137,7 @@ namespace FeatBit.Sdk.Server.Options
         internal FbOptions(
             TimeSpan startWaitTime,
             bool offline,
+            bool disableEvents,
             string envSecret,
             Uri streamingUri,
             Uri eventUri,
@@ -151,6 +157,7 @@ namespace FeatBit.Sdk.Server.Options
         {
             StartWaitTime = startWaitTime;
             Offline = offline;
+            DisableEvents = disableEvents;
 
             EnvSecret = envSecret;
             StreamingUri = streamingUri;
@@ -175,10 +182,10 @@ namespace FeatBit.Sdk.Server.Options
 
         internal FbOptions ShallowCopy()
         {
-            var newOptions = new FbOptions(StartWaitTime, Offline, EnvSecret, StreamingUri, EventUri, ConnectTimeout,
-                CloseTimeout, KeepAliveInterval, ReconnectRetryDelays, MaxFlushWorker, AutoFlushInterval, FlushTimeout,
-                MaxEventsInQueue, MaxEventPerRequest, MaxSendEventAttempts, SendEventRetryInterval, BootstrapProvider,
-                LoggerFactory);
+            var newOptions = new FbOptions(StartWaitTime, Offline, DisableEvents, EnvSecret, StreamingUri, EventUri,
+                ConnectTimeout, CloseTimeout, KeepAliveInterval, ReconnectRetryDelays, MaxFlushWorker,
+                AutoFlushInterval, FlushTimeout, MaxEventsInQueue, MaxEventPerRequest, MaxSendEventAttempts,
+                SendEventRetryInterval, BootstrapProvider, LoggerFactory);
 
             return newOptions;
         }

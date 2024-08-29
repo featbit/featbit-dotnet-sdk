@@ -20,7 +20,7 @@ public class FbClientOfflineTests
     }
 
     [Fact]
-    public void UseNullEventProcessor()
+    public void UseNullDataSource()
     {
         var options = new FbOptionsBuilder()
             .Offline(true)
@@ -32,10 +32,23 @@ public class FbClientOfflineTests
     }
 
     [Fact]
-    public void UseNullDataSource()
+    public void UseNullEventProcessor()
     {
         var options = new FbOptionsBuilder()
             .Offline(true)
+            .Build();
+
+        var client = new FbClient(options);
+
+        Assert.IsType<NullEventProcessor>(client._eventProcessor);
+    }
+
+    [Fact]
+    public void UseNullEventProcessorWhenEventsAreDisabled()
+    {
+        var options = new FbOptionsBuilder()
+            .Offline(false)
+            .DisableEvents(true)
             .Build();
 
         var client = new FbClient(options);

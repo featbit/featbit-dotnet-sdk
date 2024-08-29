@@ -1,6 +1,7 @@
 ﻿{
   StartWaitTime: 00:00:05,
   Offline: false,
+  DisableEvents: false,
   EnvSecret: secret,
   StreamingUri: ws://localhost:5100,
   EventUri: http://localhost:5100,

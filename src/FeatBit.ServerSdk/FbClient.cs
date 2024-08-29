@@ -123,10 +123,13 @@ namespace FeatBit.Sdk.Server
             _store = new DefaultMemoryStore();
             _evaluator = new Evaluator(_store);
 
+            _eventProcessor = _options.Offline || _options.DisableEvents
+                ? new NullEventProcessor()
+                : new DefaultEventProcessor(options);
+
             if (_options.Offline)
             {
                 _dataSynchronizer = new NullDataSynchronizer();
-                _eventProcessor = new NullEventProcessor();
 
                 // use bootstrap provider to populate store
                 _options.BootstrapProvider.Populate(_store);
@@ -134,7 +137,6 @@ namespace FeatBit.Sdk.Server
             else
             {
                 _dataSynchronizer = new WebSocketDataSynchronizer(options, _store);
-                _eventProcessor = new DefaultEventProcessor(options);
             }
 
             _logger = options.LoggerFactory.CreateLogger<FbClient>();

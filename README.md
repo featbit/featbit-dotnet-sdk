@@ -35,7 +35,7 @@ a [preview version](https://www.nuget.org/packages/FeatBit.ServerSdk/absoluteLat
 
 ### Prerequisite
 
-Before using the SDK, you need to obtain the environment secret and SDK URLs. 
+Before using the SDK, you need to obtain the environment secret and SDK URLs.
 
 Follow the documentation below to retrieve these values
 
@@ -205,7 +205,7 @@ describing how the value was determined for each type.
 - JsonVariation/JsonVariationDetail (in consideration)
 
 > **Note**
-> Since the current version does not have native support for retrieving JSON variations, you can utilize the `StringVariation` method as an alternative to obtain the JSON string.
+> Since the current version does not have native support for retrieving JSON variations, you can use the `StringVariation` method as an alternative to get the JSON string.
 
 Variation calls take the feature flag key, a FbUser, and a default value. If any error makes it impossible to
 evaluate the flag (for instance, the feature flag key does not match any existing flag), default value is returned.
@@ -247,7 +247,7 @@ var options = new FbOptionsBuilder()
 var client = new FbClient(options);
 ```
 
-When you put the SDK in offline mode, no insight message is sent to the server and all feature flag evaluations return
+When you put the SDK in offline mode, no events are sent to the server and all feature flag evaluations return
 fallback values because there are no feature flags or segments available. If you want to use your own data source in
 this case, the sdk allows users to populate feature flags and segments data from a JSON string. Here is an
 example: [featbit-bootstrap.json](/tests/FeatBit.ServerSdk.Tests/Bootstrapping/featbit-bootstrap.json).
@@ -276,6 +276,20 @@ var options = new FbOptionsBuilder()
     .Build();
 
 var client = new FbClient(options);
+```
+
+### Disable Events Collection
+
+By default, the SDK automatically sends events (flag evaluation events and metric events for A/B testing) to the FeatBit
+server, unless the SDK is in offline mode.
+
+If you prefer to disable this event collection while the SDK is in online mode, you
+can configure this behavior using the `DisableEvents` option.
+
+```csharp
+var options = new FbOptionsBuilder()
+    .DisableEvents(true)
+    .Build();
 ```
 
 ### Experiments (A/B/n Testing)
