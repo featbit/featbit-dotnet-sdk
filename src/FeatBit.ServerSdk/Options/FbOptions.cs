@@ -17,7 +17,7 @@ namespace FeatBit.Sdk.Server.Options
         public TimeSpan StartWaitTime { get; set; }
 
         /// <summary>
-        /// Whether or not this client is offline. If true, no calls to FeatBit will be made.
+        /// Whether this client is offline. If true, no calls to FeatBit will be made.
         /// </summary>
         /// <value>Defaults to <c>false</c></value>
         public bool Offline { get; set; }
@@ -29,7 +29,7 @@ namespace FeatBit.Sdk.Server.Options
         internal IBootstrapProvider BootstrapProvider { get; set; }
 
         /// <summary>
-        /// Disables event collection.
+        /// Whether to disable events collections.
         /// </summary>
         public bool DisableEvents { get; set; }
 
@@ -137,6 +137,7 @@ namespace FeatBit.Sdk.Server.Options
         internal FbOptions(
             TimeSpan startWaitTime,
             bool offline,
+            bool disableEvents,
             string envSecret,
             Uri streamingUri,
             Uri eventUri,
@@ -152,11 +153,11 @@ namespace FeatBit.Sdk.Server.Options
             int maxSendEventAttempts,
             TimeSpan sendEventRetryInterval,
             IBootstrapProvider bootstrapProvider,
-            ILoggerFactory loggerFactory,
-            bool disableEvents)
+            ILoggerFactory loggerFactory)
         {
             StartWaitTime = startWaitTime;
             Offline = offline;
+            DisableEvents = disableEvents;
 
             EnvSecret = envSecret;
             StreamingUri = streamingUri;
@@ -177,16 +178,14 @@ namespace FeatBit.Sdk.Server.Options
             BootstrapProvider = bootstrapProvider;
 
             LoggerFactory = loggerFactory;
-
-            DisableEvents = disableEvents;
         }
 
         internal FbOptions ShallowCopy()
         {
-            var newOptions = new FbOptions(StartWaitTime, Offline, EnvSecret, StreamingUri, EventUri, ConnectTimeout,
-                CloseTimeout, KeepAliveInterval, ReconnectRetryDelays, MaxFlushWorker, AutoFlushInterval, FlushTimeout,
-                MaxEventsInQueue, MaxEventPerRequest, MaxSendEventAttempts, SendEventRetryInterval, BootstrapProvider,
-                LoggerFactory, DisableEvents);
+            var newOptions = new FbOptions(StartWaitTime, Offline, DisableEvents, EnvSecret, StreamingUri, EventUri,
+                ConnectTimeout, CloseTimeout, KeepAliveInterval, ReconnectRetryDelays, MaxFlushWorker,
+                AutoFlushInterval, FlushTimeout, MaxEventsInQueue, MaxEventPerRequest, MaxSendEventAttempts,
+                SendEventRetryInterval, BootstrapProvider, LoggerFactory);
 
             return newOptions;
         }

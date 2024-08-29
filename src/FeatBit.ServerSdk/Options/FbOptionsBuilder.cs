@@ -72,10 +72,10 @@ namespace FeatBit.Sdk.Server.Options
 
         public FbOptions Build()
         {
-            return new FbOptions(_startWaitTime, _offline, _envSecret, _streamingUri, _eventUri, _connectTimeout,
-                _closeTimeout, _keepAliveInterval, _reconnectRetryDelays, _maxFlushWorker, _autoFlushInterval,
-                _flushTimeout, _maxEventsInQueue, _maxEventPerRequest, _maxSendEventAttempts, _sendEventRetryInterval,
-                _bootstrapProvider, _loggerFactory, _disableEvents);
+            return new FbOptions(_startWaitTime, _offline, _disableEvents, _envSecret, _streamingUri, _eventUri,
+                _connectTimeout, _closeTimeout, _keepAliveInterval, _reconnectRetryDelays, _maxFlushWorker,
+                _autoFlushInterval, _flushTimeout, _maxEventsInQueue, _maxEventPerRequest, _maxSendEventAttempts,
+                _sendEventRetryInterval, _bootstrapProvider, _loggerFactory);
         }
 
         public FbOptionsBuilder StartWaitTime(TimeSpan timeout)
