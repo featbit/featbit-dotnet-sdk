@@ -36,7 +36,7 @@ jobs:
         run: echo "VERSION=${TAG#v}" >> $GITHUB_ENV
 
       - name: Pack FeatBit.ServerSdk
-        run: dotnet pack ./src/FeatBit.ServerSdk/FeatBit.ServerSdk.csproj -c Release --no-restore --no-build --output ${VERSION} /p:PackageVersion=$VERSION
+        run: dotnet pack ./src/FeatBit.ServerSdk/FeatBit.ServerSdk.csproj -c Release --no-restore --no-build --output ${VERSION} /p:Version=$VERSION
 
       - name: Publish NuGet Package
         run: dotnet nuget push ${VERSION}/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
