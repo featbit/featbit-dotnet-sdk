@@ -7,12 +7,12 @@ using WebApiApp;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var consoleLogger = LoggerFactory.Create(x => x.AddConsole().SetMinimumLevel(LogLevel.Information));
-
+// Note that by default, the FeatBit SDK will use the default logger factory provided by ASP.NET Core.
 builder.Services.AddFeatBit(options =>
 {
-    options.LoggerFactory = consoleLogger;
-    options.EnvSecret = "replace-with-your-env-secret";
+    options.EnvSecret = "fE92O3Nh-U66G-MwhNyPNghCNMSK3uuEaCdmMRmgKVTQ";
+    options.StreamingUri = new Uri("wss://app-eval.featbit.co");
+    options.EventUri = new Uri("https://app-eval.featbit.co");
     options.StartWaitTime = TimeSpan.FromSeconds(3);
 });
 
@@ -21,12 +21,13 @@ builder.Services.AddHealthChecks()
 
 var app = builder.Build();
 
+// curl -X GET --location http://localhost:5014/healthz
 app.MapHealthChecks("/healthz", new HealthCheckOptions
 {
     ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
 });
 
-// curl -X GET --location "http://localhost:5014/variation-detail/game-runner?fallbackValue=lol"
+// curl -X GET --location http://localhost:5014/variation-detail/game-runner?fallbackValue=lol
 app.MapGet("/variation-detail/{flagKey}", (IFbClient fbClient, string flagKey, string fallbackValue) =>
 {
     var user = FbUser.Builder("tester-id").Name("tester").Build();

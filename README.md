@@ -53,8 +53,8 @@ using FeatBit.Sdk.Server.Options;
 
 // setup SDK options
 var options = new FbOptionsBuilder("<replace-with-your-env-secret>")
-    .Event(new Uri("<replace-with-your-event-url>"))
-    .Streaming(new Uri("<replace-with-your-streaming-url>"))
+    .Event(new Uri("https://app-eval.featbit.co"))
+    .Streaming(new Uri("wss://app-eval.featbit.co"))
     .Build();
 
 // Creates a new client instance that connects to FeatBit with the custom option.
@@ -98,7 +98,8 @@ await client.CloseAsync();
 
 ### FbClient
 
-The FbClient is the heart of the SDK which providing access to FeatBit server. Applications should instantiate a **single instance** for the lifetime of the application.
+The FbClient is the heart of the SDK which providing access to FeatBit server. Applications should instantiate a *
+*single instance** for the lifetime of the application.
 
 #### FbClient Using Default Options
 
@@ -131,7 +132,8 @@ var client = new FbClient(options);
 
 #### Dependency Injection
 
-We can register the FeatBit services using standard conventions.
+We can register the FeatBit services using standard conventions. And by default, the SDK will use the default
+`LoggerFactory` provided by the host.
 
 > **Note**
 > The `AddFeatBit` extension method will block the current thread for a maximum duration specified in `FbOptions.StartWaitTime`.
@@ -146,8 +148,8 @@ builder.Services.AddControllers();
 builder.Services.AddFeatBit(options =>
 {
     options.EnvSecret = "<replace-with-your-env-secret>";
-    options.StreamingUri = new Uri("ws://localhost:5100");
-    options.EventUri = new Uri("http://localhost:5100");
+    options.StreamingUri = new Uri("wss://app-eval.featbit.co");
+    options.EventUri = new Uri("https://app-eval.featbit.co");
     options.StartWaitTime = TimeSpan.FromSeconds(3);
 });
 
@@ -205,7 +207,8 @@ describing how the value was determined for each type.
 - JsonVariation/JsonVariationDetail (in consideration)
 
 > **Note**
-> Since the current version does not have native support for retrieving JSON variations, you can use the `StringVariation` method as an alternative to get the JSON string.
+> Since the current version does not have native support for retrieving JSON variations, you can use the
+`StringVariation` method as an alternative to get the JSON string.
 
 Variation calls take the feature flag key, a FbUser, and a default value. If any error makes it impossible to
 evaluate the flag (for instance, the feature flag key does not match any existing flag), default value is returned.
