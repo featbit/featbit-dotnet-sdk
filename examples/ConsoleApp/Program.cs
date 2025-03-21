@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 using Serilog;
 
 // Set secret to your FeatBit SDK secret.
-const string secret = "fE92O3Nh-U66G-MwhNyPNghCNMSK3uuEaCdmMRmgKVTQ";
+const string secret = "";
 if (string.IsNullOrWhiteSpace(secret))
 {
     Console.WriteLine("Please edit Program.cs to set secret to your FeatBit SDK secret first. Exiting...");

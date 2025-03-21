@@ -10,7 +10,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Note that by default, the FeatBit SDK will use the default logger factory provided by ASP.NET Core.
 builder.Services.AddFeatBit(options =>
 {
-    options.EnvSecret = "fE92O3Nh-U66G-MwhNyPNghCNMSK3uuEaCdmMRmgKVTQ";
+    options.EnvSecret = "<replace-with-your-env-secret>";
     options.StreamingUri = new Uri("wss://app-eval.featbit.co");
     options.EventUri = new Uri("https://app-eval.featbit.co");
     options.StartWaitTime = TimeSpan.FromSeconds(3);
