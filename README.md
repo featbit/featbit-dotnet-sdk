@@ -133,7 +133,7 @@ var client = new FbClient(options);
 #### Dependency Injection
 
 We can register the FeatBit services using standard conventions. And by default, the SDK will use the default
-`LoggerFactory` provided by the host.
+`ILoggerFactory` provided by the host.
 
 > **Note**
 > The `AddFeatBit` extension method will block the current thread for a maximum duration specified in `FbOptions.StartWaitTime`.
