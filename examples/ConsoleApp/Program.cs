@@ -4,6 +4,7 @@ using FeatBit.Sdk.Server;
 using FeatBit.Sdk.Server.Model;
 using FeatBit.Sdk.Server.Options;
 using Microsoft.Extensions.Logging;
+using Serilog;
 
 // Set secret to your FeatBit SDK secret.
 const string secret = "";
@@ -14,10 +15,19 @@ if (string.IsNullOrWhiteSpace(secret))
 }
 
 // Creates a new client to connect to FeatBit with a custom option.
-// use console logging for FbClient
-var consoleLoggerFactory = LoggerFactory.Create(opt => opt.AddConsole());
+
+// init serilog
+Log.Logger = new LoggerConfiguration()
+    // use debug logs when troubleshooting
+    .MinimumLevel.Debug()
+    .WriteTo.File("featbit-logs.txt")
+    .CreateLogger();
+
+var serilogLoggerFactory = LoggerFactory.Create(opt => opt.AddSerilog());
 var options = new FbOptionsBuilder(secret)
-    .LoggerFactory(consoleLoggerFactory)
+    .Streaming(new Uri("wss://app-eval.featbit.co"))
+    .Event(new Uri("https://app-eval.featbit.co"))
+    .LoggerFactory(serilogLoggerFactory)
     .Build();
 
 var client = new FbClient(options);
