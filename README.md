@@ -133,7 +133,7 @@ var client = new FbClient(options);
 #### Dependency Injection
 
 We can register the FeatBit services using standard conventions. And by default, the SDK will use the default
-`ILoggerFactory` provided by the host.
+`ILoggerFactory` provided by the host unless you specify a custom one.
 
 > **Note**
 > The `AddFeatBit` extension method will block the current thread for a maximum duration specified in `FbOptions.StartWaitTime`.
@@ -170,6 +170,25 @@ public class HomeController : ControllerBase
     }
 }
 ```
+
+#### Logging
+
+The SDK supports standard .NET logging via [Microsoft.Extensions.Logging](https://learn.microsoft.com/dotnet/core/extensions/logging).
+
+```csharp
+// Create a Microsoft.Extensions.Logging LoggerFactory, configuring it with the providers,
+// log levels and other desired configuration as usual.
+// Take the console logger factory as an example.
+var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+
+// Pass the LoggerFactory to the SDK so the SDK will use it to log messages.
+var options = new FbOptionsBuilder(secret)
+    .LoggerFactory(consoleLoggerFactory)
+    .Build();
+```
+
+If you're using ASP.NET Core, you can use the `AddFeatBit` extension method, which automatically uses the logger
+factory provided by ASP.NET Core.
 
 ### FbUser
 
