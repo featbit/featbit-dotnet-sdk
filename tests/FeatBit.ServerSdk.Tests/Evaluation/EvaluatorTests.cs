@@ -21,6 +21,7 @@ public class EvaluatorTests
         Assert.Equal(ReasonKind.Error, evalResult.Kind);
         Assert.Equal(string.Empty, evalResult.Value);
         Assert.Equal("flag not found", evalResult.Reason);
+        Assert.Equal(string.Empty, evalResult.ValueId);
 
         Assert.Null(evalEvent);
     }
@@ -49,6 +50,7 @@ public class EvaluatorTests
         Assert.Equal(ReasonKind.Error, evalResult.Kind);
         Assert.Equal(string.Empty, evalResult.Value);
         Assert.Equal("malformed flag", evalResult.Reason);
+        Assert.Equal(string.Empty, evalResult.ValueId);
 
         Assert.Null(evalEvent);
     }
@@ -77,6 +79,7 @@ public class EvaluatorTests
         Assert.Equal(ReasonKind.Off, evalResult.Kind);
         Assert.Equal("true", evalResult.Value);
         Assert.Equal("flag off", evalResult.Reason);
+        Assert.Equal("trueId", evalResult.ValueId);
 
         // flag is off
         Assert.False(evalEvent.SendToExperiment);
@@ -117,6 +120,7 @@ public class EvaluatorTests
         Assert.Equal(ReasonKind.TargetMatch, evalResult.Kind);
         Assert.Equal("false", evalResult.Value);
         Assert.Equal("target match", evalResult.Reason);
+        Assert.Equal("falseId", evalResult.ValueId);
 
         // ExptIncludeAllTargets is true by default
         Assert.True(evalEvent.SendToExperiment);
@@ -180,6 +184,7 @@ public class EvaluatorTests
         Assert.Equal(ReasonKind.RuleMatch, evalResult.Kind);
         Assert.Equal("true", evalResult.Value);
         Assert.Equal($"match rule {customRule.Name}", evalResult.Reason);
+        Assert.Equal("trueId", evalResult.ValueId);
 
         // customRule.IncludedInExpt is false
         Assert.False(evalEvent.SendToExperiment);
@@ -232,6 +237,7 @@ public class EvaluatorTests
         Assert.Equal(ReasonKind.Fallthrough, evalResult.Kind);
         Assert.Equal("false", evalResult.Value);
         Assert.Equal("fall through targets and rules", evalResult.Reason);
+        Assert.Equal("falseId", evalResult.ValueId);
 
         Assert.True(evalEvent.SendToExperiment);
     }
