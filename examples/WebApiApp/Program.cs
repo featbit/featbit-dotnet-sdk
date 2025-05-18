@@ -7,10 +7,18 @@ using WebApiApp;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Set secret to your FeatBit SDK secret.
+const string secret = "";
+if (string.IsNullOrWhiteSpace(secret))
+{
+    Console.WriteLine("Please edit Program.cs to set secret to your FeatBit SDK secret first. Exiting...");
+    Environment.Exit(1);
+}
+
 // Note that by default, the FeatBit SDK will use the default logger factory provided by ASP.NET Core.
 builder.Services.AddFeatBit(options =>
 {
-    options.EnvSecret = "<replace-with-your-env-secret>";
+    options.EnvSecret = secret;
     options.StreamingUri = new Uri("wss://app-eval.featbit.co");
     options.EventUri = new Uri("https://app-eval.featbit.co");
     options.StartWaitTime = TimeSpan.FromSeconds(3);

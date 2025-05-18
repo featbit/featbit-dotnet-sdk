@@ -65,7 +65,7 @@ while (true)
     var user = FbUser.Builder(userKey).Build();
 
     var detail = client.StringVariationDetail(flagKey, user, "fallback");
-    Console.WriteLine($"Kind: {detail.Kind}, Reason: {detail.Reason}, Value: {detail.Value}");
+    Console.WriteLine($"Kind: {detail.Kind}, Reason: {detail.Reason}, Value: {detail.Value}, ValueId: {detail.ValueId}");
     Console.WriteLine();
 }
 
