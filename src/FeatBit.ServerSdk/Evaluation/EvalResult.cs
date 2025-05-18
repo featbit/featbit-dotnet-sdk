@@ -44,9 +44,9 @@ namespace FeatBit.Sdk.Server.Evaluation
             return new EvalResult(ReasonKind.Fallthrough, "fall through targets and rules", variation);
         }
 
-        public EvalDetail<string> AsEvalDetail()
+        public EvalDetail<string> AsEvalDetail(string key)
         {
-            return new EvalDetail<string>(Reason, Kind, Reason, Variation.Value, Variation.Id);
+            return new EvalDetail<string>(key, Kind, Reason, Variation.Value, Variation.Id);
         }
     }
 

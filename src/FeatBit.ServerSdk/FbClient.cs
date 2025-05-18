@@ -249,7 +249,7 @@ namespace FeatBit.Sdk.Server
                 .Select(flag =>
                 {
                     var (evalResult, _) = _evaluator.Evaluate(flag, user);
-                    return evalResult.AsEvalDetail();
+                    return evalResult.AsEvalDetail(flag.Key);
                 })
                 .ToArray();
 
