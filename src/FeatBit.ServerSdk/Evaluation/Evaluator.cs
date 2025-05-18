@@ -27,7 +27,7 @@ namespace FeatBit.Sdk.Server.Evaluation
 
             return Evaluate(flag, context.FbUser);
 
-            (EvalResult EvalResult, EvalEvent evalEvent) FlagNotFound() => (EvalResult.FlagNotFound, null);
+            (EvalResult evalResult, EvalEvent evalEvent) FlagNotFound() => (EvalResult.FlagNotFound, null);
         }
 
         public (EvalResult evalResult, EvalEvent evalEvent) Evaluate(FeatureFlag flag, FbUser user)
@@ -91,19 +91,19 @@ namespace FeatBit.Sdk.Server.Evaluation
 
             return Fallthrough();
 
-            (EvalResult EvalResult, EvalEvent evalEvent) MalformedFlag() => (EvalResult.MalformedFlag, null);
+            (EvalResult evalResult, EvalEvent evalEvent) MalformedFlag() => (EvalResult.MalformedFlag, null);
 
-            (EvalResult EvalResult, EvalEvent evalEvent) FlagOff(Variation variation) =>
-                (EvalResult.FlagOff(variation.Value), new EvalEvent(user, flagKey, variation, false));
+            (EvalResult evalResult, EvalEvent evalEvent) FlagOff(Variation variation) =>
+                (EvalResult.FlagOff(variation), new EvalEvent(user, flagKey, variation, false));
 
-            (EvalResult EvalResult, EvalEvent evalEvent) Targeted(Variation variation, bool exptIncludeAllTargets) =>
-                (EvalResult.Targeted(variation.Value), new EvalEvent(user, flagKey, variation, exptIncludeAllTargets));
+            (EvalResult evalResult, EvalEvent evalEvent) Targeted(Variation variation, bool exptIncludeAllTargets) =>
+                (EvalResult.Targeted(variation), new EvalEvent(user, flagKey, variation, exptIncludeAllTargets));
 
-            (EvalResult EvalResult, EvalEvent evalEvent) RuleMatched(TargetRule rule, RolloutVariation rolloutVariation)
+            (EvalResult evalResult, EvalEvent evalEvent) RuleMatched(TargetRule rule, RolloutVariation rolloutVariation)
             {
                 var variation = flag.GetVariation(rolloutVariation.Id);
 
-                var evalResult = EvalResult.RuleMatched(variation.Value, rule.Name);
+                var evalResult = EvalResult.RuleMatched(rule.Name, variation);
 
                 var sendToExperiment = IsSendToExperiment(
                     flag.ExptIncludeAllTargets,
@@ -116,11 +116,11 @@ namespace FeatBit.Sdk.Server.Evaluation
                 return (evalResult, evalEvent);
             }
 
-            (EvalResult EvalResult, EvalEvent evalEvent) Fallthrough()
+            (EvalResult evalResult, EvalEvent evalEvent) Fallthrough()
             {
                 var variation = flag.GetVariation(defaultVariation.Id);
 
-                var evalResult = EvalResult.Fallthrough(variation.Value);
+                var evalResult = EvalResult.Fallthrough(variation);
 
                 var sendToExperiment = IsSendToExperiment(
                     flag.ExptIncludeAllTargets,

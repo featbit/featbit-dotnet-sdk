@@ -24,18 +24,25 @@ namespace FeatBit.Sdk.Server.Evaluation
         public TValue Value { get; set; }
 
         /// <summary>
+        /// The id of the flag value that was returned.
+        /// </summary>
+        public string ValueId { get; set; }
+
+        /// <summary>
         /// Constructs a new EvalDetail instance.
         /// </summary>
         /// <param name="key">the flag key</param>
         /// <param name="kind">the reason kind</param>
         /// <param name="reason">the evaluation reason</param>
         /// <param name="value">the flag value</param>
-        public EvalDetail(string key, ReasonKind kind, string reason, TValue value)
+        /// <param name="valueId">the id of flag value</param>
+        public EvalDetail(string key, ReasonKind kind, string reason, TValue value, string valueId)
         {
             Key = key;
             Kind = kind;
             Reason = reason;
             Value = value;
+            ValueId = valueId;
         }
     }
 }

@@ -182,7 +182,7 @@ public interface IFbClient
     /// Returns the variation of all feature flags for a given user, which can be passed to front-end code.
     /// </summary>
     /// <param name="user">a given user</param>
-    /// <returns>an <see cref="EvalResult"/> array</returns>
+    /// <returns>an <see cref="EvalDetail{T}"/> array</returns>
     EvalDetail<string>[] GetAllVariations(FbUser user);
 
     /// <summary>
