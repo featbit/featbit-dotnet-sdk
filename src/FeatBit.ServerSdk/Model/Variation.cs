@@ -5,5 +5,11 @@ namespace FeatBit.Sdk.Server.Model
         public string Id { get; set; }
 
         public string Value { get; set; }
+
+        public static readonly Variation Empty = new()
+        {
+            Id = string.Empty,
+            Value = string.Empty
+        };
     }
 }

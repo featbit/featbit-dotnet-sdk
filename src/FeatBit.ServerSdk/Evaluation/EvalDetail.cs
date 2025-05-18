@@ -23,9 +23,8 @@ namespace FeatBit.Sdk.Server.Evaluation
         /// </summary>
         public TValue Value { get; set; }
 
-
         /// <summary>
-        /// The id of the flag evaluation. 
+        /// The id of the flag value that was returned.
         /// </summary>
         public string ValueId { get; set; }
 

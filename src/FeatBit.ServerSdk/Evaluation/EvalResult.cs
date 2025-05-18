@@ -1,3 +1,5 @@
+using FeatBit.Sdk.Server.Model;
+
 namespace FeatBit.Sdk.Server.Evaluation
 {
     internal class EvalResult
@@ -6,44 +8,45 @@ namespace FeatBit.Sdk.Server.Evaluation
 
         public string Reason { get; set; }
 
-        public string Value { get; set; }
-        public string ValueId { get; set; }
+        public Variation Variation { get; set; }
 
-        private EvalResult(ReasonKind kind, string reason, string value, string valueId)
+        private EvalResult(ReasonKind kind, string reason, Variation variation)
         {
             Kind = kind;
             Reason = reason;
-            Value = value;
-            ValueId = valueId;
+            Variation = variation;
         }
 
         // Indicates that the caller provided a flag key that did not match any known flag.
-        public static readonly EvalResult FlagNotFound =
-            new EvalResult(ReasonKind.Error, "flag not found", string.Empty, string.Empty);
+        public static readonly EvalResult FlagNotFound = new(ReasonKind.Error, "flag not found", Variation.Empty);
 
         // Indicates that there was an internal inconsistency in the flag data, e.g. a rule specified a nonexistent
         // variation. 
-        public static readonly EvalResult MalformedFlag =
-            new EvalResult(ReasonKind.Error, "malformed flag", string.Empty, string.Empty);
+        public static readonly EvalResult MalformedFlag = new(ReasonKind.Error, "malformed flag", Variation.Empty);
 
-        public static EvalResult FlagOff(string value, string valueId)
+        public static EvalResult FlagOff(Variation variation)
         {
-            return new EvalResult(ReasonKind.Off, "flag off", value, valueId);
+            return new EvalResult(ReasonKind.Off, "flag off", variation);
         }
 
-        public static EvalResult Targeted(string value, string valueId)
+        public static EvalResult Targeted(Variation variation)
         {
-            return new EvalResult(ReasonKind.TargetMatch, "target match", value, valueId);
+            return new EvalResult(ReasonKind.TargetMatch, "target match", variation);
         }
 
-        public static EvalResult RuleMatched(string value, string ruleName, string valueId)
+        public static EvalResult RuleMatched(string ruleName, Variation value)
         {
-            return new EvalResult(ReasonKind.RuleMatch, $"match rule {ruleName}", value, valueId);
+            return new EvalResult(ReasonKind.RuleMatch, $"match rule {ruleName}", value);
         }
 
-        public static EvalResult Fallthrough(string value, string valueId)
+        public static EvalResult Fallthrough(Variation variation)
         {
-            return new EvalResult(ReasonKind.Fallthrough, "fall through targets and rules", value, valueId);
+            return new EvalResult(ReasonKind.Fallthrough, "fall through targets and rules", variation);
+        }
+
+        public EvalDetail<string> AsEvalDetail()
+        {
+            return new EvalDetail<string>(Reason, Kind, Reason, Variation.Value, Variation.Id);
         }
     }
 

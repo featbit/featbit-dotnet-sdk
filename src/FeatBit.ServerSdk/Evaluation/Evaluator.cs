@@ -94,16 +94,16 @@ namespace FeatBit.Sdk.Server.Evaluation
             (EvalResult EvalResult, EvalEvent evalEvent) MalformedFlag() => (EvalResult.MalformedFlag, null);
 
             (EvalResult EvalResult, EvalEvent evalEvent) FlagOff(Variation variation) =>
-                (EvalResult.FlagOff(variation.Value, variation.Id), new EvalEvent(user, flagKey, variation, false));
+                (EvalResult.FlagOff(variation), new EvalEvent(user, flagKey, variation, false));
 
             (EvalResult EvalResult, EvalEvent evalEvent) Targeted(Variation variation, bool exptIncludeAllTargets) =>
-                (EvalResult.Targeted(variation.Value, variation.Id), new EvalEvent(user, flagKey, variation, exptIncludeAllTargets));
+                (EvalResult.Targeted(variation), new EvalEvent(user, flagKey, variation, exptIncludeAllTargets));
 
             (EvalResult EvalResult, EvalEvent evalEvent) RuleMatched(TargetRule rule, RolloutVariation rolloutVariation)
             {
                 var variation = flag.GetVariation(rolloutVariation.Id);
 
-                var evalResult = EvalResult.RuleMatched(variation.Value, rule.Name, variation.Id);
+                var evalResult = EvalResult.RuleMatched(rule.Name, variation);
 
                 var sendToExperiment = IsSendToExperiment(
                     flag.ExptIncludeAllTargets,
@@ -120,7 +120,7 @@ namespace FeatBit.Sdk.Server.Evaluation
             {
                 var variation = flag.GetVariation(defaultVariation.Id);
 
-                var evalResult = EvalResult.Fallthrough(variation.Value, variation.Id);
+                var evalResult = EvalResult.Fallthrough(variation);
 
                 var sendToExperiment = IsSendToExperiment(
                     flag.ExptIncludeAllTargets,

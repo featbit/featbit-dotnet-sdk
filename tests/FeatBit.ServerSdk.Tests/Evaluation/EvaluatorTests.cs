@@ -5,6 +5,9 @@ namespace FeatBit.Sdk.Server.Evaluation;
 
 public class EvaluatorTests
 {
+    private static readonly Variation TrueVariation = new() { Id = "trueId", Value = "true" };
+    private static readonly Variation FalseVariation = new() { Id = "falseId", Value = "false" };
+
     [Fact]
     public void EvaluateFlagNotFound()
     {
@@ -19,9 +22,8 @@ public class EvaluatorTests
         var (evalResult, evalEvent) = evaluator.Evaluate(context);
 
         Assert.Equal(ReasonKind.Error, evalResult.Kind);
-        Assert.Equal(string.Empty, evalResult.Value);
         Assert.Equal("flag not found", evalResult.Reason);
-        Assert.Equal(string.Empty, evalResult.ValueId);
+        Assert.Equivalent(Variation.Empty, evalResult.Variation);
 
         Assert.Null(evalEvent);
     }
@@ -34,7 +36,7 @@ public class EvaluatorTests
             .Key("hello")
             .IsEnabled(false)
             .DisabledVariationId("not-exist-variation-id")
-            .Variations(new Variation { Id = "trueId", Value = "true" })
+            .Variations(TrueVariation)
             .Build();
         store.Populate(new[] { malformedFlag });
 
@@ -48,9 +50,8 @@ public class EvaluatorTests
         var (evalResult, evalEvent) = evaluator.Evaluate(context);
 
         Assert.Equal(ReasonKind.Error, evalResult.Kind);
-        Assert.Equal(string.Empty, evalResult.Value);
         Assert.Equal("malformed flag", evalResult.Reason);
-        Assert.Equal(string.Empty, evalResult.ValueId);
+        Assert.Equivalent(Variation.Empty, evalResult.Variation);
 
         Assert.Null(evalEvent);
     }
@@ -63,7 +64,7 @@ public class EvaluatorTests
             .Key("hello")
             .IsEnabled(false)
             .DisabledVariationId("trueId")
-            .Variations(new Variation { Id = "trueId", Value = "true" })
+            .Variations(TrueVariation)
             .Build();
         store.Populate(new[] { flag });
 
@@ -77,9 +78,8 @@ public class EvaluatorTests
         var (evalResult, evalEvent) = evaluator.Evaluate(context);
 
         Assert.Equal(ReasonKind.Off, evalResult.Kind);
-        Assert.Equal("true", evalResult.Value);
         Assert.Equal("flag off", evalResult.Reason);
-        Assert.Equal("trueId", evalResult.ValueId);
+        Assert.Equivalent(TrueVariation, evalResult.Variation);
 
         // flag is off
         Assert.False(evalEvent.SendToExperiment);
@@ -90,11 +90,7 @@ public class EvaluatorTests
     {
         var store = new DefaultMemoryStore();
 
-        var variations = new Variation[]
-        {
-            new() { Id = "trueId", Value = "true" },
-            new() { Id = "falseId", Value = "false" }
-        };
+        var variations = new[] { TrueVariation, FalseVariation };
         var targetUser = new TargetUser
         {
             VariationId = "falseId", KeyIds = new List<string> { "u1" }
@@ -118,9 +114,8 @@ public class EvaluatorTests
         var (evalResult, evalEvent) = evaluator.Evaluate(context);
 
         Assert.Equal(ReasonKind.TargetMatch, evalResult.Kind);
-        Assert.Equal("false", evalResult.Value);
         Assert.Equal("target match", evalResult.Reason);
-        Assert.Equal("falseId", evalResult.ValueId);
+        Assert.Equivalent(FalseVariation, evalResult.Variation);
 
         // ExptIncludeAllTargets is true by default
         Assert.True(evalEvent.SendToExperiment);
@@ -131,11 +126,7 @@ public class EvaluatorTests
     {
         var store = new DefaultMemoryStore();
 
-        var variations = new Variation[]
-        {
-            new() { Id = "trueId", Value = "true" },
-            new() { Id = "falseId", Value = "false" }
-        };
+        var variations = new[] { TrueVariation, FalseVariation };
         var customRule = new TargetRule
         {
             Name = "open for vip & svip",
@@ -182,9 +173,8 @@ public class EvaluatorTests
         var (evalResult, evalEvent) = evaluator.Evaluate(context);
 
         Assert.Equal(ReasonKind.RuleMatch, evalResult.Kind);
-        Assert.Equal("true", evalResult.Value);
         Assert.Equal($"match rule {customRule.Name}", evalResult.Reason);
-        Assert.Equal("trueId", evalResult.ValueId);
+        Assert.Equivalent(TrueVariation, evalResult.Variation);
 
         // customRule.IncludedInExpt is false
         Assert.False(evalEvent.SendToExperiment);
@@ -235,9 +225,8 @@ public class EvaluatorTests
         var (evalResult, evalEvent) = evaluator.Evaluate(context);
 
         Assert.Equal(ReasonKind.Fallthrough, evalResult.Kind);
-        Assert.Equal("false", evalResult.Value);
         Assert.Equal("fall through targets and rules", evalResult.Reason);
-        Assert.Equal("falseId", evalResult.ValueId);
+        Assert.Equivalent(FalseVariation, evalResult.Variation);
 
         Assert.True(evalEvent.SendToExperiment);
     }

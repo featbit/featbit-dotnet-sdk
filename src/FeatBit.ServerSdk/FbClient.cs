@@ -248,8 +248,8 @@ namespace FeatBit.Sdk.Server
                 .Find<FeatureFlag>(x => x.StoreKey.StartsWith(StoreKeys.FlagPrefix))
                 .Select(flag =>
                 {
-                    var evalResult = _evaluator.Evaluate(flag, user).evalResult;
-                    return new EvalDetail<string>(flag.Key, evalResult.Kind, evalResult.Reason, evalResult.Value, evalResult.ValueId);
+                    var (evalResult, _) = _evaluator.Evaluate(flag, user);
+                    return evalResult.AsEvalDetail();
                 })
                 .ToArray();
 
@@ -309,8 +309,9 @@ namespace FeatBit.Sdk.Server
             // record evaluation event
             _eventProcessor.Record(evalEvent);
 
-            return converter(evalResult.Value, out var typedValue)
-                ? new EvalDetail<TValue>(key, evalResult.Kind, evalResult.Reason, typedValue, evalResult.ValueId)
+            var variation = evalResult.Variation;
+            return converter(variation.Value, out var typedValue)
+                ? new EvalDetail<TValue>(key, evalResult.Kind, evalResult.Reason, typedValue, variation.Id)
                 // type mismatch, return default value
                 : new EvalDetail<TValue>(key, ReasonKind.WrongType, "type mismatch", defaultValue, string.Empty);
         }
