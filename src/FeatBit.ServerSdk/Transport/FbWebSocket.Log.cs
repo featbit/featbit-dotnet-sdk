@@ -18,14 +18,14 @@ namespace FeatBit.Sdk.Server.Transport
             [LoggerMessage(3, LogLevel.Debug, "Error starting transport.", EventName = "ErrorStartingTransport")]
             public static partial void ErrorStartingTransport(ILogger logger, Exception ex);
 
-            [LoggerMessage(4, LogLevel.Debug, "Starting receive loop.", EventName = "ReceiveLoopStarting")]
+            [LoggerMessage(4, LogLevel.Debug, "Starting receive loop.", EventName = "StartingReceiveLoop")]
             public static partial void StartingReceiveLoop(ILogger logger);
 
-            [LoggerMessage(5, LogLevel.Debug, "Starting keep alive timer.", EventName = "KeepAliveTimerStarting")]
+            [LoggerMessage(5, LogLevel.Debug, "Starting keep alive timer.", EventName = "StartingKeepAliveTimer")]
             public static partial void StartingKeepAliveTimer(ILogger logger);
 
             [LoggerMessage(6, LogLevel.Debug, "Invoking the {HandlerName} event handler.",
-                EventName = "InvokingConnectedEventHandler")]
+                EventName = "InvokingEventHandler")]
             public static partial void InvokingEventHandler(ILogger logger, string handlerName);
 
             [LoggerMessage(7, LogLevel.Information, "FbWebSocket started.", EventName = "Started")]
@@ -52,7 +52,7 @@ namespace FeatBit.Sdk.Server.Transport
             [LoggerMessage(13, LogLevel.Error, "Error stopping transport.", EventName = "ErrorStoppingTransport")]
             public static partial void ErrorStoppingTransport(ILogger logger, Exception exception);
 
-            [LoggerMessage(14, LogLevel.Debug, "Stopping keep alive timer.", EventName = "StopKeepAliveTimer")]
+            [LoggerMessage(14, LogLevel.Debug, "Stopping keep alive timer.", EventName = "StoppingKeepAliveTimer")]
             public static partial void StoppingKeepAliveTimer(ILogger logger);
 
             [LoggerMessage(15, LogLevel.Warning, "FbWebSocket is trying to reconnect due to an exception. Flag evaluation results may be stale until reconnected.",
@@ -87,11 +87,11 @@ namespace FeatBit.Sdk.Server.Transport
                 EventName = "ReconnectingStoppedDuringReconnectAttempt")]
             public static partial void ReconnectingStoppedDuringReconnectAttempt(ILogger logger);
 
-            [LoggerMessage(23, LogLevel.Trace, "Shutting down connection.", EventName = "ShutdownConnection")]
+            [LoggerMessage(23, LogLevel.Trace, "Shutting down connection.", EventName = "ShuttingDown")]
             public static partial void ShuttingDown(ILogger logger);
 
             [LoggerMessage(24, LogLevel.Error, "Connection is shutting down with an error.",
-                EventName = "ShutdownWithError")]
+                EventName = "ShuttingDownWithError")]
             public static partial void ShuttingDownWithError(ILogger logger, Exception exception);
 
             [LoggerMessage(25, LogLevel.Debug, "Terminating receive loop, which should cause everything to shut down",
