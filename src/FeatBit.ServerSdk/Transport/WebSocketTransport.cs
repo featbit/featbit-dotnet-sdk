@@ -5,6 +5,7 @@ using System.Net.WebSockets;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+using FeatBit.Sdk.Server.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -90,6 +91,7 @@ namespace FeatBit.Sdk.Server.Transport
         private static async Task<WebSocket> DefaultWebSocketFactory(Uri uri, CancellationToken cancellationToken)
         {
             var webSocket = new ClientWebSocket();
+            webSocket.Options.SetRequestHeader("User-Agent", HttpConstants.UserAgent);
 
             try
             {

@@ -138,7 +138,7 @@ namespace FeatBit.Sdk.Server.Events
         private void AddDefaultHeaders(FbOptions options)
         {
             _httpClient.DefaultRequestHeaders.Add("Authorization", options.EnvSecret);
-            _httpClient.DefaultRequestHeaders.Add("User-Agent", "fb-dotnet-server-sdk");
+            _httpClient.DefaultRequestHeaders.Add("User-Agent", HttpConstants.UserAgent);
         }
     }
 }
