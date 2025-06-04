@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 using Serilog;
 
 // Set secret to your FeatBit SDK secret.
-const string secret = "";
+const string secret = "fOVi3C0pIESIj7SOLWh0RQol1kfj2ir02PUSjxP6eMQw";
 if (string.IsNullOrWhiteSpace(secret))
 {
     Console.WriteLine("Please edit Program.cs to set secret to your FeatBit SDK secret first. Exiting...");
@@ -25,8 +25,8 @@ Log.Logger = new LoggerConfiguration()
 
 var serilogLoggerFactory = LoggerFactory.Create(opt => opt.AddSerilog());
 var options = new FbOptionsBuilder(secret)
-    .Streaming(new Uri("wss://app-eval.featbit.co"))
-    .Event(new Uri("https://app-eval.featbit.co"))
+    .Streaming(new Uri("ws://localhost:5100"))
+    .Event(new Uri("http://localhost:5100"))
     .LoggerFactory(serilogLoggerFactory)
     .Build();
 

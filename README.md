@@ -92,6 +92,7 @@ await client.CloseAsync();
 ### Examples
 
 - [Console App](/examples/ConsoleApp/Program.cs)
+- [NET462 Console App](/examples/Net462ConsoleApp/Program.cs)
 - [ASP.NET Core](/examples/WebApiApp/Program.cs)
 
 ## SDK
