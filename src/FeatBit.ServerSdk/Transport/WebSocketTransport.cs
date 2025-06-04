@@ -92,6 +92,7 @@ namespace FeatBit.Sdk.Server.Transport
         {
             var webSocket = new ClientWebSocket();
 
+            // reference: https://github.com/dotnet/aspnetcore/blob/main/src/SignalR/clients/csharp/Http.Connections.Client/src/Internal/WebSocketsTransport.cs#L98-L105
             // Full Framework will throw when trying to set the User-Agent header
             // So avoid setting it in netstandard2.0 and only set it in netstandard2.1 and higher
 #if !NETSTANDARD2_0 && !NETFRAMEWORK
