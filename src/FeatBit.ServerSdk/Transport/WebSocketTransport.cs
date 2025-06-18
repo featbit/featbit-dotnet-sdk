@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using FeatBit.Sdk.Server.Http;
+using FeatBit.Sdk.Server.Options;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -21,6 +22,7 @@ namespace FeatBit.Sdk.Server.Transport
         public WebSocketCloseStatus? CloseStatus => _webSocket?.CloseStatus;
         public string CloseDescription => _webSocket?.CloseStatusDescription;
 
+        private readonly FbOptions _options;
         private readonly Func<Uri, CancellationToken, Task<WebSocket>> _webSocketFactory;
         private WebSocket _webSocket;
 
@@ -49,10 +51,12 @@ namespace FeatBit.Sdk.Server.Transport
         );
 
         public WebSocketTransport(
+            FbOptions options,
             ILoggerFactory loggerFactory = null,
             Func<Uri, CancellationToken, Task<WebSocket>> webSocketFactory = null)
         {
             _logger = (loggerFactory ?? NullLoggerFactory.Instance).CreateLogger<WebSocketTransport>();
+            _options = options;
             _webSocketFactory = webSocketFactory;
         }
 
@@ -88,7 +92,7 @@ namespace FeatBit.Sdk.Server.Transport
             Log.StartedTransport(_logger);
         }
 
-        private static async Task<WebSocket> DefaultWebSocketFactory(Uri uri, CancellationToken cancellationToken)
+        private async Task<WebSocket> DefaultWebSocketFactory(Uri uri, CancellationToken cancellationToken)
         {
             var webSocket = new ClientWebSocket();
 
@@ -104,7 +108,9 @@ namespace FeatBit.Sdk.Server.Transport
 
             try
             {
-                await webSocket.ConnectAsync(uri, cancellationToken);
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                cts.CancelAfter(_options.ConnectTimeout);
+                await webSocket.ConnectAsync(uri, cts.Token);
             }
             catch
             {

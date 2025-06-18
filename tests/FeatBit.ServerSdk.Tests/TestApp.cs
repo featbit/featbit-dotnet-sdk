@@ -22,11 +22,12 @@ public class TestApp : WebApplicationFactory<TestStartup>
         return wsUri;
     }
 
-    internal WebSocketTransport CreateWebSocketTransport()
+    internal WebSocketTransport CreateWebSocketTransport(FbOptions options)
     {
         var client = Server.CreateWebSocketClient();
 
         return new WebSocketTransport(
+            options,
             webSocketFactory: (uri, cancellationToken) => client.ConnectAsync(uri, cancellationToken)
         );
     }

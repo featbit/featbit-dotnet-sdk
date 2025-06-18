@@ -24,7 +24,7 @@ namespace FeatBit.Sdk.Server.Transport
             new ReadOnlyMemory<byte>(Encoding.UTF8.GetBytes("{\"messageType\":\"ping\",\"data\":{}}"));
 
         private readonly FbOptions _options;
-        private readonly Func<WebSocketTransport> _transportFactory;
+        private readonly Func<FbOptions, WebSocketTransport> _transportFactory;
         private readonly Func<FbOptions, Uri> _webSocketUriResolver;
         private WebSocketTransport _transport;
         private Task _receiveTask;
@@ -38,7 +38,7 @@ namespace FeatBit.Sdk.Server.Transport
 
         internal FbWebSocket(
             FbOptions options,
-            Func<WebSocketTransport> transportFactory = null,
+            Func<FbOptions, WebSocketTransport> transportFactory = null,
             Func<FbOptions, Uri> webSocketUriResolver = null)
         {
             _options = options;
@@ -64,7 +64,7 @@ namespace FeatBit.Sdk.Server.Transport
             }
 
             var transportFactory = _transportFactory ?? DefaultWebSocketTransportFactory;
-            var transport = transportFactory();
+            var transport = transportFactory(_options);
             if (transport == null)
             {
                 throw new InvalidOperationException("Configured WebSocketTransportFactory did not return a value.");
@@ -108,9 +108,9 @@ namespace FeatBit.Sdk.Server.Transport
             Log.Started(_logger);
         }
 
-        private WebSocketTransport DefaultWebSocketTransportFactory()
+        private WebSocketTransport DefaultWebSocketTransportFactory(FbOptions options)
         {
-            return new WebSocketTransport(_loggerFactory);
+            return new WebSocketTransport(options, _loggerFactory);
         }
 
         private static Uri DefaultWebSocketUriResolver(FbOptions options)

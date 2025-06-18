@@ -1,6 +1,8 @@
 using System.Net.WebSockets;
 using System.Text;
 
+using FeatBit.Sdk.Server.Options;
+
 namespace FeatBit.Sdk.Server.Transport;
 
 [Collection(nameof(TestApp))]
@@ -16,7 +18,8 @@ public class WebSocketsTransportTests
     [Fact]
     public async Task StartAndStopAsync()
     {
-        var transport = _app.CreateWebSocketTransport();
+        var options = new FbOptionsBuilder().Build();
+        var transport = _app.CreateWebSocketTransport(options);
         var uri = _app.GetWsUri("echo");
 
         await transport.StartAsync(uri);
@@ -32,7 +35,8 @@ public class WebSocketsTransportTests
     [Fact]
     public async Task SendReceiveAsync()
     {
-        var transport = _app.CreateWebSocketTransport();
+        var options = new FbOptionsBuilder().Build();
+        var transport = _app.CreateWebSocketTransport(options);
         var uri = _app.GetWsUri("echo");
 
         await transport.StartAsync(uri);
