@@ -52,7 +52,7 @@ namespace FeatBit.Sdk.Server.Transport
             _logger = _loggerFactory.CreateLogger<FbWebSocket>();
         }
 
-        public async Task ConnectAsync(CancellationToken cancellationToken = default, bool isReconnecting = false)
+        public async Task ConnectAsync(bool isReconnecting = false, CancellationToken cancellationToken = default)
         {
             Log.Starting(_logger);
 
@@ -75,7 +75,7 @@ namespace FeatBit.Sdk.Server.Transport
             {
                 // starts the transport
                 Log.StartingTransport(_logger, "WebSockets", webSocketUri);
-                await transport.StartAsync(webSocketUri, _options.CloseTimeout, cancellationToken);
+                await transport.StartAsync(webSocketUri, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -254,7 +254,7 @@ namespace FeatBit.Sdk.Server.Transport
 
                 try
                 {
-                    await ConnectAsync(_stopCts.Token, isReconnecting: true).ConfigureAwait(false);
+                    await ConnectAsync(isReconnecting: true, _stopCts.Token).ConfigureAwait(false);
 
                     Log.Reconnected(_logger, retryTimes, DateTime.UtcNow - reconnectStartTime);
 
