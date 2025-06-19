@@ -61,4 +61,16 @@ public class WebSocketsTransportTests
 
         await transport.StopAsync();
     }
+
+    [Fact]
+    public async Task StartAsyncShouldThrowTimeoutExceptionWhenConnectTimesOut()
+    {
+        var options = new FbOptionsBuilder()
+            .ConnectTimeout(TimeSpan.FromTicks(1))
+            .Build();
+        var transport = new WebSocketTransport(options);
+        var uri = _app.GetWsUri("echo");
+
+        await Assert.ThrowsAsync<TimeoutException>(() => transport.StartAsync(uri));
+    }
 }

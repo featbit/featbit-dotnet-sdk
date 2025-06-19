@@ -112,9 +112,15 @@ namespace FeatBit.Sdk.Server.Transport
                 cts.CancelAfter(_options.ConnectTimeout);
                 await webSocket.ConnectAsync(uri, cts.Token);
             }
-            catch
+            catch (Exception ex)
             {
                 webSocket.Dispose();
+
+                if (ex is OperationCanceledException && !cancellationToken.IsCancellationRequested)
+                {
+                    throw new TimeoutException("Connect timed out.", ex);
+                }
+
                 throw;
             }
 
