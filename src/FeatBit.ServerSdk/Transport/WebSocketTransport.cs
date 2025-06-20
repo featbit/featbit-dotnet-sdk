@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using FeatBit.Sdk.Server.Http;
+using FeatBit.Sdk.Server.Options;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -21,19 +22,17 @@ namespace FeatBit.Sdk.Server.Transport
         public WebSocketCloseStatus? CloseStatus => _webSocket?.CloseStatus;
         public string CloseDescription => _webSocket?.CloseStatusDescription;
 
+        private readonly FbOptions _options;
         private readonly Func<Uri, CancellationToken, Task<WebSocket>> _webSocketFactory;
         private WebSocket _webSocket;
 
         private IDuplexPipe _transport;
         private IDuplexPipe _application;
 
-        private TimeSpan _closeTimeout;
         private readonly CancellationTokenSource _stopCts = new CancellationTokenSource();
         private volatile bool _aborted;
         private Task Running { get; set; } = Task.CompletedTask;
         private readonly ILogger<WebSocketTransport> _logger;
-
-        private static readonly TimeSpan DefaultCloseTimeout = TimeSpan.FromSeconds(5);
 
         // 1MB
         private const long DefaultBufferSize = 1024 * 1024;
@@ -49,20 +48,17 @@ namespace FeatBit.Sdk.Server.Transport
         );
 
         public WebSocketTransport(
+            FbOptions options,
             ILoggerFactory loggerFactory = null,
             Func<Uri, CancellationToken, Task<WebSocket>> webSocketFactory = null)
         {
+            _options = options;
             _logger = (loggerFactory ?? NullLoggerFactory.Instance).CreateLogger<WebSocketTransport>();
             _webSocketFactory = webSocketFactory;
         }
 
-        public async Task StartAsync(
-            Uri uri,
-            TimeSpan? closeTimeout = null,
-            CancellationToken cancellationToken = default)
+        public async Task StartAsync(Uri uri, CancellationToken cancellationToken = default)
         {
-            _closeTimeout = closeTimeout ?? DefaultCloseTimeout;
-
             // Create the pipe pair (Application's writer is connected to Transport's reader, and vice versa)
             var pair = DuplexPipe.CreateConnectionPair(DefaultPipeOptions, DefaultPipeOptions);
 
@@ -88,7 +84,7 @@ namespace FeatBit.Sdk.Server.Transport
             Log.StartedTransport(_logger);
         }
 
-        private static async Task<WebSocket> DefaultWebSocketFactory(Uri uri, CancellationToken cancellationToken)
+        private async Task<WebSocket> DefaultWebSocketFactory(Uri uri, CancellationToken cancellationToken)
         {
             var webSocket = new ClientWebSocket();
 
@@ -104,11 +100,20 @@ namespace FeatBit.Sdk.Server.Transport
 
             try
             {
-                await webSocket.ConnectAsync(uri, cancellationToken);
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                cts.CancelAfter(_options.ConnectTimeout);
+
+                await webSocket.ConnectAsync(uri, cts.Token).ConfigureAwait(false);
             }
-            catch
+            catch (Exception ex)
             {
                 webSocket.Dispose();
+
+                if (ex is OperationCanceledException && !cancellationToken.IsCancellationRequested)
+                {
+                    throw new TimeoutException("Connect timed out.", ex);
+                }
+
                 throw;
             }
 
@@ -128,7 +133,7 @@ namespace FeatBit.Sdk.Server.Transport
                 // Wait for send or receive to complete
                 var trigger = await Task.WhenAny(receiving, sending).ConfigureAwait(false);
 
-                _stopCts.CancelAfter(_closeTimeout);
+                _stopCts.CancelAfter(_options.CloseTimeout);
 
                 if (trigger == receiving)
                 {
@@ -139,7 +144,7 @@ namespace FeatBit.Sdk.Server.Transport
                     // Cancel the application so that ReadAsync yields
                     _application.Input.CancelPendingRead();
 
-                    var resultTask = await Task.WhenAny(sending, Task.Delay(_closeTimeout, _stopCts.Token))
+                    var resultTask = await Task.WhenAny(sending, Task.Delay(_options.CloseTimeout, _stopCts.Token))
                         .ConfigureAwait(false);
                     if (resultTask != sending)
                     {
@@ -359,7 +364,7 @@ namespace FeatBit.Sdk.Server.Transport
             _application.Input.CancelPendingRead();
 
             // Start ungraceful close timer
-            _stopCts.CancelAfter(_closeTimeout);
+            _stopCts.CancelAfter(_options.CloseTimeout);
 
             try
             {

@@ -3,7 +3,6 @@ using System.Buffers;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
-using System.Threading;
 using System.Threading.Tasks;
 using FeatBit.Sdk.Server.Concurrent;
 using FeatBit.Sdk.Server.Options;
@@ -67,11 +66,7 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
 
         public Task<bool> StartAsync()
         {
-            Task.Run(() =>
-            {
-                var cts = new CancellationTokenSource(_options.ConnectTimeout);
-                return _webSocket.ConnectAsync(cts.Token);
-            });
+            Task.Run(() => _webSocket.ConnectAsync());
 
             return _initTcs.Task;
         }
