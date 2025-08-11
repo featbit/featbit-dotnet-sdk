@@ -83,7 +83,7 @@ namespace FeatBit.Sdk.Server.Transport
             [LoggerMessage(21, LogLevel.Debug, "Reconnect attempt failed.", EventName = "ReconnectAttemptFailed")]
             public static partial void ReconnectAttemptFailed(ILogger logger, Exception exception);
 
-            [LoggerMessage(22, LogLevel.Warning, "FbWebSocket stopped during reconnect attempt. Done reconnecting.",
+            [LoggerMessage(22, LogLevel.Debug, "FbWebSocket stopped during reconnect attempt. Done reconnecting.",
                 EventName = "ReconnectingStoppedDuringReconnectAttempt")]
             public static partial void ReconnectingStoppedDuringReconnectAttempt(ILogger logger);
 
