@@ -108,7 +108,7 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
             Exception ex, 
             WebSocketCloseStatus? closeStatus, 
             string closeStatusDescription, 
-            string sdkCloseMessage)
+            string closeMessage)
         {
             _statusManager.SetStatus(DataSynchronizerStatus.Stopped);
             return Task.CompletedTask;
