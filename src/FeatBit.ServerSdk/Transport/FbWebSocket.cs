@@ -269,7 +269,7 @@ namespace FeatBit.Sdk.Server.Transport
                     if (_stopCts.IsCancellationRequested)
                     {
                         Log.ReconnectingStoppedDuringReconnectAttempt(_logger);
-                        CompleteClose(message: "Connection stopped during reconnect attempt. Done reconnecting.");
+                        CompleteClose(message: "FbWebSocket stopped during reconnect attempt. Done reconnecting.");
 
                         return;
                     }
