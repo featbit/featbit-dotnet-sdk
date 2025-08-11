@@ -71,7 +71,7 @@ namespace FeatBit.Sdk.Server.Transport
                 EventName = "AwaitingReconnectRetryDelay")]
             public static partial void AwaitingReconnectRetryDelay(ILogger logger, long retryTimes, TimeSpan retryDelay);
 
-            [LoggerMessage(19, LogLevel.Debug, "Connection stopped during reconnect delay. Done reconnecting.",
+            [LoggerMessage(19, LogLevel.Debug, "FbWebSocket stopped during reconnect delay. Done reconnecting.",
                 EventName = "ReconnectingStoppedDuringRetryDelay")]
             public static partial void ReconnectingStoppedDuringRetryDelay(ILogger logger);
 
@@ -83,14 +83,14 @@ namespace FeatBit.Sdk.Server.Transport
             [LoggerMessage(21, LogLevel.Debug, "Reconnect attempt failed.", EventName = "ReconnectAttemptFailed")]
             public static partial void ReconnectAttemptFailed(ILogger logger, Exception exception);
 
-            [LoggerMessage(22, LogLevel.Warning, "Connection stopped during reconnect attempt. Done reconnecting.",
+            [LoggerMessage(22, LogLevel.Warning, "FbWebSocket stopped during reconnect attempt. Done reconnecting.",
                 EventName = "ReconnectingStoppedDuringReconnectAttempt")]
             public static partial void ReconnectingStoppedDuringReconnectAttempt(ILogger logger);
 
-            [LoggerMessage(23, LogLevel.Debug, "Shutting down connection. Message: {Message}", EventName = "ShuttingDown")]
+            [LoggerMessage(23, LogLevel.Debug, "FbWebSocket is shutting down. Message: {Message}", EventName = "ShuttingDown")]
             public static partial void ShuttingDown(ILogger logger, string message);
 
-            [LoggerMessage(24, LogLevel.Error, "Connection is shutting down with an error.",
+            [LoggerMessage(24, LogLevel.Error, "FbWebSocket is shutting down with an error.",
                 EventName = "ShuttingDownWithError")]
             public static partial void ShuttingDownWithError(ILogger logger, Exception exception);
 
