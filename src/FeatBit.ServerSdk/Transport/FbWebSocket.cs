@@ -201,7 +201,7 @@ namespace FeatBit.Sdk.Server.Transport
             }
             else
             {
-                CompleteClose(_closeException);
+                CompleteClose(exception: _closeException);
             }
         }
 
@@ -232,7 +232,7 @@ namespace FeatBit.Sdk.Server.Transport
                 if (!ShouldReconnect())
                 {
                     Log.GiveUpReconnect(_logger, _transport.CloseStatus);
-                    CompleteClose(_closeException);
+                    CompleteClose(message: "Give up reconnecting.");
                     return;
                 }
 
@@ -242,12 +242,10 @@ namespace FeatBit.Sdk.Server.Transport
                     Log.AwaitingReconnectRetryDelay(_logger, retryTimes, nextRetryDelay);
                     await Task.Delay(nextRetryDelay, _stopCts.Token).ConfigureAwait(false);
                 }
-                catch (OperationCanceledException ex)
+                catch (OperationCanceledException)
                 {
                     Log.ReconnectingStoppedDuringRetryDelay(_logger);
-                    var stoppedEx =
-                        new Exception("FbWebSocket stopped during reconnect delay. Done reconnecting.", ex);
-                    CompleteClose(stoppedEx);
+                    CompleteClose(message: "FbWebSocket stopped during reconnect delay. Done reconnecting.");
 
                     return;
                 }
@@ -271,10 +269,7 @@ namespace FeatBit.Sdk.Server.Transport
                     if (_stopCts.IsCancellationRequested)
                     {
                         Log.ReconnectingStoppedDuringReconnectAttempt(_logger);
-
-                        var stoppedEx =
-                            new Exception("Connection stopped during reconnect attempt. Done reconnecting.", ex);
-                        CompleteClose(stoppedEx);
+                        CompleteClose(message: "Connection stopped during reconnect attempt. Done reconnecting.");
 
                         return;
                     }
@@ -284,15 +279,16 @@ namespace FeatBit.Sdk.Server.Transport
             }
         }
 
-        private void CompleteClose(Exception exception)
+        private void CompleteClose(Exception exception = null, string message = null)
         {
             if (exception != null)
             {
                 Log.ShuttingDownWithError(_logger, exception);
             }
-            else
+
+            if (message != null)
             {
-                Log.ShuttingDown(_logger);
+                Log.ShuttingDown(_logger, message);
             }
 
             _stopCts = new CancellationTokenSource();

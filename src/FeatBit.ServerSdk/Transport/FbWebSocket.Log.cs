@@ -71,7 +71,7 @@ namespace FeatBit.Sdk.Server.Transport
                 EventName = "AwaitingReconnectRetryDelay")]
             public static partial void AwaitingReconnectRetryDelay(ILogger logger, long retryTimes, TimeSpan retryDelay);
 
-            [LoggerMessage(19, LogLevel.Warning, "Connection stopped during reconnect delay. Done reconnecting.",
+            [LoggerMessage(19, LogLevel.Debug, "Connection stopped during reconnect delay. Done reconnecting.",
                 EventName = "ReconnectingStoppedDuringRetryDelay")]
             public static partial void ReconnectingStoppedDuringRetryDelay(ILogger logger);
 
@@ -87,8 +87,8 @@ namespace FeatBit.Sdk.Server.Transport
                 EventName = "ReconnectingStoppedDuringReconnectAttempt")]
             public static partial void ReconnectingStoppedDuringReconnectAttempt(ILogger logger);
 
-            [LoggerMessage(23, LogLevel.Trace, "Shutting down connection.", EventName = "ShuttingDown")]
-            public static partial void ShuttingDown(ILogger logger);
+            [LoggerMessage(23, LogLevel.Debug, "Shutting down connection. Message: {Message}", EventName = "ShuttingDown")]
+            public static partial void ShuttingDown(ILogger logger, string message);
 
             [LoggerMessage(24, LogLevel.Error, "Connection is shutting down with an error.",
                 EventName = "ShuttingDownWithError")]
