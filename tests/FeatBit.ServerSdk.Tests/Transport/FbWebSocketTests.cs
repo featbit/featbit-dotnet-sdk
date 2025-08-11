@@ -230,7 +230,7 @@ public class FbWebSocketTests
         fbWebSocket.OnClosed += (exception, closeStatus, closeDescription, closeMessage) =>
         {
             Assert.Null(exception);
-            Assert.Equal(closeStatus, WebSocketCloseStatus.EndpointUnavailable);
+            Assert.Equal(WebSocketCloseStatus.EndpointUnavailable, closeStatus);
             Assert.Equal("server going down", closeDescription);
 
             Assert.Equal("FbWebSocket stopped during reconnect delay. Done reconnecting.", closeMessage);
