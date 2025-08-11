@@ -17,7 +17,7 @@ namespace FeatBit.Sdk.Server.Transport
         public event Func<Task> OnKeepAlive;
         public event Func<Exception, Task> OnReconnecting;
         public event Func<Task> OnReconnected;
-        public event Func<Exception, WebSocketCloseStatus?, string, Task> OnClosed;
+        public event Func<Exception, WebSocketCloseStatus?, string, string, Task> OnClosed;
         public event Func<ReadOnlySequence<byte>, Task> OnReceived;
 
         private static readonly ReadOnlyMemory<byte> PingMessage =
@@ -279,7 +279,7 @@ namespace FeatBit.Sdk.Server.Transport
             }
         }
 
-        private void CompleteClose(Exception exception = null, string message = null)
+        private void CompleteClose(Exception exception = null, string message = "")
         {
             if (exception != null)
             {
@@ -294,7 +294,7 @@ namespace FeatBit.Sdk.Server.Transport
             _stopCts = new CancellationTokenSource();
 
             Log.InvokingEventHandler(_logger, nameof(OnClosed));
-            _ = OnClosed?.Invoke(exception, _transport.CloseStatus, _transport.CloseDescription).ConfigureAwait(false);
+            _ = OnClosed?.Invoke(exception, _transport.CloseStatus, _transport.CloseDescription, message).ConfigureAwait(false);
 
             if (_transport.CloseStatus.HasValue && _transport.CloseStatus != WebSocketCloseStatus.NormalClosure)
             {
