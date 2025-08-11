@@ -84,11 +84,12 @@ public class FbWebSocketTests
         var fbWebSocket = _app.CreateFbWebSocket("echo");
 
         var onClosedCalled = false;
-        fbWebSocket.OnClosed += (exception, closeStatus, closeDescription) =>
+        fbWebSocket.OnClosed += (exception, closeStatus, closeDescription, closeMessage) =>
         {
             Assert.Null(exception);
             Assert.Equal(WebSocketCloseStatus.NormalClosure, closeStatus);
             Assert.Equal(string.Empty, closeDescription);
+            Assert.Equal(string.Empty, closeMessage);
 
             onClosedCalled = true;
             return Task.CompletedTask;
@@ -101,22 +102,24 @@ public class FbWebSocketTests
     }
 
     [Theory]
-    [InlineData("close-normally", WebSocketCloseStatus.NormalClosure, "")]
-    [InlineData("close-with-4003", (WebSocketCloseStatus)4003, "invalid request, close by server")]
+    [InlineData("close-normally", WebSocketCloseStatus.NormalClosure, "", "")]
+    [InlineData("close-with-4003", (WebSocketCloseStatus)4003, "invalid request, close by server", "")]
     public async Task TestOnClosed_ServerInitiated(
         string op,
         WebSocketCloseStatus expectCloseStatus,
-        string expectCloseDescription)
+        string expectCloseDescription,
+        string expectCloseMessage)
     {
         var fbWebSocket = _app.CreateFbWebSocket(op);
 
         var tcs = new TaskCompletionSource();
         var onClosedTask = tcs.Task;
-        fbWebSocket.OnClosed += (exception, closeStatus, closeDescription) =>
+        fbWebSocket.OnClosed += (exception, closeStatus, closeDescription, closeMessage) =>
         {
             Assert.Null(exception);
             Assert.Equal(expectCloseStatus, closeStatus);
             Assert.Equal(expectCloseDescription, closeDescription);
+            Assert.Equal(expectCloseMessage, closeMessage);
 
             tcs.SetResult();
             return Task.CompletedTask;
@@ -224,10 +227,13 @@ public class FbWebSocketTests
 
         var tcs = new TaskCompletionSource();
         var onClosedTask = tcs.Task;
-        fbWebSocket.OnClosed += (exception, _, _) =>
+        fbWebSocket.OnClosed += (exception, closeStatus, closeDescription, closeMessage) =>
         {
-            Assert.NotNull(exception);
-            Assert.Equal("FbWebSocket stopped during reconnect delay. Done reconnecting.", exception.Message);
+            Assert.Null(exception);
+            Assert.Equal(WebSocketCloseStatus.EndpointUnavailable, closeStatus);
+            Assert.Equal("server going down", closeDescription);
+
+            Assert.Equal("FbWebSocket stopped during reconnect delay. Done reconnecting.", closeMessage);
 
             tcs.SetResult();
             return Task.CompletedTask;

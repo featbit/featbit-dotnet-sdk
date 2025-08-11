@@ -17,7 +17,7 @@ namespace FeatBit.Sdk.Server.Transport
         public event Func<Task> OnKeepAlive;
         public event Func<Exception, Task> OnReconnecting;
         public event Func<Task> OnReconnected;
-        public event Func<Exception, WebSocketCloseStatus?, string, Task> OnClosed;
+        public event Func<Exception, WebSocketCloseStatus?, string, string, Task> OnClosed;
         public event Func<ReadOnlySequence<byte>, Task> OnReceived;
 
         private static readonly ReadOnlyMemory<byte> PingMessage =
@@ -201,7 +201,7 @@ namespace FeatBit.Sdk.Server.Transport
             }
             else
             {
-                CompleteClose(_closeException);
+                CompleteClose(exception: _closeException);
             }
         }
 
@@ -232,7 +232,7 @@ namespace FeatBit.Sdk.Server.Transport
                 if (!ShouldReconnect())
                 {
                     Log.GiveUpReconnect(_logger, _transport.CloseStatus);
-                    CompleteClose(_closeException);
+                    CompleteClose(message: "Give up reconnecting.");
                     return;
                 }
 
@@ -242,12 +242,10 @@ namespace FeatBit.Sdk.Server.Transport
                     Log.AwaitingReconnectRetryDelay(_logger, retryTimes, nextRetryDelay);
                     await Task.Delay(nextRetryDelay, _stopCts.Token).ConfigureAwait(false);
                 }
-                catch (OperationCanceledException ex)
+                catch (OperationCanceledException)
                 {
                     Log.ReconnectingStoppedDuringRetryDelay(_logger);
-                    var stoppedEx =
-                        new Exception("FbWebSocket stopped during reconnect delay. Done reconnecting.", ex);
-                    CompleteClose(stoppedEx);
+                    CompleteClose(message: "FbWebSocket stopped during reconnect delay. Done reconnecting.");
 
                     return;
                 }
@@ -271,10 +269,7 @@ namespace FeatBit.Sdk.Server.Transport
                     if (_stopCts.IsCancellationRequested)
                     {
                         Log.ReconnectingStoppedDuringReconnectAttempt(_logger);
-
-                        var stoppedEx =
-                            new Exception("Connection stopped during reconnect attempt. Done reconnecting.", ex);
-                        CompleteClose(stoppedEx);
+                        CompleteClose(message: "FbWebSocket stopped during reconnect attempt. Done reconnecting.");
 
                         return;
                     }
@@ -284,21 +279,22 @@ namespace FeatBit.Sdk.Server.Transport
             }
         }
 
-        private void CompleteClose(Exception exception)
+        private void CompleteClose(Exception exception = null, string message = "")
         {
             if (exception != null)
             {
                 Log.ShuttingDownWithError(_logger, exception);
             }
-            else
+
+            if (message != null)
             {
-                Log.ShuttingDown(_logger);
+                Log.ShuttingDown(_logger, message);
             }
 
             _stopCts = new CancellationTokenSource();
 
             Log.InvokingEventHandler(_logger, nameof(OnClosed));
-            _ = OnClosed?.Invoke(exception, _transport.CloseStatus, _transport.CloseDescription).ConfigureAwait(false);
+            _ = OnClosed?.Invoke(exception, _transport.CloseStatus, _transport.CloseDescription, message).ConfigureAwait(false);
 
             if (_transport.CloseStatus.HasValue && _transport.CloseStatus != WebSocketCloseStatus.NormalClosure)
             {

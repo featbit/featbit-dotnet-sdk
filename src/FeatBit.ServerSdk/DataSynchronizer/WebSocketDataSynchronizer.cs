@@ -104,7 +104,11 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
             return Task.CompletedTask;
         }
 
-        private Task OnClosed(Exception ex, WebSocketCloseStatus? closeStatus, string closeStatusDescription)
+        private Task OnClosed(
+            Exception ex, 
+            WebSocketCloseStatus? closeStatus, 
+            string closeStatusDescription, 
+            string closeMessage)
         {
             _statusManager.SetStatus(DataSynchronizerStatus.Stopped);
             return Task.CompletedTask;

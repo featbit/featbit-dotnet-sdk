@@ -47,7 +47,7 @@ public class FbClientOfflineTests
     public void UseNullEventProcessorWhenEventsAreDisabled()
     {
         var options = new FbOptionsBuilder()
-            .Offline(false)
+            .Offline(true)
             .DisableEvents(true)
             .Build();
 
