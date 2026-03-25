@@ -304,7 +304,15 @@ namespace FeatBit.Sdk.Server.Transport
 
         private async Task KeepAliveAsync(CancellationToken ct = default)
         {
-            await SendAsync(PingMessage, ct);
+            try
+            {
+                await SendAsync(PingMessage, ct);
+            }
+            catch (InvalidOperationException)
+            {
+                // the pipe write will throw InvalidOperationException if the connection is closed
+                // catch and ignore it to avoid UnobservedTaskException
+            }
 
             Log.InvokingEventHandler(_logger, nameof(OnKeepAlive));
             _ = OnKeepAlive?.Invoke();
