@@ -67,7 +67,7 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
 
         public Task<bool> StartAsync()
         {
-            Task.Run(() => _webSocket.ConnectAsync()).Forget();
+            _webSocket.ConnectAsync().Forget();
 
             return _initTcs.Task;
         }
