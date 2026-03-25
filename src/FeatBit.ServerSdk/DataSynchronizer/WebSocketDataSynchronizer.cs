@@ -8,6 +8,7 @@ using FeatBit.Sdk.Server.Concurrent;
 using FeatBit.Sdk.Server.Options;
 using FeatBit.Sdk.Server.Store;
 using FeatBit.Sdk.Server.Transport;
+using FeatBit.Sdk.Server.Utils;
 using Microsoft.Extensions.Logging;
 
 namespace FeatBit.Sdk.Server.DataSynchronizer
@@ -66,7 +67,7 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
 
         public Task<bool> StartAsync()
         {
-            Task.Run(() => _webSocket.ConnectAsync());
+            _webSocket.ConnectAsync().Forget();
 
             return _initTcs.Task;
         }
