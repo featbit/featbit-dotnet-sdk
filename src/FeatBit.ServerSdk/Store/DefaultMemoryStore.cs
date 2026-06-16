@@ -38,6 +38,11 @@ namespace FeatBit.Sdk.Server.Store
 
             foreach (var value in _items.Values.Where(predicate))
             {
+                if (value.IsArchived)
+                {
+                    continue;
+                }
+
                 if (value is TObject tObject)
                 {
                     result.Add(tObject);
