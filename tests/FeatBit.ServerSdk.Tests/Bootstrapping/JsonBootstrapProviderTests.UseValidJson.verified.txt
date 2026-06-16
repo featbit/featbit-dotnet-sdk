@@ -104,7 +104,8 @@
         ]
       },
       ExptIncludeAllTargets: true,
-      Version: 1674871495616
+      Version: 1674871495616,
+      IsArchived: false
     }
   ],
   Segments: [
@@ -143,7 +144,8 @@
           ]
         }
       ],
-      Version: 1674885283583
+      Version: 1674885283583,
+      IsArchived: false
     }
   ]
 }
