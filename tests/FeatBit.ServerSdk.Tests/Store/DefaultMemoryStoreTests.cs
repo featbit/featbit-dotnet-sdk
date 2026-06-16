@@ -58,7 +58,7 @@ public class DefaultMemoryStoreTests
         store.Populate(new[] { archivedFlag, archivedSegment });
 
         var r1 = store.Get<FeatureFlag>(archivedFlag.StoreKey);
-        var r2 = store.Get<FeatureFlag>(archivedSegment.StoreKey);
+        var r2 = store.Get<Segment>(archivedSegment.StoreKey);
 
         Assert.Null(r1);
         Assert.Null(r2);
