@@ -29,6 +29,34 @@ public class EvaluatorTests
     }
 
     [Fact]
+    public void EvaluateArchivedFlag()
+    {
+        var store = new DefaultMemoryStore();
+        var archivedFlag = new FeatureFlagBuilder()
+            .Key("hello")
+            .IsArchived(true)
+            .Variations(TrueVariation)
+            .Build();
+        store.Populate(new[] { archivedFlag });
+
+        var evaluator = new Evaluator(store);
+        var context = new EvaluationContext
+        {
+            FlagKey = "hello",
+            FbUser = new FbUserBuilder("u1").Build()
+        };
+
+        var (evalResult, evalEvent) = evaluator.Evaluate(context);
+
+        // archived flag is treated as not found
+        Assert.Equal(ReasonKind.Error, evalResult.Kind);
+        Assert.Equal("flag not found", evalResult.Reason);
+        Assert.Equivalent(Variation.Empty, evalResult.Variation);
+
+        Assert.Null(evalEvent);
+    }
+
+    [Fact]
     public void EvaluateMalformedFlag()
     {
         var store = new DefaultMemoryStore();

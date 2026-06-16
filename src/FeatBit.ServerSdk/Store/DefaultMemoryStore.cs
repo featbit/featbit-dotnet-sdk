@@ -24,7 +24,7 @@ namespace FeatBit.Sdk.Server.Store
 
         public TObject Get<TObject>(string key) where TObject : class
         {
-            if (_items.TryGetValue(key, out var obj) && obj is TObject tObject)
+            if (_items.TryGetValue(key, out var obj) && !obj.IsArchived && obj is TObject tObject)
             {
                 return tObject;
             }
