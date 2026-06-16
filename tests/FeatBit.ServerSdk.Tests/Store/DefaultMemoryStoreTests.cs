@@ -49,6 +49,22 @@ public class DefaultMemoryStoreTests
     }
 
     [Fact]
+    public void GetArchivedItemReturnsNull()
+    {
+        var store = new DefaultMemoryStore();
+
+        StorableObject archivedFlag = new FeatureFlagBuilder().IsArchived(true).Build();
+        StorableObject archivedSegment = new SegmentBuilder().IsArchived(true).Build();
+        store.Populate(new[] { archivedFlag, archivedSegment });
+
+        var r1 = store.Get<FeatureFlag>(archivedFlag.StoreKey);
+        var r2 = store.Get<Segment>(archivedSegment.StoreKey);
+
+        Assert.Null(r1);
+        Assert.Null(r2);
+    }
+
+    [Fact]
     public void FindObjects()
     {
         var store = new DefaultMemoryStore();

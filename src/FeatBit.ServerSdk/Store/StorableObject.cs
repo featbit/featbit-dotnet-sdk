@@ -9,6 +9,8 @@ namespace FeatBit.Sdk.Server.Store
         [JsonConverter(typeof(VersionJsonConverter))]
         public long Version { get; protected set; }
 
+        public bool IsArchived { get; set; }
+
         public abstract string StoreKey { get; }
     }
 }

@@ -48,7 +48,8 @@ namespace FeatBit.Sdk.Server.Model
             bool isEnabled,
             string disabledVariationId,
             Fallthrough fallthrough,
-            bool exptIncludeAllTargets)
+            bool exptIncludeAllTargets, 
+            bool isArchived)
         {
             Id = id;
             Key = key;
@@ -61,6 +62,7 @@ namespace FeatBit.Sdk.Server.Model
             DisabledVariationId = disabledVariationId;
             Fallthrough = fallthrough;
             ExptIncludeAllTargets = exptIncludeAllTargets;
+            IsArchived = isArchived;
         }
 
         public Variation GetVariation(string variationId)

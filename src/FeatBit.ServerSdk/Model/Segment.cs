@@ -27,13 +27,15 @@ namespace FeatBit.Sdk.Server.Model
             long version,
             ICollection<string> included,
             ICollection<string> excluded,
-            ICollection<MatchRule> rules)
+            ICollection<MatchRule> rules, 
+            bool isArchived)
         {
             Id = id;
             Version = version;
             Included = included;
             Excluded = excluded;
             Rules = rules;
+            IsArchived = isArchived;
         }
     }
 

@@ -10,10 +10,11 @@ namespace FeatBit.Sdk.Server.Model
         private ICollection<string> _included = new List<string>();
         private ICollection<string> _excluded = new List<string>();
         private ICollection<MatchRule> _rules = new List<MatchRule>();
+        private bool _isArchived = false;
 
         public Segment Build()
         {
-            return new Segment(_id, _version, _included, _excluded, _rules);
+            return new Segment(_id, _version, _included, _excluded, _rules, _isArchived);
         }
 
         public SegmentBuilder Id(Guid id)
@@ -61,6 +62,12 @@ namespace FeatBit.Sdk.Server.Model
                 _rules.Add(rule);
             }
 
+            return this;
+        }
+
+        public SegmentBuilder IsArchived(bool isArchived)
+        {
+            _isArchived = isArchived;
             return this;
         }
     }

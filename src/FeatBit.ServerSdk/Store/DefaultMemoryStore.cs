@@ -24,7 +24,7 @@ namespace FeatBit.Sdk.Server.Store
 
         public TObject Get<TObject>(string key) where TObject : class
         {
-            if (_items.TryGetValue(key, out var obj) && obj is TObject tObject)
+            if (_items.TryGetValue(key, out var obj) && !obj.IsArchived && obj is TObject tObject)
             {
                 return tObject;
             }
@@ -38,6 +38,11 @@ namespace FeatBit.Sdk.Server.Store
 
             foreach (var value in _items.Values.Where(predicate))
             {
+                if (value.IsArchived)
+                {
+                    continue;
+                }
+
                 if (value is TObject tObject)
                 {
                     result.Add(tObject);

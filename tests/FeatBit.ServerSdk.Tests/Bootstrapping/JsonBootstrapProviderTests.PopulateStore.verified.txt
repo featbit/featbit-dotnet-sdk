@@ -102,7 +102,8 @@
       ]
     },
     ExptIncludeAllTargets: true,
-    Version: 1674871495616
+    Version: 1674871495616,
+    IsArchived: false
   },
   segment: {
     StoreKey: segment_0779d76b-afc6-4886-ab65-af8c004273ad,
@@ -139,6 +140,7 @@
         ]
       }
     ],
-    Version: 1674885283583
+    Version: 1674885283583,
+    IsArchived: false
   }
 }
