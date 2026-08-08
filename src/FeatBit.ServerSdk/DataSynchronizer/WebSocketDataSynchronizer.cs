@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using FeatBit.Sdk.Server.Concurrent;
+using FeatBit.Sdk.Server.Model;
 using FeatBit.Sdk.Server.Options;
 using FeatBit.Sdk.Server.Store;
 using FeatBit.Sdk.Server.Transport;
@@ -13,7 +14,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FeatBit.Sdk.Server.DataSynchronizer
 {
-    internal sealed class WebSocketDataSynchronizer : IDataSynchronizer
+    internal sealed class WebSocketDataSynchronizer : IDataSynchronizer, IDataChangeNotifier
     {
         private readonly StatusManager<DataSynchronizerStatus> _statusManager;
         private readonly AtomicBoolean _initialized;
@@ -21,6 +22,7 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
         public bool Initialized => _initialized.Value;
         public DataSynchronizerStatus Status => _statusManager.Status;
         public event Action<DataSynchronizerStatus> StatusChanged;
+        public event EventHandler<FeatureDataChangedEventArgs> DataChanged;
 
         private readonly IMemoryStore _store;
         private readonly FbOptions _options;
@@ -170,17 +172,33 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
                 var dataSet = DataSet.FromJsonElement(root.GetProperty("data"));
                 _logger.LogDebug("Received {Type} data-sync message", dataSet.EventType);
                 var objects = dataSet.GetStorableObjects();
+                FeatureDataChangeKind? dataChangeKind = null;
+                var hasFeatureFlagChanges = false;
+                var hasSegmentChanges = false;
+
                 // populate data store
                 if (dataSet.EventType == DataSet.Full)
                 {
                     _store.Populate(objects);
+                    dataChangeKind = FeatureDataChangeKind.Full;
+                    hasFeatureFlagChanges = dataSet.FeatureFlags.Length > 0;
+                    hasSegmentChanges = dataSet.Segments.Length > 0;
                 }
                 // upsert objects
                 else if (dataSet.EventType == DataSet.Patch)
                 {
                     foreach (var storableObject in objects)
                     {
-                        _store.Upsert(storableObject);
+                        if (_store.Upsert(storableObject))
+                        {
+                            hasFeatureFlagChanges |= storableObject is FeatureFlag;
+                            hasSegmentChanges |= storableObject is Segment;
+                        }
+                    }
+
+                    if (hasFeatureFlagChanges || hasSegmentChanges)
+                    {
+                        dataChangeKind = FeatureDataChangeKind.Patch;
                     }
                 }
 
@@ -189,7 +207,25 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
                 {
                     _initTcs.TrySetResult(true);
                 }
+
+                if (dataChangeKind.HasValue)
+                {
+                    OnDataChanged(
+                        dataChangeKind.Value,
+                        hasFeatureFlagChanges,
+                        hasSegmentChanges);
+                }
             }
+        }
+
+        private void OnDataChanged(
+            FeatureDataChangeKind kind,
+            bool hasFeatureFlagChanges,
+            bool hasSegmentChanges)
+        {
+            DataChanged?.Invoke(
+                this,
+                new FeatureDataChangedEventArgs(kind, hasFeatureFlagChanges, hasSegmentChanges));
         }
 
         public async Task StopAsync()

@@ -102,7 +102,11 @@ public class TestStartup : StartupBase
                 if (messageType == "data-sync")
                 {
                     var timestamp = root.GetProperty("data").GetProperty("timestamp").GetInt64();
-                    var response = timestamp == 0 ? TestData.FullDataSet : TestData.PatchDataSet;
+                    var response = timestamp == 0
+                        ? TestData.FullDataSet
+                        : token == "segment-patch"
+                            ? TestData.SegmentPatchDataSet
+                            : TestData.PatchDataSet;
 
                     await webSocket.SendAsync(response, WebSocketMessageType.Text, true, CancellationToken.None);
 

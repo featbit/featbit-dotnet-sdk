@@ -11,7 +11,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FeatBit.Sdk.Server
 {
-    public sealed class FbClient : IFbClient
+    public sealed class FbClient : IFbClient, IFbClientDataChangeNotifier
     {
         #region private fields
 
@@ -22,6 +22,7 @@ namespace FeatBit.Sdk.Server
         // internal for testing
         internal readonly IDataSynchronizer _dataSynchronizer;
         internal readonly IEventProcessor _eventProcessor;
+        private readonly IDataChangeNotifier _dataChangeNotifier;
 
         private readonly ILogger _logger;
 
@@ -29,6 +30,9 @@ namespace FeatBit.Sdk.Server
 
         /// <inheritdoc/>
         public bool Initialized => _dataSynchronizer.Initialized;
+
+        /// <inheritdoc/>
+        public event EventHandler<FeatureDataChangedEventArgs> DataChanged;
 
         /// <inheritdoc/>
         public FbClientStatus Status
@@ -139,6 +143,12 @@ namespace FeatBit.Sdk.Server
                 _dataSynchronizer = new WebSocketDataSynchronizer(options, _store);
             }
 
+            _dataChangeNotifier = _dataSynchronizer as IDataChangeNotifier;
+            if (_dataChangeNotifier != null)
+            {
+                _dataChangeNotifier.DataChanged += OnDataChanged;
+            }
+
             _logger = options.LoggerFactory.CreateLogger<FbClient>();
 
             // starts client
@@ -159,6 +169,12 @@ namespace FeatBit.Sdk.Server
 
             _dataSynchronizer = synchronizer;
             _eventProcessor = eventProcessor;
+
+            _dataChangeNotifier = _dataSynchronizer as IDataChangeNotifier;
+            if (_dataChangeNotifier != null)
+            {
+                _dataChangeNotifier.DataChanged += OnDataChanged;
+            }
 
             _logger = options.LoggerFactory.CreateLogger<FbClient>();
 
@@ -276,9 +292,46 @@ namespace FeatBit.Sdk.Server
         public async Task CloseAsync()
         {
             _logger.LogInformation("Closing FbClient...");
+            if (_dataChangeNotifier != null)
+            {
+                _dataChangeNotifier.DataChanged -= OnDataChanged;
+            }
+
             await _dataSynchronizer.StopAsync();
             _eventProcessor.FlushAndClose(_options.FlushTimeout);
             _logger.LogInformation("FbClient successfully closed.");
+        }
+
+        private void OnDataChanged(object sender, FeatureDataChangedEventArgs eventArgs)
+        {
+            var handlers = DataChanged?
+                .GetInvocationList()
+                .Cast<EventHandler<FeatureDataChangedEventArgs>>()
+                .ToArray();
+
+            if (handlers == null)
+            {
+                return;
+            }
+
+            foreach (var handler in handlers)
+            {
+                NotifyDataChanged(handler, eventArgs);
+            }
+        }
+
+        private void NotifyDataChanged(
+            EventHandler<FeatureDataChangedEventArgs> handler,
+            FeatureDataChangedEventArgs eventArgs)
+        {
+            try
+            {
+                handler(this, eventArgs);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception, "Exception occurred in a feature data change event handler.");
+            }
         }
 
         private EvalDetail<TValue> EvaluateCore<TValue>(

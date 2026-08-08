@@ -41,6 +41,30 @@ public class WebSocketDataSynchronizerTests
     }
 
     [Fact]
+    public async Task NotifiesAfterFullDataSyncIsApplied()
+    {
+        var options = new FbOptionsBuilder("qJHQTVfsZUOu1Q54RLMuIQ-JtrIvNK-k-bARYicOTNQA")
+            .Streaming(new Uri("ws://localhost/"))
+            .Build();
+
+        var store = new DefaultMemoryStore();
+        var synchronizer = new WebSocketDataSynchronizer(options, store, op => _app.CreateFbWebSocket(op));
+        var dataChanged = new TaskCompletionSource<FeatureDataChangedEventArgs>();
+
+        synchronizer.DataChanged += (_, eventArgs) => dataChanged.TrySetResult(eventArgs);
+
+        await synchronizer.StartAsync().WaitAsync(options.StartWaitTime);
+
+        var change = await dataChanged.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        Assert.True(store.Populated);
+        Assert.True(synchronizer.Initialized);
+        Assert.NotNull(store.Get<FeatureFlag>("ff_returns-true"));
+        Assert.Equal(FeatureDataChangeKind.Full, change.Kind);
+        Assert.True(change.HasFeatureFlagChanges);
+        Assert.True(change.HasSegmentChanges);
+    }
+
+    [Fact]
     public async Task StartWithPopulatedStoreAsync()
     {
         var options = new FbOptionsBuilder("qJHQTVfsZUOu1Q54RLMuIQ-JtrIvNK-k-bARYicOTNQA")
@@ -62,6 +86,79 @@ public class WebSocketDataSynchronizerTests
 
         var flag = store.Get<FeatureFlag>("ff_returns-true");
         Assert.NotNull(flag);
+    }
+
+    [Fact]
+    public async Task NotifiesAfterEffectivePatchDataSync()
+    {
+        var options = new FbOptionsBuilder("qJHQTVfsZUOu1Q54RLMuIQ-JtrIvNK-k-bARYicOTNQA")
+            .Streaming(new Uri("ws://localhost/"))
+            .Build();
+
+        var store = new DefaultMemoryStore();
+        store.Populate(new[] { new FeatureFlagBuilder().Key("hello-world").Version(1).Build() });
+
+        var synchronizer = new WebSocketDataSynchronizer(options, store, op => _app.CreateFbWebSocket(op));
+        var dataChanged = new TaskCompletionSource<FeatureDataChangedEventArgs>();
+        synchronizer.DataChanged += (_, eventArgs) => dataChanged.TrySetResult(eventArgs);
+
+        await synchronizer.StartAsync().WaitAsync(options.StartWaitTime);
+
+        var change = await dataChanged.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        var flag = store.Get<FeatureFlag>("ff_returns-true");
+        Assert.NotNull(flag);
+        Assert.True(synchronizer.Initialized);
+        Assert.Equal("returns-true", flag.Key);
+        Assert.Equal(FeatureDataChangeKind.Patch, change.Kind);
+        Assert.True(change.HasFeatureFlagChanges);
+        Assert.False(change.HasSegmentChanges);
+    }
+
+    [Fact]
+    public async Task NotifiesAfterEffectiveSegmentPatchDataSync()
+    {
+        var options = new FbOptionsBuilder("qJHQTVfsZUOu1Q54RLMuIQ-JtrIvNK-k-bARYicOTNQA")
+            .Streaming(new Uri("ws://localhost/"))
+            .Build();
+
+        var store = new DefaultMemoryStore();
+        store.Populate(new[] { new FeatureFlagBuilder().Key("hello-world").Version(1).Build() });
+
+        var webSocketUri = new Uri("ws://localhost/streaming?type=server&token=segment-patch");
+        var synchronizer = new WebSocketDataSynchronizer(
+            options,
+            store,
+            op => _app.CreateFbWebSocket(op, webSocketUri));
+        var dataChanged = new TaskCompletionSource<FeatureDataChangedEventArgs>();
+        synchronizer.DataChanged += (_, eventArgs) => dataChanged.TrySetResult(eventArgs);
+
+        await synchronizer.StartAsync().WaitAsync(options.StartWaitTime);
+
+        var change = await dataChanged.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        Assert.True(synchronizer.Initialized);
+        Assert.NotNull(store.Get<Segment>("segment_3e2a29b9-1f58-4e5d-8f0f-0248b806d75c"));
+        Assert.Equal(FeatureDataChangeKind.Patch, change.Kind);
+        Assert.False(change.HasFeatureFlagChanges);
+        Assert.True(change.HasSegmentChanges);
+    }
+
+    [Fact]
+    public async Task DoesNotNotifyWhenPatchDoesNotChangeStore()
+    {
+        var options = new FbOptionsBuilder("qJHQTVfsZUOu1Q54RLMuIQ-JtrIvNK-k-bARYicOTNQA")
+            .Streaming(new Uri("ws://localhost/"))
+            .Build();
+
+        var store = new DefaultMemoryStore();
+        store.Populate(new[] { new FeatureFlagBuilder().Key("returns-true").Version(long.MaxValue).Build() });
+
+        var synchronizer = new WebSocketDataSynchronizer(options, store, op => _app.CreateFbWebSocket(op));
+        var notified = false;
+        synchronizer.DataChanged += (_, _) => notified = true;
+
+        await synchronizer.StartAsync().WaitAsync(options.StartWaitTime);
+
+        Assert.False(notified);
     }
 
     [Fact]

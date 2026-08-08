@@ -86,17 +86,141 @@ public class FbClientTests
         Assert.Equal("fall through targets and rules", result0.Reason);
     }
 
-    private FbClient CreateTestFbClient(IEventProcessor processor = null)
+    [Fact]
+    public void PublishesDataChangesFromSynchronizer()
+    {
+        var synchronizer = new ManualDataSynchronizer();
+        var client = CreateTestFbClient(synchronizer);
+        var notifier = Assert.IsAssignableFrom<IFbClientDataChangeNotifier>(client);
+        FeatureDataChangedEventArgs received = null;
+        notifier.DataChanged += (_, eventArgs) => received = eventArgs;
+
+        synchronizer.RaiseDataChanged(FeatureDataChangeKind.Patch, hasFeatureFlagChanges: true, hasSegmentChanges: false);
+
+        Assert.NotNull(received);
+        Assert.Equal(FeatureDataChangeKind.Patch, received.Kind);
+        Assert.True(received.HasFeatureFlagChanges);
+        Assert.False(received.HasSegmentChanges);
+    }
+
+    [Fact]
+    public void UsesExplicitInitialRefreshWhenFullDataChangeOccursDuringStartup()
+    {
+        var synchronizer = new ManualDataSynchronizer
+        {
+            DataChangeOnStart = new FeatureDataChangedEventArgs(
+                FeatureDataChangeKind.Full,
+                hasFeatureFlagChanges: true,
+                hasSegmentChanges: true)
+        };
+
+        var client = CreateTestFbClient(synchronizer);
+        var notifier = Assert.IsAssignableFrom<IFbClientDataChangeNotifier>(client);
+        var refreshCount = 0;
+
+        notifier.DataChanged += (_, _) => Refresh();
+
+        Assert.Equal(0, refreshCount);
+
+        Refresh();
+        Assert.Equal(1, refreshCount);
+
+        synchronizer.RaiseDataChanged(
+            FeatureDataChangeKind.Patch,
+            hasFeatureFlagChanges: true,
+            hasSegmentChanges: false);
+
+        Assert.Equal(2, refreshCount);
+
+        void Refresh() => refreshCount++;
+    }
+
+    [Fact]
+    public void IsolatesExceptionsThrownByDataChangeSubscribers()
+    {
+        var synchronizer = new ManualDataSynchronizer();
+        var client = CreateTestFbClient(synchronizer);
+        var notifier = Assert.IsAssignableFrom<IFbClientDataChangeNotifier>(client);
+        var secondSubscriberCalled = false;
+        notifier.DataChanged += (_, _) => throw new InvalidOperationException("test subscriber failure");
+        notifier.DataChanged += (_, _) => secondSubscriberCalled = true;
+
+        synchronizer.RaiseDataChanged(FeatureDataChangeKind.Full, hasFeatureFlagChanges: true, hasSegmentChanges: true);
+
+        Assert.True(secondSubscriberCalled);
+    }
+
+    [Fact]
+    public async Task StopsForwardingDataChangesAfterClientIsClosed()
+    {
+        var synchronizer = new ManualDataSynchronizer();
+        var eventProcessor = new Mock<IEventProcessor>();
+        var client = CreateTestFbClient(synchronizer, eventProcessor.Object);
+        var notifier = Assert.IsAssignableFrom<IFbClientDataChangeNotifier>(client);
+        var notified = false;
+        notifier.DataChanged += (_, _) => notified = true;
+
+        await client.CloseAsync();
+        synchronizer.RaiseDataChanged(FeatureDataChangeKind.Full, hasFeatureFlagChanges: true, hasSegmentChanges: true);
+
+        Assert.False(notified);
+    }
+
+    private FbClient CreateTestFbClient(IEventProcessor processor = null) =>
+        CreateTestFbClient(null, processor);
+
+    private FbClient CreateTestFbClient(
+        IDataSynchronizer synchronizer,
+        IEventProcessor processor = null)
     {
         var options = new FbOptionsBuilder("qJHQTVfsZUOu1Q54RLMuIQ-JtrIvNK-k-bARYicOTNQA")
             .Streaming(new Uri("ws://localhost/"))
             .Build();
 
         var store = new DefaultMemoryStore();
-        var synchronizer =
+        synchronizer ??=
             new WebSocketDataSynchronizer(options, store, op => _app.CreateFbWebSocket(op));
         var eventProcessor = processor ?? new DefaultEventProcessor(options);
         var client = new FbClient(options, store, synchronizer, eventProcessor);
         return client;
+    }
+
+    private sealed class ManualDataSynchronizer : IDataSynchronizer, IDataChangeNotifier
+    {
+        public FeatureDataChangedEventArgs DataChangeOnStart { get; init; }
+
+        public bool Initialized => true;
+
+        public DataSynchronizerStatus Status => DataSynchronizerStatus.Stable;
+
+        public event Action<DataSynchronizerStatus> StatusChanged
+        {
+            add { }
+            remove { }
+        }
+
+        public event EventHandler<FeatureDataChangedEventArgs> DataChanged;
+
+        public Task<bool> StartAsync()
+        {
+            if (DataChangeOnStart != null)
+            {
+                DataChanged?.Invoke(this, DataChangeOnStart);
+            }
+
+            return Task.FromResult(true);
+        }
+
+        public Task StopAsync() => Task.CompletedTask;
+
+        public void RaiseDataChanged(
+            FeatureDataChangeKind kind,
+            bool hasFeatureFlagChanges,
+            bool hasSegmentChanges)
+        {
+            DataChanged?.Invoke(
+                this,
+                new FeatureDataChangedEventArgs(kind, hasFeatureFlagChanges, hasSegmentChanges));
+        }
     }
 }
