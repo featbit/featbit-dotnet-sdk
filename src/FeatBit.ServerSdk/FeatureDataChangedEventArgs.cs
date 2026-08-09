@@ -11,16 +11,16 @@ public sealed class FeatureDataChangedEventArgs : EventArgs
     /// Creates event data for a feature data synchronization change.
     /// </summary>
     /// <param name="kind">The synchronization operation that changed the data.</param>
-    /// <param name="hasFeatureFlagChanges">Whether feature flags changed.</param>
-    /// <param name="hasSegmentChanges">Whether segments changed.</param>
+    /// <param name="featureFlagsMayHaveChanged">Whether feature flags may have changed.</param>
+    /// <param name="segmentsMayHaveChanged">Whether segments may have changed.</param>
     public FeatureDataChangedEventArgs(
         FeatureDataChangeKind kind,
-        bool hasFeatureFlagChanges,
-        bool hasSegmentChanges)
+        bool featureFlagsMayHaveChanged,
+        bool segmentsMayHaveChanged)
     {
         Kind = kind;
-        HasFeatureFlagChanges = hasFeatureFlagChanges;
-        HasSegmentChanges = hasSegmentChanges;
+        FeatureFlagsMayHaveChanged = featureFlagsMayHaveChanged;
+        SegmentsMayHaveChanged = segmentsMayHaveChanged;
     }
 
     /// <summary>
@@ -29,12 +29,14 @@ public sealed class FeatureDataChangedEventArgs : EventArgs
     public FeatureDataChangeKind Kind { get; }
 
     /// <summary>
-    /// Gets whether feature flags changed.
+    /// Gets whether feature flags may have changed.
+    /// A full synchronization always returns <see langword="true"/> because it replaces the complete local data set.
     /// </summary>
-    public bool HasFeatureFlagChanges { get; }
+    public bool FeatureFlagsMayHaveChanged { get; }
 
     /// <summary>
-    /// Gets whether segments changed.
+    /// Gets whether segments may have changed.
+    /// A full synchronization always returns <see langword="true"/> because it replaces the complete local data set.
     /// </summary>
-    public bool HasSegmentChanges { get; }
+    public bool SegmentsMayHaveChanged { get; }
 }

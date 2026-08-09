@@ -95,12 +95,15 @@ public class FbClientTests
         FeatureDataChangedEventArgs received = null;
         notifier.DataChanged += (_, eventArgs) => received = eventArgs;
 
-        synchronizer.RaiseDataChanged(FeatureDataChangeKind.Patch, hasFeatureFlagChanges: true, hasSegmentChanges: false);
+        synchronizer.RaiseDataChanged(
+            FeatureDataChangeKind.Patch,
+            featureFlagsMayHaveChanged: true,
+            segmentsMayHaveChanged: false);
 
         Assert.NotNull(received);
         Assert.Equal(FeatureDataChangeKind.Patch, received.Kind);
-        Assert.True(received.HasFeatureFlagChanges);
-        Assert.False(received.HasSegmentChanges);
+        Assert.True(received.FeatureFlagsMayHaveChanged);
+        Assert.False(received.SegmentsMayHaveChanged);
     }
 
     [Fact]
@@ -110,8 +113,8 @@ public class FbClientTests
         {
             DataChangeOnStart = new FeatureDataChangedEventArgs(
                 FeatureDataChangeKind.Full,
-                hasFeatureFlagChanges: true,
-                hasSegmentChanges: true)
+                featureFlagsMayHaveChanged: true,
+                segmentsMayHaveChanged: true)
         };
 
         var client = CreateTestFbClient(synchronizer);
@@ -127,8 +130,8 @@ public class FbClientTests
 
         synchronizer.RaiseDataChanged(
             FeatureDataChangeKind.Patch,
-            hasFeatureFlagChanges: true,
-            hasSegmentChanges: false);
+            featureFlagsMayHaveChanged: true,
+            segmentsMayHaveChanged: false);
 
         Assert.Equal(2, refreshCount);
 
@@ -145,9 +148,44 @@ public class FbClientTests
         notifier.DataChanged += (_, _) => throw new InvalidOperationException("test subscriber failure");
         notifier.DataChanged += (_, _) => secondSubscriberCalled = true;
 
-        synchronizer.RaiseDataChanged(FeatureDataChangeKind.Full, hasFeatureFlagChanges: true, hasSegmentChanges: true);
+        synchronizer.RaiseDataChanged(
+            FeatureDataChangeKind.Full,
+            featureFlagsMayHaveChanged: true,
+            segmentsMayHaveChanged: true);
 
         Assert.True(secondSubscriberCalled);
+    }
+
+    [Fact]
+    public async Task DoesNotBlockReceiveLoopWhenSubscriberAwaitsClientShutdown()
+    {
+        var options = new FbOptionsBuilder("qJHQTVfsZUOu1Q54RLMuIQ-JtrIvNK-k-bARYicOTNQA")
+            .Streaming(new Uri("ws://localhost/"))
+            .ConnectTimeout(TimeSpan.FromMilliseconds(10))
+            .StartWaitTime(TimeSpan.FromMilliseconds(20))
+            .Build();
+        var store = new DefaultMemoryStore();
+        var webSocketUri = new Uri("ws://localhost/streaming?type=server&token=delayed-full");
+        var synchronizer = new WebSocketDataSynchronizer(
+            options,
+            store,
+            op => _app.CreateFbWebSocket(op, webSocketUri));
+        var eventProcessor = new Mock<IEventProcessor>();
+        var client = new FbClient(options, store, synchronizer, eventProcessor.Object);
+        var notifier = Assert.IsAssignableFrom<IFbClientDataChangeNotifier>(client);
+        var handlerStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        Task closeTask = null;
+
+        notifier.DataChanged += async (_, _) =>
+        {
+            closeTask = client.CloseAsync();
+            handlerStarted.TrySetResult(true);
+            await closeTask;
+        };
+
+        await handlerStarted.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        Assert.NotNull(closeTask);
+        await closeTask.WaitAsync(TimeSpan.FromSeconds(1));
     }
 
     [Fact]
@@ -161,7 +199,10 @@ public class FbClientTests
         notifier.DataChanged += (_, _) => notified = true;
 
         await client.CloseAsync();
-        synchronizer.RaiseDataChanged(FeatureDataChangeKind.Full, hasFeatureFlagChanges: true, hasSegmentChanges: true);
+        synchronizer.RaiseDataChanged(
+            FeatureDataChangeKind.Full,
+            featureFlagsMayHaveChanged: true,
+            segmentsMayHaveChanged: true);
 
         Assert.False(notified);
     }
@@ -215,12 +256,12 @@ public class FbClientTests
 
         public void RaiseDataChanged(
             FeatureDataChangeKind kind,
-            bool hasFeatureFlagChanges,
-            bool hasSegmentChanges)
+            bool featureFlagsMayHaveChanged,
+            bool segmentsMayHaveChanged)
         {
             DataChanged?.Invoke(
                 this,
-                new FeatureDataChangedEventArgs(kind, hasFeatureFlagChanges, hasSegmentChanges));
+                new FeatureDataChangedEventArgs(kind, featureFlagsMayHaveChanged, segmentsMayHaveChanged));
         }
     }
 }

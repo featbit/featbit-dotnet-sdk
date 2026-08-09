@@ -60,8 +60,40 @@ public class WebSocketDataSynchronizerTests
         Assert.True(synchronizer.Initialized);
         Assert.NotNull(store.Get<FeatureFlag>("ff_returns-true"));
         Assert.Equal(FeatureDataChangeKind.Full, change.Kind);
-        Assert.True(change.HasFeatureFlagChanges);
-        Assert.True(change.HasSegmentChanges);
+        Assert.True(change.FeatureFlagsMayHaveChanged);
+        Assert.True(change.SegmentsMayHaveChanged);
+    }
+
+    [Fact]
+    public async Task FullDataSyncInvalidatesBothCategoriesWhenItRemovesStoredData()
+    {
+        var options = new FbOptionsBuilder("qJHQTVfsZUOu1Q54RLMuIQ-JtrIvNK-k-bARYicOTNQA")
+            .Streaming(new Uri("ws://localhost/"))
+            .Build();
+
+        var store = new DefaultMemoryStore();
+        store.Populate(new StorableObject[]
+        {
+            new FeatureFlagBuilder().Key("hello-world").Version(1).Build(),
+            new SegmentBuilder().Id(Guid.Parse("3e2a29b9-1f58-4e5d-8f0f-0248b806d75c")).Version(1).Build(),
+        });
+
+        var webSocketUri = new Uri("ws://localhost/streaming?type=server&token=empty-full");
+        var synchronizer = new WebSocketDataSynchronizer(
+            options,
+            store,
+            op => _app.CreateFbWebSocket(op, webSocketUri));
+        var dataChanged = new TaskCompletionSource<FeatureDataChangedEventArgs>();
+        synchronizer.DataChanged += (_, eventArgs) => dataChanged.TrySetResult(eventArgs);
+
+        await synchronizer.StartAsync().WaitAsync(options.StartWaitTime);
+
+        var change = await dataChanged.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        Assert.Null(store.Get<FeatureFlag>("hello-world"));
+        Assert.Null(store.Get<Segment>("segment_3e2a29b9-1f58-4e5d-8f0f-0248b806d75c"));
+        Assert.Equal(FeatureDataChangeKind.Full, change.Kind);
+        Assert.True(change.FeatureFlagsMayHaveChanged);
+        Assert.True(change.SegmentsMayHaveChanged);
     }
 
     [Fact]
@@ -110,8 +142,8 @@ public class WebSocketDataSynchronizerTests
         Assert.True(synchronizer.Initialized);
         Assert.Equal("returns-true", flag.Key);
         Assert.Equal(FeatureDataChangeKind.Patch, change.Kind);
-        Assert.True(change.HasFeatureFlagChanges);
-        Assert.False(change.HasSegmentChanges);
+        Assert.True(change.FeatureFlagsMayHaveChanged);
+        Assert.False(change.SegmentsMayHaveChanged);
     }
 
     [Fact]
@@ -138,8 +170,8 @@ public class WebSocketDataSynchronizerTests
         Assert.True(synchronizer.Initialized);
         Assert.NotNull(store.Get<Segment>("segment_3e2a29b9-1f58-4e5d-8f0f-0248b806d75c"));
         Assert.Equal(FeatureDataChangeKind.Patch, change.Kind);
-        Assert.False(change.HasFeatureFlagChanges);
-        Assert.True(change.HasSegmentChanges);
+        Assert.False(change.FeatureFlagsMayHaveChanged);
+        Assert.True(change.SegmentsMayHaveChanged);
     }
 
     [Fact]

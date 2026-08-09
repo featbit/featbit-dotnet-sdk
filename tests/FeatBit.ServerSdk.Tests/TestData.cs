@@ -34,6 +34,17 @@ public static class TestData
         }
     });
 
+    public static readonly byte[] EmptyFullDataSet = JsonSerializer.SerializeToUtf8Bytes(new
+    {
+        messageType = "data-sync",
+        data = new
+        {
+            eventType = "full",
+            featureFlags = Array.Empty<object>(),
+            segments = Array.Empty<object>(),
+        }
+    });
+
     public static readonly string BootstrapJson = File.ReadAllText(
         Path.Combine(AppContext.BaseDirectory, "Bootstrapping", "featbit-bootstrap.json")
     );

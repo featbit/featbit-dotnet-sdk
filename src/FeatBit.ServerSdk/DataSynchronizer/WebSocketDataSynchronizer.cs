@@ -173,16 +173,16 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
                 _logger.LogDebug("Received {Type} data-sync message", dataSet.EventType);
                 var objects = dataSet.GetStorableObjects();
                 FeatureDataChangeKind? dataChangeKind = null;
-                var hasFeatureFlagChanges = false;
-                var hasSegmentChanges = false;
+                var featureFlagsMayHaveChanged = false;
+                var segmentsMayHaveChanged = false;
 
                 // populate data store
                 if (dataSet.EventType == DataSet.Full)
                 {
                     _store.Populate(objects);
                     dataChangeKind = FeatureDataChangeKind.Full;
-                    hasFeatureFlagChanges = dataSet.FeatureFlags.Length > 0;
-                    hasSegmentChanges = dataSet.Segments.Length > 0;
+                    featureFlagsMayHaveChanged = true;
+                    segmentsMayHaveChanged = true;
                 }
                 // upsert objects
                 else if (dataSet.EventType == DataSet.Patch)
@@ -191,12 +191,12 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
                     {
                         if (_store.Upsert(storableObject))
                         {
-                            hasFeatureFlagChanges |= storableObject is FeatureFlag;
-                            hasSegmentChanges |= storableObject is Segment;
+                            featureFlagsMayHaveChanged |= storableObject is FeatureFlag;
+                            segmentsMayHaveChanged |= storableObject is Segment;
                         }
                     }
 
-                    if (hasFeatureFlagChanges || hasSegmentChanges)
+                    if (featureFlagsMayHaveChanged || segmentsMayHaveChanged)
                     {
                         dataChangeKind = FeatureDataChangeKind.Patch;
                     }
@@ -212,20 +212,20 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
                 {
                     OnDataChanged(
                         dataChangeKind.Value,
-                        hasFeatureFlagChanges,
-                        hasSegmentChanges);
+                        featureFlagsMayHaveChanged,
+                        segmentsMayHaveChanged);
                 }
             }
         }
 
         private void OnDataChanged(
             FeatureDataChangeKind kind,
-            bool hasFeatureFlagChanges,
-            bool hasSegmentChanges)
+            bool featureFlagsMayHaveChanged,
+            bool segmentsMayHaveChanged)
         {
             DataChanged?.Invoke(
                 this,
-                new FeatureDataChangedEventArgs(kind, hasFeatureFlagChanges, hasSegmentChanges));
+                new FeatureDataChangedEventArgs(kind, featureFlagsMayHaveChanged, segmentsMayHaveChanged));
         }
 
         public async Task StopAsync()

@@ -102,9 +102,18 @@ public class TestStartup : StartupBase
                 if (messageType == "data-sync")
                 {
                     var timestamp = root.GetProperty("data").GetProperty("timestamp").GetInt64();
-                    var response = timestamp == 0
-                        ? TestData.FullDataSet
-                        : token == "segment-patch"
+                    if (token == "delayed-full")
+                    {
+                        await Task.Delay(100);
+                    }
+
+                    var response = token == "empty-full"
+                        ? TestData.EmptyFullDataSet
+                        : token == "delayed-full"
+                            ? TestData.FullDataSet
+                        : timestamp == 0
+                            ? TestData.FullDataSet
+                            : token == "segment-patch"
                             ? TestData.SegmentPatchDataSet
                             : TestData.PatchDataSet;
 
