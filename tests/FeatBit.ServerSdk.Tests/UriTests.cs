@@ -2,7 +2,7 @@ namespace FeatBit.Sdk.Server;
 
 public class UriTests
 {
-    // According to the documentation: https://learn.microsoft.com/en-us/dotnet/api/system.uri.-ctor?view=net-6.0#system-uri-ctor(system-uri-system-string)
+    // According to the documentation: https://learn.microsoft.com/en-us/dotnet/api/system.uri.-ctor?view=net-8.0#system-uri-ctor(system-uri-system-string)
     // if the relative part of baseUri is to be preserved in the constructed Uri, 
     // the baseUri has relative parts (like /api), then the relative part must be terminated with a slash, (like /api/) 
     [Theory]

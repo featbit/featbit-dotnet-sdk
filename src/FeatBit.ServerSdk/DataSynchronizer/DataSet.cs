@@ -28,13 +28,7 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
 
         internal static DataSet FromJsonElement(JsonElement jsonElement)
         {
-#if NETCOREAPP3_1
-            var rawText = jsonElement.GetRawText();
-            var dataSet = JsonSerializer.Deserialize<DataSet>(rawText, ReusableJsonSerializerOptions.Web);
-#else
-            // JsonElement.Deserialize<TValue> only available on .NET 6.0+
             var dataSet = jsonElement.Deserialize<DataSet>(ReusableJsonSerializerOptions.Web);
-#endif
             return dataSet;
         }
     }

@@ -123,7 +123,7 @@ namespace FeatBit.Sdk.Server.Events
 
         private static HttpClient NewHttpClient()
         {
-#if NETCOREAPP || NET6_0
+#if NETCOREAPP
             var handler = new SocketsHttpHandler
             {
                 ConnectTimeout = DefaultConnectTimeout

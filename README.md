@@ -332,8 +332,7 @@ into the experiment result.
 
 This version of the SDK is built for the following targets:
 
-- .NET 6.0: runs on .NET 6.0 and above (including higher major versions).
-- .NET Core 3.1: runs on .NET Core 3.1+.
+- .NET 8.0: runs on .NET 8.0 and above (including higher major versions).
 - .NET Framework 4.6.2: runs on .NET Framework 4.6.2 and above.
 - .NET Standard 2.0/2.1: runs in any project that is targeted to .NET Standard 2.x rather than to a specific runtime
   platform.
@@ -342,7 +341,7 @@ The .NET build tools should automatically load the most appropriate build of the
 application or library is targeted to.
 
 > **_NOTE:_** This SDK requires the `System.Text.Json` API to be available, which is included in the runtime for .NET
-> Core 3.1 and later versions, but not on other platforms, so on other platforms the SDK brings
+> 8.0 and later versions, but not on other platforms, so on other platforms the SDK brings
 > in `System.Text.Json` as a NuGet package dependency.
 
 ## Getting support
