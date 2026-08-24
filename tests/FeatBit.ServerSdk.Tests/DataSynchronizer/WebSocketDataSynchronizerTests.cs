@@ -49,7 +49,7 @@ public class WebSocketDataSynchronizerTests
 
         var store = new DefaultMemoryStore();
         var synchronizer = new WebSocketDataSynchronizer(options, store, op => _app.CreateFbWebSocket(op));
-        var dataChanged = new TaskCompletionSource<FeatureDataChangedEventArgs>();
+        var dataChanged = new TaskCompletionSource<DataChangeEventArgs>();
 
         synchronizer.DataChanged += (_, eventArgs) => dataChanged.TrySetResult(eventArgs);
 
@@ -59,9 +59,9 @@ public class WebSocketDataSynchronizerTests
         Assert.True(store.Populated);
         Assert.True(synchronizer.Initialized);
         Assert.NotNull(store.Get<FeatureFlag>("ff_returns-true"));
-        Assert.Equal(FeatureDataChangeKind.Full, change.Kind);
-        Assert.True(change.FeatureFlagsMayHaveChanged);
-        Assert.True(change.SegmentsMayHaveChanged);
+        Assert.Equal(DataChangeKind.Full, change.Kind);
+        Assert.True(change.FeatureFlagsChanged);
+        Assert.True(change.SegmentsChanged);
     }
 
     [Fact]
@@ -83,7 +83,7 @@ public class WebSocketDataSynchronizerTests
             options,
             store,
             op => _app.CreateFbWebSocket(op, webSocketUri));
-        var dataChanged = new TaskCompletionSource<FeatureDataChangedEventArgs>();
+        var dataChanged = new TaskCompletionSource<DataChangeEventArgs>();
         synchronizer.DataChanged += (_, eventArgs) => dataChanged.TrySetResult(eventArgs);
 
         await synchronizer.StartAsync().WaitAsync(options.StartWaitTime);
@@ -91,9 +91,9 @@ public class WebSocketDataSynchronizerTests
         var change = await dataChanged.Task.WaitAsync(TimeSpan.FromSeconds(1));
         Assert.Null(store.Get<FeatureFlag>("hello-world"));
         Assert.Null(store.Get<Segment>("segment_3e2a29b9-1f58-4e5d-8f0f-0248b806d75c"));
-        Assert.Equal(FeatureDataChangeKind.Full, change.Kind);
-        Assert.True(change.FeatureFlagsMayHaveChanged);
-        Assert.True(change.SegmentsMayHaveChanged);
+        Assert.Equal(DataChangeKind.Full, change.Kind);
+        Assert.True(change.FeatureFlagsChanged);
+        Assert.True(change.SegmentsChanged);
     }
 
     [Fact]
@@ -131,7 +131,7 @@ public class WebSocketDataSynchronizerTests
         store.Populate(new[] { new FeatureFlagBuilder().Key("hello-world").Version(1).Build() });
 
         var synchronizer = new WebSocketDataSynchronizer(options, store, op => _app.CreateFbWebSocket(op));
-        var dataChanged = new TaskCompletionSource<FeatureDataChangedEventArgs>();
+        var dataChanged = new TaskCompletionSource<DataChangeEventArgs>();
         synchronizer.DataChanged += (_, eventArgs) => dataChanged.TrySetResult(eventArgs);
 
         await synchronizer.StartAsync().WaitAsync(options.StartWaitTime);
@@ -141,9 +141,9 @@ public class WebSocketDataSynchronizerTests
         Assert.NotNull(flag);
         Assert.True(synchronizer.Initialized);
         Assert.Equal("returns-true", flag.Key);
-        Assert.Equal(FeatureDataChangeKind.Patch, change.Kind);
-        Assert.True(change.FeatureFlagsMayHaveChanged);
-        Assert.False(change.SegmentsMayHaveChanged);
+        Assert.Equal(DataChangeKind.Patch, change.Kind);
+        Assert.True(change.FeatureFlagsChanged);
+        Assert.False(change.SegmentsChanged);
     }
 
     [Fact]
@@ -161,7 +161,7 @@ public class WebSocketDataSynchronizerTests
             options,
             store,
             op => _app.CreateFbWebSocket(op, webSocketUri));
-        var dataChanged = new TaskCompletionSource<FeatureDataChangedEventArgs>();
+        var dataChanged = new TaskCompletionSource<DataChangeEventArgs>();
         synchronizer.DataChanged += (_, eventArgs) => dataChanged.TrySetResult(eventArgs);
 
         await synchronizer.StartAsync().WaitAsync(options.StartWaitTime);
@@ -169,9 +169,9 @@ public class WebSocketDataSynchronizerTests
         var change = await dataChanged.Task.WaitAsync(TimeSpan.FromSeconds(1));
         Assert.True(synchronizer.Initialized);
         Assert.NotNull(store.Get<Segment>("segment_3e2a29b9-1f58-4e5d-8f0f-0248b806d75c"));
-        Assert.Equal(FeatureDataChangeKind.Patch, change.Kind);
-        Assert.False(change.FeatureFlagsMayHaveChanged);
-        Assert.True(change.SegmentsMayHaveChanged);
+        Assert.Equal(DataChangeKind.Patch, change.Kind);
+        Assert.False(change.FeatureFlagsChanged);
+        Assert.True(change.SegmentsChanged);
     }
 
     [Fact]

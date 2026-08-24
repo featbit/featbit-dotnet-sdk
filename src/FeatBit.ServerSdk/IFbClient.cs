@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using FeatBit.Sdk.Server.DataSynchronizer;
 using FeatBit.Sdk.Server.Evaluation;
 using FeatBit.Sdk.Server.Model;
 using FeatBit.Sdk.Server.Options;
@@ -18,6 +19,19 @@ public interface IFbClient
     /// Indicates the current status of the client.
     /// </summary>
     FbClientStatus Status { get; }
+
+    /// <summary>
+    /// Occurs after a full synchronization replaces data or a patch changes stored data.
+    /// </summary>
+    /// <remarks>
+    /// The event does not expose feature flag keys, values, segments, or evaluation results. Event
+    /// handlers should finish quickly and must not rely on the event for every connection or status change.
+    /// Handlers are invoked synchronously while the SDK processes updated data. They must not block
+    /// or synchronously wait for <see cref="CloseAsync"/>; queue long-running work and return promptly.
+    /// Notifications that occurred before a handler was added are not replayed. A subscriber that needs
+    /// initial state should add its handler before explicitly refreshing that state.
+    /// </remarks>
+    event EventHandler<DataChangeEventArgs> DataChanged;
 
     /// <summary>
     /// Calculates the boolean value of a feature flag for a given user.

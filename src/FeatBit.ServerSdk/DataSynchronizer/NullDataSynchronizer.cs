@@ -4,14 +4,14 @@ using FeatBit.Sdk.Server.Concurrent;
 
 namespace FeatBit.Sdk.Server.DataSynchronizer;
 
-internal sealed class NullDataSynchronizer : IDataSynchronizer, IDataChangeNotifier
+internal sealed class NullDataSynchronizer : IDataSynchronizer
 {
     private readonly StatusManager<DataSynchronizerStatus> _statusManager;
 
     public bool Initialized => true;
     public DataSynchronizerStatus Status => _statusManager.Status;
     public event Action<DataSynchronizerStatus> StatusChanged;
-    public event EventHandler<FeatureDataChangedEventArgs> DataChanged
+    public event EventHandler<DataChangeEventArgs> DataChanged
     {
         add { }
         remove { }

@@ -14,7 +14,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FeatBit.Sdk.Server.DataSynchronizer
 {
-    internal sealed class WebSocketDataSynchronizer : IDataSynchronizer, IDataChangeNotifier
+    internal sealed class WebSocketDataSynchronizer : IDataSynchronizer
     {
         private readonly StatusManager<DataSynchronizerStatus> _statusManager;
         private readonly AtomicBoolean _initialized;
@@ -22,7 +22,7 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
         public bool Initialized => _initialized.Value;
         public DataSynchronizerStatus Status => _statusManager.Status;
         public event Action<DataSynchronizerStatus> StatusChanged;
-        public event EventHandler<FeatureDataChangedEventArgs> DataChanged;
+        public event EventHandler<DataChangeEventArgs> DataChanged;
 
         private readonly IMemoryStore _store;
         private readonly FbOptions _options;
@@ -172,33 +172,40 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
                 var dataSet = DataSet.FromJsonElement(root.GetProperty("data"));
                 _logger.LogDebug("Received {Type} data-sync message", dataSet.EventType);
                 var objects = dataSet.GetStorableObjects();
-                FeatureDataChangeKind? dataChangeKind = null;
-                var featureFlagsMayHaveChanged = false;
-                var segmentsMayHaveChanged = false;
 
                 // populate data store
                 if (dataSet.EventType == DataSet.Full)
                 {
                     _store.Populate(objects);
-                    dataChangeKind = FeatureDataChangeKind.Full;
-                    featureFlagsMayHaveChanged = true;
-                    segmentsMayHaveChanged = true;
+
+                    // raise data changed event
+                    DataChanged?.Invoke(
+                        this,
+                        new DataChangeEventArgs(DataChangeKind.Full, true, true)
+                    );
                 }
                 // upsert objects
                 else if (dataSet.EventType == DataSet.Patch)
                 {
+                    var featureFlagsChanged = false;
+                    var segmentsChanged = false;
+
                     foreach (var storableObject in objects)
                     {
                         if (_store.Upsert(storableObject))
                         {
-                            featureFlagsMayHaveChanged |= storableObject is FeatureFlag;
-                            segmentsMayHaveChanged |= storableObject is Segment;
+                            featureFlagsChanged |= storableObject is FeatureFlag;
+                            segmentsChanged |= storableObject is Segment;
                         }
                     }
 
-                    if (featureFlagsMayHaveChanged || segmentsMayHaveChanged)
+                    // raise data changed event
+                    if (featureFlagsChanged || segmentsChanged)
                     {
-                        dataChangeKind = FeatureDataChangeKind.Patch;
+                        DataChanged?.Invoke(
+                            this,
+                            new DataChangeEventArgs(DataChangeKind.Patch, featureFlagsChanged, segmentsChanged)
+                        );
                     }
                 }
 
@@ -207,25 +214,7 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
                 {
                     _initTcs.TrySetResult(true);
                 }
-
-                if (dataChangeKind.HasValue)
-                {
-                    OnDataChanged(
-                        dataChangeKind.Value,
-                        featureFlagsMayHaveChanged,
-                        segmentsMayHaveChanged);
-                }
             }
-        }
-
-        private void OnDataChanged(
-            FeatureDataChangeKind kind,
-            bool featureFlagsMayHaveChanged,
-            bool segmentsMayHaveChanged)
-        {
-            DataChanged?.Invoke(
-                this,
-                new FeatureDataChangedEventArgs(kind, featureFlagsMayHaveChanged, segmentsMayHaveChanged));
         }
 
         public async Task StopAsync()

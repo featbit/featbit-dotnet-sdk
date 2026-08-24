@@ -91,19 +91,18 @@ public class FbClientTests
     {
         var synchronizer = new ManualDataSynchronizer();
         var client = CreateTestFbClient(synchronizer);
-        var notifier = Assert.IsAssignableFrom<IFbClientDataChangeNotifier>(client);
-        FeatureDataChangedEventArgs received = null;
-        notifier.DataChanged += (_, eventArgs) => received = eventArgs;
+        DataChangeEventArgs received = null;
+        client.DataChanged += (_, eventArgs) => received = eventArgs;
 
         synchronizer.RaiseDataChanged(
-            FeatureDataChangeKind.Patch,
-            featureFlagsMayHaveChanged: true,
-            segmentsMayHaveChanged: false);
+            DataChangeKind.Patch,
+            featureFlagsChanged: true,
+            segmentsChanged: false);
 
         Assert.NotNull(received);
-        Assert.Equal(FeatureDataChangeKind.Patch, received.Kind);
-        Assert.True(received.FeatureFlagsMayHaveChanged);
-        Assert.False(received.SegmentsMayHaveChanged);
+        Assert.Equal(DataChangeKind.Patch, received.Kind);
+        Assert.True(received.FeatureFlagsChanged);
+        Assert.False(received.SegmentsChanged);
     }
 
     [Fact]
@@ -111,17 +110,16 @@ public class FbClientTests
     {
         var synchronizer = new ManualDataSynchronizer
         {
-            DataChangeOnStart = new FeatureDataChangedEventArgs(
-                FeatureDataChangeKind.Full,
-                featureFlagsMayHaveChanged: true,
-                segmentsMayHaveChanged: true)
+            DataChangeOnStart = new DataChangeEventArgs(
+                DataChangeKind.Full,
+                featureFlagsChanged: true,
+                segmentsChanged: true)
         };
 
         var client = CreateTestFbClient(synchronizer);
-        var notifier = Assert.IsAssignableFrom<IFbClientDataChangeNotifier>(client);
         var refreshCount = 0;
 
-        notifier.DataChanged += (_, _) => Refresh();
+        client.DataChanged += (_, _) => Refresh();
 
         Assert.Equal(0, refreshCount);
 
@@ -129,9 +127,9 @@ public class FbClientTests
         Assert.Equal(1, refreshCount);
 
         synchronizer.RaiseDataChanged(
-            FeatureDataChangeKind.Patch,
-            featureFlagsMayHaveChanged: true,
-            segmentsMayHaveChanged: false);
+            DataChangeKind.Patch,
+            featureFlagsChanged: true,
+            segmentsChanged: false);
 
         Assert.Equal(2, refreshCount);
 
@@ -143,15 +141,14 @@ public class FbClientTests
     {
         var synchronizer = new ManualDataSynchronizer();
         var client = CreateTestFbClient(synchronizer);
-        var notifier = Assert.IsAssignableFrom<IFbClientDataChangeNotifier>(client);
         var secondSubscriberCalled = false;
-        notifier.DataChanged += (_, _) => throw new InvalidOperationException("test subscriber failure");
-        notifier.DataChanged += (_, _) => secondSubscriberCalled = true;
+        client.DataChanged += (_, _) => throw new InvalidOperationException("test subscriber failure");
+        client.DataChanged += (_, _) => secondSubscriberCalled = true;
 
         synchronizer.RaiseDataChanged(
-            FeatureDataChangeKind.Full,
-            featureFlagsMayHaveChanged: true,
-            segmentsMayHaveChanged: true);
+            DataChangeKind.Full,
+            featureFlagsChanged: true,
+            segmentsChanged: true);
 
         Assert.True(secondSubscriberCalled);
     }
@@ -172,11 +169,10 @@ public class FbClientTests
             op => _app.CreateFbWebSocket(op, webSocketUri));
         var eventProcessor = new Mock<IEventProcessor>();
         var client = new FbClient(options, store, synchronizer, eventProcessor.Object);
-        var notifier = Assert.IsAssignableFrom<IFbClientDataChangeNotifier>(client);
         var handlerStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         Task closeTask = null;
 
-        notifier.DataChanged += async (_, _) =>
+        client.DataChanged += async (_, _) =>
         {
             closeTask = client.CloseAsync();
             handlerStarted.TrySetResult(true);
@@ -194,15 +190,14 @@ public class FbClientTests
         var synchronizer = new ManualDataSynchronizer();
         var eventProcessor = new Mock<IEventProcessor>();
         var client = CreateTestFbClient(synchronizer, eventProcessor.Object);
-        var notifier = Assert.IsAssignableFrom<IFbClientDataChangeNotifier>(client);
         var notified = false;
-        notifier.DataChanged += (_, _) => notified = true;
+        client.DataChanged += (_, _) => notified = true;
 
         await client.CloseAsync();
         synchronizer.RaiseDataChanged(
-            FeatureDataChangeKind.Full,
-            featureFlagsMayHaveChanged: true,
-            segmentsMayHaveChanged: true);
+            DataChangeKind.Full,
+            featureFlagsChanged: true,
+            segmentsChanged: true);
 
         Assert.False(notified);
     }
@@ -226,9 +221,9 @@ public class FbClientTests
         return client;
     }
 
-    private sealed class ManualDataSynchronizer : IDataSynchronizer, IDataChangeNotifier
+    private sealed class ManualDataSynchronizer : IDataSynchronizer
     {
-        public FeatureDataChangedEventArgs DataChangeOnStart { get; init; }
+        public DataChangeEventArgs DataChangeOnStart { get; init; }
 
         public bool Initialized => true;
 
@@ -240,7 +235,7 @@ public class FbClientTests
             remove { }
         }
 
-        public event EventHandler<FeatureDataChangedEventArgs> DataChanged;
+        public event EventHandler<DataChangeEventArgs> DataChanged;
 
         public Task<bool> StartAsync()
         {
@@ -255,13 +250,13 @@ public class FbClientTests
         public Task StopAsync() => Task.CompletedTask;
 
         public void RaiseDataChanged(
-            FeatureDataChangeKind kind,
-            bool featureFlagsMayHaveChanged,
-            bool segmentsMayHaveChanged)
+            DataChangeKind kind,
+            bool featureFlagsChanged,
+            bool segmentsChanged)
         {
             DataChanged?.Invoke(
                 this,
-                new FeatureDataChangedEventArgs(kind, featureFlagsMayHaveChanged, segmentsMayHaveChanged));
+                new DataChangeEventArgs(kind, featureFlagsChanged, segmentsChanged));
         }
     }
 }

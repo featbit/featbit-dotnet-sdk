@@ -54,17 +54,6 @@ public static class ServiceCollectionExtensions
             ServiceLifetime.Singleton
         );
         services.Add(serviceDescriptor);
-        services.AddSingleton<IFbClientDataChangeNotifier>(serviceProvider =>
-        {
-            var client = serviceProvider.GetRequiredService<IFbClient>();
-            if (client is IFbClientDataChangeNotifier dataChangeNotifier)
-            {
-                return dataChangeNotifier;
-            }
-
-            throw new InvalidOperationException(
-                $"The registered {nameof(IFbClient)} does not implement {nameof(IFbClientDataChangeNotifier)}.");
-        });
 
         // The FbClientHostedService ensures:
         // 1. FbClient is created before the application starts.

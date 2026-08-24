@@ -107,15 +107,14 @@ public class TestStartup : StartupBase
                         await Task.Delay(100);
                     }
 
-                    var response = token == "empty-full"
-                        ? TestData.EmptyFullDataSet
-                        : token == "delayed-full"
-                            ? TestData.FullDataSet
-                        : timestamp == 0
-                            ? TestData.FullDataSet
-                            : token == "segment-patch"
-                            ? TestData.SegmentPatchDataSet
-                            : TestData.PatchDataSet;
+                    var response = token switch
+                    {
+                        "empty-full" => TestData.EmptyFullDataSet,
+                        "delayed-full" => TestData.FullDataSet,
+                        _ when timestamp == 0 => TestData.FullDataSet,
+                        "segment-patch" => TestData.SegmentPatchDataSet,
+                        _ => TestData.PatchDataSet
+                    };
 
                     await webSocket.SendAsync(response, WebSocketMessageType.Text, true, CancellationToken.None);
 

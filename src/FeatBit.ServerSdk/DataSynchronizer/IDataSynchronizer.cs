@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 
 namespace FeatBit.Sdk.Server.DataSynchronizer
 {
-    public interface IDataSynchronizer
+    internal interface IDataSynchronizer
     {
         /// <summary>
         /// Indicates whether the data synchronizer has finished initializing.
@@ -27,6 +27,22 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
         /// </para>
         /// </remarks>
         event Action<DataSynchronizerStatus> StatusChanged;
+
+        /// <summary>
+        /// An event for receiving notifications after data has changed locally.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// Any handlers attached to this event will be notified after a full synchronization replaces
+        /// data or a patch changes locally stored data. See
+        /// <see cref="DataChangeEventArgs"/> for information about the synchronization operation
+        /// and the types of data that changed.
+        /// </para>
+        /// <para>
+        /// The listener should return as soon as possible so as not to block subsequent data synchronization.
+        /// </para>
+        /// </remarks>
+        event EventHandler<DataChangeEventArgs> DataChanged;
 
         /// <summary>
         /// Starts the data synchronizer. This is called once from the <see cref="FbClient"/> constructor.
