@@ -15,7 +15,7 @@
         <IncludeSymbols>true</IncludeSymbols>
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
         <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
-        <PackageProjectUrl>https://github.com/featbit/featbit-dotnet-sdk</PackageProjectUrl>
+        <PackageProjectUrl>https://www.featbit.co/</PackageProjectUrl>
         <RepositoryUrl>https://github.com/featbit/featbit-dotnet-sdk</RepositoryUrl>
         <RepositoryBranch>main</RepositoryBranch>
         <PublishRepositoryUrl>true</PublishRepositoryUrl>
