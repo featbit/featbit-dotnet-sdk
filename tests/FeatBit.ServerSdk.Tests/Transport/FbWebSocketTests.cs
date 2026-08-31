@@ -101,25 +101,19 @@ public class FbWebSocketTests
         Assert.True(onClosedCalled);
     }
 
-    [Theory]
-    [InlineData("close-normally", WebSocketCloseStatus.NormalClosure, "", "")]
-    [InlineData("close-with-4003", (WebSocketCloseStatus)4003, "invalid request, close by server", "")]
-    public async Task TestOnClosed_ServerInitiated(
-        string op,
-        WebSocketCloseStatus expectCloseStatus,
-        string expectCloseDescription,
-        string expectCloseMessage)
+    [Fact]
+    public async Task TestOnClosed_ServerRejectedConnection()
     {
-        var fbWebSocket = _app.CreateFbWebSocket(op);
+        var fbWebSocket = _app.CreateFbWebSocket("close-with-4003");
 
         var tcs = new TaskCompletionSource();
         var onClosedTask = tcs.Task;
         fbWebSocket.OnClosed += (exception, closeStatus, closeDescription, closeMessage) =>
         {
             Assert.Null(exception);
-            Assert.Equal(expectCloseStatus, closeStatus);
-            Assert.Equal(expectCloseDescription, closeDescription);
-            Assert.Equal(expectCloseMessage, closeMessage);
+            Assert.Equal((WebSocketCloseStatus)4003, closeStatus);
+            Assert.Equal("invalid request, close by server", closeDescription);
+            Assert.Equal(string.Empty, closeMessage);
 
             tcs.SetResult();
             return Task.CompletedTask;
@@ -127,6 +121,31 @@ public class FbWebSocketTests
 
         await fbWebSocket.ConnectAsync();
         await onClosedTask.WaitAsync(TimeSpan.FromSeconds(1));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData(WebSocketCloseStatus.NormalClosure)]
+    [InlineData(WebSocketCloseStatus.EndpointUnavailable)]
+    [InlineData(WebSocketCloseStatus.InternalServerError)]
+    public void ShouldReconnectWhenNotStopped(WebSocketCloseStatus? closeStatus)
+    {
+        Assert.True(FbWebSocket.ShouldReconnect(closeStatus, stopRequested: false));
+    }
+
+    [Fact]
+    public void ShouldNotReconnectWhenStopped()
+    {
+        Assert.False(FbWebSocket.ShouldReconnect(WebSocketCloseStatus.NormalClosure, stopRequested: true));
+    }
+
+    [Fact]
+    public void ShouldNotReconnectWhenServerRejectsConnection()
+    {
+        Assert.False(FbWebSocket.ShouldReconnect(
+            FbWebSocket.ServerRejectedCloseStatus,
+            stopRequested: false
+        ));
     }
 
     [Fact]
@@ -217,13 +236,43 @@ public class FbWebSocketTests
     }
 
     [Fact]
+    public async Task TestReconnectOnNormalClose()
+    {
+        var fbWebSocket = _app.CreateFbWebSocket("close-normally");
+        var reconnecting = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        fbWebSocket.OnReconnecting += _ =>
+        {
+            reconnecting.TrySetResult();
+            return Task.CompletedTask;
+        };
+
+        try
+        {
+            await fbWebSocket.ConnectAsync();
+            await reconnecting.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        }
+        finally
+        {
+            await fbWebSocket.CloseAsync();
+        }
+    }
+
+    [Fact]
     public async Task CanStopFbWebSocketWhenReconnecting()
     {
         var fbWebSocket = _app.CreateFbWebSocket(
             "close-unexpectedly",
             // set reconnect delay as 1s
-            builder => builder.ReconnectRetryDelays(new[] { TimeSpan.FromSeconds(1) })
+            builder => builder.ReconnectRetryDelays([TimeSpan.FromSeconds(1)])
         );
+
+        var reconnecting = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        fbWebSocket.OnReconnecting += _ =>
+        {
+            reconnecting.TrySetResult();
+            return Task.CompletedTask;
+        };
 
         var tcs = new TaskCompletionSource();
         var onClosedTask = tcs.Task;
@@ -232,7 +281,6 @@ public class FbWebSocketTests
             Assert.Null(exception);
             Assert.Equal(WebSocketCloseStatus.EndpointUnavailable, closeStatus);
             Assert.Equal("server going down", closeDescription);
-
             Assert.Equal("FbWebSocket stopped during reconnect delay. Done reconnecting.", closeMessage);
 
             tcs.SetResult();
@@ -240,6 +288,10 @@ public class FbWebSocketTests
         };
 
         await fbWebSocket.ConnectAsync();
+        await reconnecting.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        // OnReconnecting is raised immediately before the retry delay. Give the reconnect task
+        // enough time to enter that 1-second delay before stopping it.
+        await Task.Delay(TimeSpan.FromMilliseconds(100));
         await fbWebSocket.CloseAsync();
 
         await onClosedTask.WaitAsync(TimeSpan.FromSeconds(1));

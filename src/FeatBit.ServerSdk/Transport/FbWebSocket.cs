@@ -13,6 +13,8 @@ namespace FeatBit.Sdk.Server.Transport
 {
     internal sealed partial class FbWebSocket
     {
+        internal const WebSocketCloseStatus ServerRejectedCloseStatus = (WebSocketCloseStatus)4003;
+
         public event Func<Task> OnConnected;
         public event Func<Task> OnKeepAlive;
         public event Func<Exception, Task> OnReconnecting;
@@ -28,6 +30,7 @@ namespace FeatBit.Sdk.Server.Transport
         private readonly Func<FbOptions, Uri> _webSocketUriResolver;
         private WebSocketTransport _transport;
         private Task _receiveTask;
+        private Task _reconnectTask;
         private readonly TimeSpan _keepAliveInterval;
         private Timer _keepAliveTimer;
         private Exception _closeException;
@@ -85,7 +88,7 @@ namespace FeatBit.Sdk.Server.Transport
                     Log.ErrorStartingTransport(_logger, ex);
 
                     // reconnect if we failed to start the transport
-                    _ = ReconnectAsync();
+                    _reconnectTask = ReconnectAsync();
                 }
 
                 throw;
@@ -197,7 +200,7 @@ namespace FeatBit.Sdk.Server.Transport
 
             if (ShouldReconnect())
             {
-                _ = ReconnectAsync();
+                _reconnectTask = ReconnectAsync();
             }
             else
             {
@@ -205,10 +208,24 @@ namespace FeatBit.Sdk.Server.Transport
             }
         }
 
-        private bool ShouldReconnect()
+        private bool ShouldReconnect() => ShouldReconnect(_transport.CloseStatus, _stopCts.IsCancellationRequested);
+
+        internal static bool ShouldReconnect(WebSocketCloseStatus? closeStatus, bool stopRequested)
         {
-            var closeStatus = _transport.CloseStatus;
-            return closeStatus != WebSocketCloseStatus.NormalClosure && closeStatus != (WebSocketCloseStatus)4003;
+            if (closeStatus == ServerRejectedCloseStatus)
+            {
+                // server rejected the connection explicitly, so we should not reconnect
+                return false;
+            }
+
+            if (stopRequested)
+            {
+                // connection was stopped manually, so we should not reconnect
+                return false;
+            }
+
+            // otherwise, we should reconnect
+            return true;
         }
 
         private async Task ReconnectAsync()
@@ -343,6 +360,8 @@ namespace FeatBit.Sdk.Server.Transport
 
                 Log.WaitingForReceiveLoopToTerminate(_logger);
                 await (_receiveTask ?? Task.CompletedTask).ConfigureAwait(false);
+
+                await (_reconnectTask ?? Task.CompletedTask).ConfigureAwait(false);
             }
 
             Log.Closed(_logger, _transport?.CloseStatus);
