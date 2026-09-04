@@ -6,7 +6,16 @@ namespace FeatBit.Sdk.Server.Evaluation
     {
         internal static bool IsMatchCondition(Condition condition, FbUser user)
         {
-            var userValue = user.ValueOf(condition.Property);
+            if (string.IsNullOrWhiteSpace(condition.Property))
+            {
+                return false;
+            }
+
+            var exists = user.TryGetValue(condition.Property, out var userValue);
+            if (!exists)
+            {
+                return false;
+            }
 
             var theOperator = Operator.Get(condition.Op);
             return theOperator.IsMatch(userValue, condition.Value);

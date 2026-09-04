@@ -4,6 +4,9 @@ namespace FeatBit.Sdk.Server.Model
 {
     public class FbUser
     {
+        internal const string KeyIdAttribute = "keyId";
+        internal const string NameAttribute = "name";
+
         public readonly string Key;
         public readonly string Name;
         public readonly Dictionary<string, string> Custom;
@@ -38,24 +41,38 @@ namespace FeatBit.Sdk.Server.Model
             return new FbUserBuilder(key);
         }
 
+        /// <summary>
+        /// Gets the value of a built-in or custom attribute.
+        /// </summary>
+        /// <param name="property">the attribute name</param>
+        /// <returns>
+        /// The attribute value when the attribute exists; otherwise, <see langword="null"/>.
+        /// An existing attribute whose value is an empty string returns <see cref="string.Empty"/>.
+        /// </returns>
         public string ValueOf(string property)
+            => TryGetValue(property, out var value) ? value : null;
+
+        internal bool TryGetValue(string property, out string value)
         {
             if (string.IsNullOrWhiteSpace(property))
             {
-                return string.Empty;
+                value = null;
+                return false;
             }
 
-            if (property == "keyId")
+            if (property == KeyIdAttribute)
             {
-                return Key;
+                value = Key;
+                return true;
             }
 
-            if (property == "name")
+            if (property == NameAttribute)
             {
-                return Name;
+                value = Name;
+                return true;
             }
 
-            return Custom.TryGetValue(property, out var value) ? value : string.Empty;
+            return Custom.TryGetValue(property, out value);
         }
     }
 }
