@@ -84,8 +84,8 @@ namespace FeatBit.Sdk.Server.Events
         {
             writer.WriteStartObject("user");
 
-            writer.WriteString("keyId", user.Key);
-            writer.WriteString("name", user.Name);
+            writer.WriteString(FbUser.KeyIdAttribute, user.Key);
+            writer.WriteString(FbUser.NameAttribute, user.Name);
 
             writer.WriteStartArray("customizedProperties");
             foreach (var kv in user.Custom)

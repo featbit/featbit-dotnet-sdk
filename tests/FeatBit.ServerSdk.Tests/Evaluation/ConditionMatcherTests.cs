@@ -85,6 +85,78 @@ public class ConditionMatcherTests
         CheckMatch(uv, op, rv, expected);
     }
 
+    [Theory]
+    [InlineData(OperatorTypes.Equal)]
+    [InlineData(OperatorTypes.NotEqual)]
+    [InlineData(OperatorTypes.Contains)]
+    [InlineData(OperatorTypes.NotContain)]
+    [InlineData(OperatorTypes.MatchRegex)]
+    [InlineData(OperatorTypes.NotMatchRegex)]
+    [InlineData(OperatorTypes.IsOneOf)]
+    [InlineData(OperatorTypes.NotOneOf)]
+    [InlineData("UnknownOperator")]
+    public void MissingAttributeDoesNotMatchRegularOperator(string op)
+    {
+        var condition = new Condition
+        {
+            Property = "missing",
+            Op = op,
+            Value = op is OperatorTypes.IsOneOf or OperatorTypes.NotOneOf ? "[\"\"]" : string.Empty
+        };
+
+        var user = FbUser.Builder("user-key").Build();
+
+        Assert.False(Evaluator.IsMatchCondition(condition, user));
+    }
+
+    [Theory]
+    [InlineData(OperatorTypes.Equal, true)]
+    [InlineData(OperatorTypes.NotEqual, false)]
+    [InlineData(OperatorTypes.Contains, true)]
+    [InlineData(OperatorTypes.NotContain, false)]
+    public void EmptyAttributeValueIsComparedNormally(string op, bool expected)
+    {
+        CheckMatch(string.Empty, op, string.Empty, expected);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void EmptyOrWhitespacePropertyNeverMatches(string property)
+    {
+        var condition = new Condition
+        {
+            Property = property,
+            Op = OperatorTypes.NotEqual,
+            Value = string.Empty
+        };
+
+        var user = FbUser.Builder("user-key").Build();
+
+        Assert.False(Evaluator.IsMatchCondition(condition, user));
+    }
+
+    [Theory]
+    [InlineData(FbUser.KeyIdAttribute, "built-in-key")]
+    [InlineData(FbUser.NameAttribute, "Built-in Name")]
+    public void BuiltInAttributeTakesPriorityOverCustomAttribute(string property, string expected)
+    {
+        var condition = new Condition
+        {
+            Property = property,
+            Op = OperatorTypes.Equal,
+            Value = expected
+        };
+
+        var user = FbUser.Builder("built-in-key")
+            .Name("Built-in Name")
+            .Custom(property, "custom-value")
+            .Build();
+
+        Assert.True(Evaluator.IsMatchCondition(condition, user));
+    }
+
     private static void CheckMatch(string uv, string op, string rv, bool expected)
     {
         var condition = new Condition
