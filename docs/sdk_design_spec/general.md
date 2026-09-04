@@ -33,7 +33,7 @@ flowchart LR
 
 Notes:
 
-1. The implementation SHOULD separate these responsibilities behind internal interfaces: configuration, synchronizer, transport, store, evaluator, event processor, etc. 
+1. The implementation SHOULD separate these responsibilities behind internal interfaces: configuration, synchronizer, transport, store, evaluator, event processor, etc.
 2. The SDK MUST evaluate flags locally without a network request on the evaluation path. Event transmission MUST run independently of evaluation.
 3. An unavailable analytics endpoint MUST NOT interrupt data synchronization or change an evaluation result.
 

@@ -92,7 +92,7 @@ In the reference, the ingress queue and buffer each have a 10,000-event capacity
 
 Do not assume every `4xx` is terminal; `400` is intentionally recoverable in the reference. Event-delivery rejection MUST NOT shut down the synchronizer or evaluator.
 
-The reference treats cancellation attributed to its own per-attempt deadline as failed without retry; other request-timeout exceptions are recoverable. 
+The reference treats cancellation attributed to its own per-attempt deadline as failed without retry; other request-timeout exceptions are recoverable.
 
 Retries reuse the original event payload and timestamps. Delivery is best effort: events may be dropped on overflow, failed attempts, shutdown timeout, or process exit, and retries may cause duplicates if the server accepted a request whose response was lost. The SDK MUST NOT promise durable, at-least-once, or exactly-once delivery.
 
