@@ -44,13 +44,19 @@ namespace FeatBit.Sdk.Server.Model
         /// <summary>
         /// Gets the value of a built-in or custom attribute.
         /// </summary>
+        /// <remarks>
+        /// This method preserves the SDK's existing empty-string fallback: it returns
+        /// <see cref="string.Empty"/> both when the attribute does not exist (including when
+        /// <paramref name="property"/> is null, empty, or whitespace) and when the attribute
+        /// exists with an empty-string value. Therefore, callers cannot distinguish those two
+        /// cases from this method's return value alone.
+        /// </remarks>
         /// <param name="property">the attribute name</param>
         /// <returns>
-        /// The attribute value when the attribute exists; otherwise, <see langword="null"/>.
-        /// An existing attribute whose value is an empty string returns <see cref="string.Empty"/>.
+        /// The attribute value when the attribute exists; otherwise, <see cref="string.Empty"/>.
         /// </returns>
         public string ValueOf(string property)
-            => TryGetValue(property, out var value) ? value : null;
+            => TryGetValue(property, out var value) ? value : string.Empty;
 
         internal bool TryGetValue(string property, out string value)
         {

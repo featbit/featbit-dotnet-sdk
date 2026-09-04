@@ -11,8 +11,8 @@ namespace FeatBit.Sdk.Server.Evaluation
                 return false;
             }
 
-            var exists = user.TryGetValue(condition.Property, out var userValue);
-            if (!exists)
+            var hasProperty = user.TryGetValue(condition.Property, out var userValue);
+            if (!hasProperty)
             {
                 return false;
             }

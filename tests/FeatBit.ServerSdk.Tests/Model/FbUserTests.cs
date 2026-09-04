@@ -7,11 +7,11 @@ public class FbUserTests
     [InlineData("")]
     [InlineData("   ")]
     [InlineData("missing")]
-    public void ValueOfReturnsNullWhenAttributeDoesNotExist(string property)
+    public void ValueOfReturnsEmptyStringWhenAttributeDoesNotExist(string property)
     {
         var user = FbUser.Builder("user-key").Build();
 
-        Assert.Null(user.ValueOf(property));
+        Assert.Equal(string.Empty, user.ValueOf(property));
     }
 
     [Fact]
