@@ -41,8 +41,8 @@ Archives MUST be hidden from normal lookup and enumeration while retaining their
 
 ## Consistency and memory
 
-The store MUST provide atomic publication and safe concurrent reads, writes, and enumeration. 
+The store MUST provide atomic publication and safe concurrent reads, writes, and enumeration.
 
-Published model objects and nested collections MUST be immutable to callers and background workers. Do not return a mutable internal dictionary or reuse a received buffer after its ownership ends. 
+Published model objects and nested collections MUST be immutable to callers and background workers. Do not return a mutable internal dictionary or reuse a received buffer after its ownership ends.
 
 New SDKs MUST NOT expire the last good data merely because the network is unavailable. Persistent storage is optional; if implemented, partition it by environment, atomically persist data plus its cursor, and define cached-data readiness independently from remote freshness.
