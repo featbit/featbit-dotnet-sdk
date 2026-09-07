@@ -347,14 +347,17 @@ namespace FeatBit.Sdk.Server
                 return new EvalDetail<TValue>(key, evalResult.Kind, evalResult.Reason, defaultValue, string.Empty);
             }
 
+            var variation = evalResult.Variation;
+            if (!converter(variation.Value, out var typedValue))
+            {
+                // type mismatch, return default value
+                return new EvalDetail<TValue>(key, ReasonKind.WrongType, "type mismatch", defaultValue, string.Empty);
+            }
+
             // record evaluation event
             _eventProcessor.Record(evalEvent);
 
-            var variation = evalResult.Variation;
-            return converter(variation.Value, out var typedValue)
-                ? new EvalDetail<TValue>(key, evalResult.Kind, evalResult.Reason, typedValue, variation.Id)
-                // type mismatch, return default value
-                : new EvalDetail<TValue>(key, ReasonKind.WrongType, "type mismatch", defaultValue, string.Empty);
+            return new EvalDetail<TValue>(key, evalResult.Kind, evalResult.Reason, typedValue, variation.Id);
         }
     }
 }
