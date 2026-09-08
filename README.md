@@ -3,7 +3,7 @@
 ## Introduction
 
 This is the .NET Server-Side SDK for the 100% open-source feature flags management
-platform [FeatBit](https://github.com/featbit/featbit).
+platform [FeatBit](https://github.com/featbit/featbit), uses the [FeatBit Server-Side SDK Design Specification](https://github.com/featbit/server-sdk-spec/tree/main) as its implementation baseline.
 
 The FeatBit Server-Side SDK for .NET is designed primarily for use in multi-user systems such as web servers and
 applications. It is not intended for use in desktop and embedded systems applications.
