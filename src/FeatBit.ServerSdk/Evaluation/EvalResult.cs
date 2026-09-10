@@ -17,6 +17,9 @@ namespace FeatBit.Sdk.Server.Evaluation
             Variation = variation;
         }
 
+        // Indicates that the evaluation context was invalid, e.g. because the user key was null or empty.
+        public static readonly EvalResult InvalidInput = new(ReasonKind.Error, "invalid input", Variation.Empty);
+
         // Indicates that the caller provided a flag key that did not match any known flag.
         public static readonly EvalResult FlagNotFound = new(ReasonKind.Error, "flag not found", Variation.Empty);
 

@@ -249,19 +249,7 @@ namespace FeatBit.Sdk.Server
             => EvaluateCore(key, user, defaultValue, ValueConverters.String);
 
         /// <inheritdoc/>
-        public EvalDetail<string>[] GetAllVariations(FbUser user)
-        {
-            var results = _store
-                .Find<FeatureFlag>(x => x.StoreKey.StartsWith(StoreKeys.FlagPrefix))
-                .Select(flag =>
-                {
-                    var (evalResult, _) = _evaluator.Evaluate(flag, user);
-                    return evalResult.AsEvalDetail(flag.Key);
-                })
-                .ToArray();
-
-            return results;
-        }
+        public EvalDetail<string>[] GetAllVariations(FbUser user) => _evaluator.EvaluateAll(user);
 
         /// <inheritdoc/>
         public void Track(FbUser user, string eventName) => Track(user, eventName, 1.0d);
@@ -343,7 +331,7 @@ namespace FeatBit.Sdk.Server
             var (evalResult, evalEvent) = _evaluator.Evaluate(ctx);
             if (evalResult.Kind == ReasonKind.Error)
             {
-                // error happened when evaluate flag, return default value 
+                // error happened when evaluate flag, return default value
                 return new EvalDetail<TValue>(key, evalResult.Kind, evalResult.Reason, defaultValue, string.Empty);
             }
 
