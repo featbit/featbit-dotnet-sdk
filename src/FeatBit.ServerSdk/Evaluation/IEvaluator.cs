@@ -7,6 +7,6 @@ namespace FeatBit.Sdk.Server.Evaluation
     {
         (EvalResult evalResult, EvalEvent evalEvent) Evaluate(EvaluationContext context);
 
-        (EvalResult evalResult, EvalEvent evalEvent) Evaluate(FeatureFlag flag, FbUser user);
+        EvalDetail<string>[] EvaluateAll(FbUser user);
     }
 }
