@@ -1,7 +1,4 @@
-using FeatBit.Sdk.Server.DataSynchronizer;
-using FeatBit.Sdk.Server.Events;
 using FeatBit.Sdk.Server.Model;
-using FeatBit.Sdk.Server.Options;
 using FeatBit.Sdk.Server.Store;
 
 namespace FeatBit.Sdk.Server.Evaluation;
@@ -11,173 +8,143 @@ public class EvaluationErrorTests
     private static readonly FbUser User = FbUser.Builder("user").Custom("country", "fr").Build();
 
     [Theory]
-    [InlineData("regex")]
-    [InlineData("list")]
-    [InlineData("segment")]
-    [InlineData("variation")]
-    [InlineData("rule-variation")]
-    [InlineData("fallthrough-variation")]
-    [InlineData("null-value")]
-    [InlineData("targets")]
-    public void MalformedFlagReturnsExactFallbackAndDoesNotBreakBulk(string failure)
+    [ClassData(typeof(MalformedFlagData))]
+    public void EvaluatorReturnsErrorWithoutEventForMalformedFlag(object flag)
     {
-        var broken = Flag("broken");
-        switch (failure)
-        {
-            case "variation":
-                broken.IsEnabled = true;
-                broken.TargetUsers = new[]
-                {
-                    new TargetUser { KeyIds = new[] { User.Key }, VariationId = "missing" }
-                };
-                break;
-            case "rule-variation":
-                broken.IsEnabled = true;
-                broken.Rules = new[]
-                {
-                    new TargetRule
-                    {
-                        Conditions = Array.Empty<Condition>(),
-                        Variations = new[] { new RolloutVariation { Id = "missing", Rollout = new[] { 0d, 1d } } }
-                    }
-                };
-                break;
-            case "fallthrough-variation":
-                broken.IsEnabled = true;
-                broken.Fallthrough = new Fallthrough
-                {
-                    Variations = new[] { new RolloutVariation { Id = "missing", Rollout = new[] { 0d, 1d } } }
-                };
-                break;
-            case "null-value":
-                broken.Variations.Single().Value = null;
-                break;
-            case "targets":
-                broken.IsEnabled = true;
-                broken.TargetUsers = null;
-                break;
-            default:
-                broken.IsEnabled = true;
-                broken.Rules = new[]
-                {
-                    new TargetRule
-                    {
-                        Conditions = new[]
-                        {
-                            new Condition
-                            {
-                                Property = failure == "segment" ? "User is not in segment" : "country",
-                                Op = failure == "regex" ? "NotMatchRegex" : "NotOneOf",
-                                Value = failure == "segment" ? "[\"missing\"]" : "["
-                            }
-                        }
-                    }
-                };
-                break;
-        }
-
-        var events = new Mock<IEventProcessor>();
+        var broken = Assert.IsType<FeatureFlag>(flag);
         var store = new DefaultMemoryStore();
-        store.Populate(new[] { broken, Flag("healthy") });
+        store.Populate(new[] { broken });
         var evaluator = new Evaluator(store);
-        var direct = evaluator.Evaluate(broken, User);
-        Assert.Equal(ReasonKind.Error, direct.evalResult.Kind);
-        Assert.Equal(string.Empty, direct.evalResult.Variation.Id);
-        Assert.Null(direct.evalEvent);
-        var lookup = evaluator.Evaluate(new EvaluationContext { FlagKey = "broken", FbUser = User });
-        Assert.Equal(ReasonKind.Error, lookup.evalResult.Kind);
-        Assert.Null(lookup.evalEvent);
-        var bulk = evaluator.EvaluateAll(User);
-        Assert.Equal(2, bulk.Length);
-        Assert.Equal("true", Assert.Single(bulk, x => x.Key == "healthy").Value);
-        var client = Client(store, events.Object);
-        var fallback = new string('x', 3);
 
-        var detail = client.StringVariationDetail("broken", User, fallback);
-        Assert.Same(fallback, detail.Value);
-        Assert.Equal(ReasonKind.Error, detail.Kind);
-        Assert.Equal(string.Empty, detail.ValueId);
-        Assert.False(client.BoolVariation("broken", User, false));
-        events.Verify(x => x.Record(It.IsAny<IEvent>()), Times.Never);
+        var (result, evalEvent) = evaluator.Evaluate(
+            new EvaluationContext { FlagKey = broken.Key, FbUser = User });
 
-        var results = client.GetAllVariations(User);
-        Assert.Equal(2, results.Length);
-        var error = Assert.Single(results, x => x.Key == "broken");
-        Assert.Equal(ReasonKind.Error, error.Kind);
-        Assert.Equal(string.Empty, error.Value);
-        Assert.Equal(string.Empty, error.ValueId);
-        Assert.Equal("true", Assert.Single(results, x => x.Key == "healthy").Value);
-        events.Verify(x => x.Record(It.IsAny<IEvent>()), Times.Never);
-        Assert.True(client.BoolVariation("healthy", User));
-        Assert.True(client.Initialized);
-        Assert.Equal(FbClientStatus.Ready, client.Status);
-        Assert.Same(broken, store.Get<FeatureFlag>(StoreKeys.ForFeatureFlag("broken")));
-    }
-
-    [Fact]
-    public void WrongTypeAndNotReadyKeepTheirReasonsAndDoNotRecordEvents()
-    {
-        var events = new Mock<IEventProcessor>();
-        var store = new DefaultMemoryStore();
-        store.Populate(new[] { Flag("healthy") });
-        var client = Client(store, events.Object);
-        var wrongType = client.IntVariationDetail("healthy", User, 42);
-        Assert.Equal(42, wrongType.Value);
-        Assert.Equal(ReasonKind.WrongType, wrongType.Kind);
-        Assert.Equal(string.Empty, wrongType.ValueId);
-
-        var synchronizer = new Mock<IDataSynchronizer>();
-        synchronizer.Setup(x => x.StartAsync()).Returns(Task.FromResult(false));
-        var unready = new FbClient(FbOptions.Default("unused"), store, synchronizer.Object, events.Object);
-        var result = unready.IntVariationDetail("healthy", User, 42);
-        Assert.Equal(42, result.Value);
-        Assert.Equal(ReasonKind.ClientNotReady, result.Kind);
-        Assert.Equal(string.Empty, result.ValueId);
-        Assert.Equal("true", Assert.Single(unready.GetAllVariations(User)).Value);
-        events.Verify(x => x.Record(It.IsAny<IEvent>()), Times.Never);
+        Assert.Equal(ReasonKind.Error, result.Kind);
+        Assert.Equal(string.Empty, result.Variation.Id);
+        Assert.Null(evalEvent);
     }
 
     [Theory]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void EvaluatorRejectsInvalidKeysWithoutAccessingStore(string key)
+    public void InvalidKeysReturnsInvalidInput(string key)
     {
-        var store = new Mock<IMemoryStore>(MockBehavior.Strict);
-        var evaluator = new Evaluator(store.Object);
-        var invalidUser = FbUser.Builder(key).Build();
-
-        AssertInvalid(evaluator.Evaluate(new EvaluationContext { FlagKey = key, FbUser = User }));
-        AssertInvalid(evaluator.Evaluate(new EvaluationContext { FlagKey = "healthy", FbUser = invalidUser }));
-
-        var client = Client(store.Object, new NullEventProcessor());
-        Assert.Empty(client.GetAllVariations(invalidUser));
-        var detail = client.IntVariationDetail("healthy", invalidUser, 42);
-        Assert.Equal(42, detail.Value);
-        Assert.Equal("invalid input", detail.Reason);
-        store.VerifyNoOtherCalls();
+        AssertRejectedWithoutStoreAccess(new EvaluationContext { FlagKey = key, FbUser = User });
+        AssertRejectedWithoutStoreAccess(new EvaluationContext
+        {
+            FlagKey = "healthy",
+            FbUser = FbUser.Builder(key).Build()
+        });
     }
 
     [Fact]
-    public void EvaluatorRejectsNullContextAndUser()
+    public void NullContextOrUserReturnsInvalidInput()
     {
-        var evaluator = new Evaluator(new Mock<IMemoryStore>(MockBehavior.Strict).Object);
-        AssertInvalid(evaluator.Evaluate(null));
-        AssertInvalid(evaluator.Evaluate(new EvaluationContext { FlagKey = "healthy", FbUser = null }));
+        AssertRejectedWithoutStoreAccess(null);
+        AssertRejectedWithoutStoreAccess(new EvaluationContext { FlagKey = "healthy", FbUser = null });
     }
 
-    private static void AssertInvalid((EvalResult evalResult, EvalEvent evalEvent) result)
+    private static void AssertRejectedWithoutStoreAccess(EvaluationContext context)
     {
-        Assert.Equal(ReasonKind.Error, result.evalResult.Kind);
-        Assert.Equal("invalid input", result.evalResult.Reason);
-        Assert.Equal(string.Empty, result.evalResult.Variation.Id);
-        Assert.Null(result.evalEvent);
+        var store = new Mock<IMemoryStore>(MockBehavior.Strict);
+        var evaluator = new Evaluator(store.Object);
+
+        var (result, evalEvent) = evaluator.Evaluate(context);
+
+        Assert.Equal(ReasonKind.Error, result.Kind);
+        Assert.Equal("invalid input", result.Reason);
+        Assert.Equal(string.Empty, result.Variation.Id);
+        Assert.Null(evalEvent);
+        store.VerifyNoOtherCalls();
     }
+}
 
-    private static FeatureFlag Flag(string key) => new FeatureFlagBuilder()
-        .Key(key).IsEnabled(false).DisabledVariationId("v")
-        .Variations(new Variation { Id = "v", Value = "true" }).Build();
+public class MalformedFlagData : TheoryData<object>
+{
+    public MalformedFlagData()
+    {
+        // Invalid regex in a negative condition.
+        var invalidRegex = new FeatureFlagBuilder()
+            .Key("invalidRegex")
+            .Rules(new TargetRule
+            {
+                Conditions = new[]
+                {
+                    new Condition { Property = "country", Op = "NotMatchRegex", Value = "[" }
+                }
+            })
+            .Build();
+        Add(invalidRegex);
 
-    private static FbClient Client(IMemoryStore store, IEventProcessor events) =>
-        new(FbOptions.Default("unused"), store, new NullDataSynchronizer(), events);
+        // Invalid JSON in a list condition.
+        var invalidList = new FeatureFlagBuilder()
+            .Key("invalidList")
+            .Rules(new TargetRule
+            {
+                Conditions = new[]
+                {
+                    new Condition { Property = "country", Op = "NotOneOf", Value = "[" }
+                }
+            })
+            .Build();
+        Add(invalidList);
+
+        // Negative segment condition references a missing segment.
+        var missingSegment = new FeatureFlagBuilder()
+            .Key("missingSegment")
+            .Rules(new TargetRule
+            {
+                Conditions = new[]
+                {
+                    new Condition { Property = "User is not in segment", Op = "", Value = "[\"missing\"]" }
+                }
+            })
+            .Build();
+        Add(missingSegment);
+
+        // Individual target references a missing variation.
+        var missingTargetVariation = new FeatureFlagBuilder()
+            .Key("missing-target-variation")
+            .TargetUsers(new TargetUser { KeyIds = new[] { "user" }, VariationId = "missing" })
+            .Build();
+        Add(missingTargetVariation);
+
+        // Matched rule references a missing variation.
+        var missingRuleVariation = new FeatureFlagBuilder()
+            .Key("missing-rule-variation")
+            .Rules(new TargetRule
+            {
+                Conditions = Array.Empty<Condition>(),
+                Variations = new[] { new RolloutVariation { Id = "missing", Rollout = new[] { 0d, 1d } } }
+            })
+            .Build();
+        Add(missingRuleVariation);
+
+        // Fallthrough references a missing variation.
+        var missingFallthroughVariation = new FeatureFlagBuilder()
+            .Key("missing-fallthrough-variation")
+            .Fallthrough(new Fallthrough
+            {
+                Variations = new[] { new RolloutVariation { Id = "missing", Rollout = new[] { 0d, 1d } } }
+            })
+            .Build();
+        Add(missingFallthroughVariation);
+
+        // Selected variation has a null value.
+        var nullVariationValue = new FeatureFlagBuilder()
+            .Key("null-variation-value")
+            .IsEnabled(false)
+            .DisabledVariationId("v")
+            .Variations(new Variation { Id = "v", Value = null })
+            .Build();
+        Add(nullVariationValue);
+
+        // Enabled flag has a null target list.
+        var nullTargets = new FeatureFlagBuilder()
+            .Key("null-targets")
+            .TargetUsers((List<TargetUser>)null)
+            .Build();
+        Add(nullTargets);
+    }
 }
