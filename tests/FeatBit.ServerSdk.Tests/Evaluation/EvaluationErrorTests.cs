@@ -65,86 +65,96 @@ public class MalformedFlagData : TheoryData<object>
     public MalformedFlagData()
     {
         // Invalid regex in a negative condition.
-        var invalidRegex = new FeatureFlagBuilder()
-            .Key("invalidRegex")
-            .Rules(new TargetRule
+        var invalidRegex = CreateValidFlag("invalid-regex");
+        var regexRule = invalidRegex.Rules.Single();
+        regexRule.Conditions = new[]
+        {
+            new Condition
             {
-                Conditions = new[]
-                {
-                    new Condition { Property = "country", Op = "NotMatchRegex", Value = "[" }
-                }
-            })
-            .Build();
+                Property = "country",
+                Op = "NotMatchRegex",
+                Value = "["
+            }
+        };
         Add(invalidRegex);
 
         // Invalid JSON in a list condition.
-        var invalidList = new FeatureFlagBuilder()
-            .Key("invalidList")
-            .Rules(new TargetRule
+        var invalidList = CreateValidFlag("invalid-list");
+        var listRule = invalidList.Rules.Single();
+        listRule.Conditions = new[]
+        {
+            new Condition
             {
-                Conditions = new[]
-                {
-                    new Condition { Property = "country", Op = "NotOneOf", Value = "[" }
-                }
-            })
-            .Build();
+                Property = "country",
+                Op = "NotOneOf",
+                Value = "["
+            }
+        };
         Add(invalidList);
 
         // Negative segment condition references a missing segment.
-        var missingSegment = new FeatureFlagBuilder()
-            .Key("missingSegment")
-            .Rules(new TargetRule
+        var missingSegment = CreateValidFlag("missing-segment");
+        var segmentRule = missingSegment.Rules.Single();
+        segmentRule.Conditions = new[]
+        {
+            new Condition
             {
-                Conditions = new[]
-                {
-                    new Condition { Property = "User is not in segment", Op = "", Value = "[\"missing\"]" }
-                }
-            })
-            .Build();
+                Property = "User is not in segment",
+                Op = "Equal",
+                Value = "[\"missing\"]"
+            }
+        };
         Add(missingSegment);
 
         // Individual target references a missing variation.
-        var missingTargetVariation = new FeatureFlagBuilder()
-            .Key("missing-target-variation")
-            .TargetUsers(new TargetUser { KeyIds = new[] { "user" }, VariationId = "missing" })
-            .Build();
+        var missingTargetVariation = CreateValidFlag("missing-target-variation");
+        var target = missingTargetVariation.TargetUsers.Single();
+        target.KeyIds = new[] { "user" };
+        target.VariationId = "missing";
         Add(missingTargetVariation);
 
         // Matched rule references a missing variation.
-        var missingRuleVariation = new FeatureFlagBuilder()
-            .Key("missing-rule-variation")
-            .Rules(new TargetRule
-            {
-                Conditions = Array.Empty<Condition>(),
-                Variations = new[] { new RolloutVariation { Id = "missing", Rollout = new[] { 0d, 1d } } }
-            })
-            .Build();
+        var missingRuleVariation = CreateValidFlag("missing-rule-variation");
+        var matchedRule = missingRuleVariation.Rules.Single();
+        matchedRule.Variations.Single().Id = "missing";
         Add(missingRuleVariation);
 
-        // Fallthrough references a missing variation.
-        var missingFallthroughVariation = new FeatureFlagBuilder()
-            .Key("missing-fallthrough-variation")
-            .Fallthrough(new Fallthrough
-            {
-                Variations = new[] { new RolloutVariation { Id = "missing", Rollout = new[] { 0d, 1d } } }
-            })
-            .Build();
+        // Fallthrough references a missing variation; the valid rule does not match.
+        var missingFallthroughVariation = CreateValidFlag("missing-fallthrough-variation");
+        var nonMatchingRule = missingFallthroughVariation.Rules.Single();
+        nonMatchingRule.Conditions = new[]
+        {
+            new Condition { Property = "country", Op = "Equal", Value = "de" }
+        };
+        missingFallthroughVariation.Fallthrough.Variations.Single().Id = "missing";
         Add(missingFallthroughVariation);
 
         // Selected variation has a null value.
-        var nullVariationValue = new FeatureFlagBuilder()
-            .Key("null-variation-value")
-            .IsEnabled(false)
-            .DisabledVariationId("v")
-            .Variations(new Variation { Id = "v", Value = null })
-            .Build();
+        var nullVariationValue = CreateValidFlag("null-variation-value");
+        nullVariationValue.Variations.Single(x => x.Id == "rule").Value = null;
         Add(nullVariationValue);
 
         // Enabled flag has a null target list.
-        var nullTargets = new FeatureFlagBuilder()
-            .Key("null-targets")
-            .TargetUsers((List<TargetUser>)null)
-            .Build();
+        var nullTargets = CreateValidFlag("null-targets");
+        nullTargets.TargetUsers = null;
         Add(nullTargets);
     }
+
+    private static FeatureFlag CreateValidFlag(string key) => new FeatureFlagBuilder()
+        .Key(key)
+        .DisabledVariationId("fallthrough")
+        .Variations(
+            new Variation { Id = "rule", Value = "true" },
+            new Variation { Id = "fallthrough", Value = "false" })
+        .TargetUsers(new TargetUser { KeyIds = new[] { "target-user" }, VariationId = "rule" })
+        .Rules(new TargetRule
+        {
+            Conditions = [new Condition { Property = "country", Op = "Equal", Value = "fr" }],
+            Variations = [new RolloutVariation { Id = "rule", Rollout = new[] { 0d, 1d } }]
+        })
+        .Fallthrough(new Fallthrough
+        {
+            Variations = [new RolloutVariation { Id = "fallthrough", Rollout = new[] { 0d, 1d } }]
+        })
+        .Build();
 }
