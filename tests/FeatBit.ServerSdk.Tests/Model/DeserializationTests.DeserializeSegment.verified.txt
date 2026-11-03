@@ -1,51 +1,107 @@
-﻿{
-  StoreKey: segment_0779d76b-afc6-4886-ab65-af8c004273ad,
-  Id: Guid_1,
-  Included: [
-    true-6,
-    true-5,
-    true-4,
-    true-3,
-    true-1,
-    true-2,
-    true-7,
-    true-8,
-    true-9,
-    true-10
-  ],
-  Excluded: [
-    false-1,
-    false-2,
-    false-3,
-    false-4,
-    false-5
-  ],
-  Rules: [
-    {
-      Conditions: [
-        {
-          Property: age,
-          Op: LessEqualThan,
-          Value: 22
-        },
-        {
-          Property: country,
-          Op: IsOneOf,
-          Value: ["cn","us","es"]
-        },
-        {
-          Property: name,
-          Op: NotEqual,
-          Value: bob
-        },
-        {
-          Property: isMember,
-          Op: IsTrue,
-          Value: IsTrue
-        }
-      ]
-    }
-  ],
-  Version: 1674885283583,
-  IsArchived: false
-}
+﻿[
+  {
+    StoreKey: segment_0779d76b-afc6-4886-ab65-af8c004273ad,
+    Id: Guid_1,
+    Included: [
+      true-6,
+      true-5,
+      true-4,
+      true-3,
+      true-1,
+      true-2,
+      true-7,
+      true-8,
+      true-9,
+      true-10
+    ],
+    Excluded: [
+      false-1,
+      false-2,
+      false-3,
+      false-4,
+      false-5
+    ],
+    Rules: [
+      {
+        Conditions: [
+          {
+            Property: age,
+            Op: LessEqualThan,
+            Value: 22
+          },
+          {
+            Property: country,
+            Op: IsOneOf,
+            Value: ["cn","us","es"]
+          },
+          {
+            Property: name,
+            Op: NotEqual,
+            Value: bob
+          },
+          {
+            Property: isMember,
+            Op: IsTrue,
+            Value: IsTrue
+          }
+        ]
+      }
+    ],
+    Version: 1674885283583,
+    IsArchived: false
+  },
+  {
+    StoreKey: segment_249a3676-1a18-46db-89a3-b184e1454844,
+    Id: Guid_2,
+    Included: [
+      search-canary-08,
+      search-qa-23
+    ],
+    Excluded: [
+      search-legacy-31,
+      search-legacy-54
+    ],
+    Rules: [
+      {
+        Conditions: [
+          {
+            Property: plan,
+            Op: Equal,
+            Value: enterprise
+          },
+          {
+            Property: monthlySearches,
+            Op: BiggerEqualThan,
+            Value: 10000
+          },
+          {
+            Property: country,
+            Op: IsOneOf,
+            Value: ["de","nl","se"]
+          }
+        ]
+      },
+      {
+        Conditions: [
+          {
+            Property: email,
+            Op: EndsWith,
+            Value: @example.test
+          },
+          {
+            Property: team,
+            Op: Equal,
+            Value: search
+          },
+          {
+            Property: isActive,
+            Op: IsTrue,
+            Value: true
+          }
+        ]
+      }
+    ],
+    Version: 1793283970456,
+    IsArchived: false
+  }
+]

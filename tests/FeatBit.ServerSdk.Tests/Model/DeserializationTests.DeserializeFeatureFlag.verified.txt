@@ -1,119 +1,358 @@
-﻿{
-  StoreKey: ff_example,
-  Id: Guid_1,
-  Key: example,
-  VariationType: boolean,
-  Variations: [
-    {
-      Id: Guid_2,
-      Value: true
-    },
-    {
-      Id: Guid_3,
-      Value: false
-    }
-  ],
-  TargetUsers: [
-    {
-      KeyIds: [
-        true-1,
-        true-2,
-        true-3,
-        true-4,
-        true-5,
-        true-6,
-        true-7,
-        true-8,
-        true-9,
-        true-10
-      ],
-      VariationId: Guid_2
-    },
-    {
-      KeyIds: [
-        false-1,
-        false-2,
-        false-3,
-        false-4,
-        false-5
-      ],
-      VariationId: Guid_3
-    }
-  ],
-  Rules: [
-    {
-      Name: Rule 1,
-      IncludedInExpt: false,
-      Conditions: [
-        {
-          Property: age,
-          Op: BiggerThan,
-          Value: 22
-        },
-        {
-          Property: name,
-          Op: EndsWith,
-          Value: _qa
-        }
-      ],
-      Variations: [
-        {
-          Id: Guid_2,
-          Rollout: [
-            0.0,
-            1.0
-          ],
-          ExptRollout: 1.0
-        }
-      ]
-    },
-    {
-      Name: Rule 2,
-      DispatchKey: keyId,
-      IncludedInExpt: false,
-      Conditions: [
-        {
-          Property: country,
-          Op: IsOneOf,
-          Value: ["cn","us","jp","gb","es","ss"]
-        }
-      ],
-      Variations: [
-        {
-          Id: Guid_2,
-          Rollout: [
-            0.0,
-            0.2
-          ],
-          ExptRollout: 1.0
-        },
-        {
-          Id: Guid_3,
-          Rollout: [
-            0.2,
-            1.0
-          ],
-          ExptRollout: 1.0
-        }
-      ]
-    }
-  ],
-  IsEnabled: true,
-  DisabledVariationId: Guid_3,
-  Fallthrough: {
-    IncludedInExpt: true,
+﻿[
+  {
+    StoreKey: ff_example,
+    Id: Guid_1,
+    Key: example,
+    VariationType: boolean,
     Variations: [
       {
         Id: Guid_2,
-        Rollout: [
-          0.0,
-          1.0
-        ],
-        ExptRollout: 1.0
+        Value: true
+      },
+      {
+        Id: Guid_3,
+        Value: false
       }
-    ]
+    ],
+    TargetUsers: [
+      {
+        KeyIds: [
+          true-1,
+          true-2,
+          true-3,
+          true-4,
+          true-5,
+          true-6,
+          true-7,
+          true-8,
+          true-9,
+          true-10
+        ],
+        VariationId: Guid_2
+      },
+      {
+        KeyIds: [
+          false-1,
+          false-2,
+          false-3,
+          false-4,
+          false-5
+        ],
+        VariationId: Guid_3
+      }
+    ],
+    Rules: [
+      {
+        Name: Rule 1,
+        IncludedInExpt: false,
+        Conditions: [
+          {
+            Property: age,
+            Op: BiggerThan,
+            Value: 22
+          },
+          {
+            Property: name,
+            Op: EndsWith,
+            Value: _qa
+          }
+        ],
+        Variations: [
+          {
+            Id: Guid_2,
+            Rollout: [
+              0.0,
+              1.0
+            ],
+            ExptRollout: 1.0
+          }
+        ]
+      },
+      {
+        Name: Rule 2,
+        DispatchKey: keyId,
+        IncludedInExpt: false,
+        Conditions: [
+          {
+            Property: country,
+            Op: IsOneOf,
+            Value: ["cn","us","jp","gb","es","ss"]
+          }
+        ],
+        Variations: [
+          {
+            Id: Guid_2,
+            Rollout: [
+              0.0,
+              0.2
+            ],
+            ExptRollout: 1.0
+          },
+          {
+            Id: Guid_3,
+            Rollout: [
+              0.2,
+              1.0
+            ],
+            ExptRollout: 1.0
+          }
+        ]
+      }
+    ],
+    IsEnabled: true,
+    DisabledVariationId: Guid_3,
+    Fallthrough: {
+      IncludedInExpt: true,
+      Variations: [
+        {
+          Id: Guid_2,
+          Rollout: [
+            0.0,
+            1.0
+          ],
+          ExptRollout: 1.0
+        }
+      ]
+    },
+    ExptIncludeAllTargets: true,
+    InsightsEnabled: true,
+    Version: 1674871495616,
+    IsArchived: false
   },
-  ExptIncludeAllTargets: true,
-  Version: 1674871495616,
-  IsArchived: false
-}
+  {
+    StoreKey: ff_checkout-layout,
+    Id: Guid_4,
+    Key: checkout-layout,
+    VariationType: string,
+    Variations: [
+      {
+        Id: Guid_5,
+        Value: classic
+      },
+      {
+        Id: Guid_6,
+        Value: compact
+      },
+      {
+        Id: Guid_7,
+        Value: guided
+      }
+    ],
+    TargetUsers: [
+      {
+        KeyIds: [
+          checkout-qa-17,
+          checkout-qa-42
+        ],
+        VariationId: Guid_7
+      }
+    ],
+    Rules: [
+      {
+        Name: Internal preview,
+        IncludedInExpt: false,
+        Conditions: [
+          {
+            Property: email,
+            Op: EndsWith,
+            Value: @example.test
+          }
+        ],
+        Variations: [
+          {
+            Id: Guid_7,
+            Rollout: [
+              0.0,
+              1.0
+            ]
+          }
+        ]
+      },
+      {
+        Name: Paid customers in pilot regions,
+        DispatchKey: accountId,
+        IncludedInExpt: true,
+        Conditions: [
+          {
+            Property: plan,
+            Op: IsOneOf,
+            Value: ["pro","enterprise"]
+          },
+          {
+            Property: country,
+            Op: IsOneOf,
+            Value: ["de","nl","se"]
+          }
+        ],
+        Variations: [
+          {
+            Id: Guid_5,
+            Rollout: [
+              0.0,
+              0.2
+            ],
+            ExptRollout: 0.2
+          },
+          {
+            Id: Guid_6,
+            Rollout: [
+              0.2,
+              0.55
+            ],
+            ExptRollout: 0.35
+          },
+          {
+            Id: Guid_7,
+            Rollout: [
+              0.55,
+              1.0
+            ],
+            ExptRollout: 0.45
+          }
+        ]
+      }
+    ],
+    IsEnabled: true,
+    DisabledVariationId: Guid_5,
+    Fallthrough: {
+      DispatchKey: accountId,
+      IncludedInExpt: false,
+      Variations: [
+        {
+          Id: Guid_5,
+          Rollout: [
+            0.0,
+            0.85
+          ]
+        },
+        {
+          Id: Guid_6,
+          Rollout: [
+            0.85,
+            1.0
+          ]
+        }
+      ]
+    },
+    ExptIncludeAllTargets: false,
+    InsightsEnabled: true,
+    Version: 1793088942123,
+    IsArchived: false
+  },
+  {
+    StoreKey: ff_priority-search,
+    Id: Guid_8,
+    Key: priority-search,
+    VariationType: boolean,
+    Variations: [
+      {
+        Id: Guid_9,
+        Value: true
+      },
+      {
+        Id: Guid_10,
+        Value: false
+      }
+    ],
+    TargetUsers: [
+      {
+        KeyIds: [
+          search-canary-08
+        ],
+        VariationId: Guid_9
+      },
+      {
+        KeyIds: [
+          search-legacy-31,
+          search-legacy-54
+        ],
+        VariationId: Guid_10
+      }
+    ],
+    Rules: [
+      {
+        Name: High volume enterprise accounts,
+        DispatchKey: accountId,
+        IncludedInExpt: false,
+        Conditions: [
+          {
+            Property: plan,
+            Op: Equal,
+            Value: enterprise
+          },
+          {
+            Property: monthlySearches,
+            Op: BiggerEqualThan,
+            Value: 10000
+          }
+        ],
+        Variations: [
+          {
+            Id: Guid_9,
+            Rollout: [
+              0.0,
+              0.65
+            ]
+          },
+          {
+            Id: Guid_10,
+            Rollout: [
+              0.65,
+              1.0
+            ]
+          }
+        ]
+      },
+      {
+        Name: Recent desktop clients,
+        IncludedInExpt: false,
+        Conditions: [
+          {
+            Property: platform,
+            Op: Equal,
+            Value: desktop
+          },
+          {
+            Property: buildNumber,
+            Op: BiggerEqualThan,
+            Value: 2400
+          }
+        ],
+        Variations: [
+          {
+            Id: Guid_9,
+            Rollout: [
+              0.0,
+              0.25
+            ]
+          },
+          {
+            Id: Guid_10,
+            Rollout: [
+              0.25,
+              1.0
+            ]
+          }
+        ]
+      }
+    ],
+    IsEnabled: true,
+    DisabledVariationId: Guid_10,
+    Fallthrough: {
+      IncludedInExpt: false,
+      Variations: [
+        {
+          Id: Guid_10,
+          Rollout: [
+            0.0,
+            1.0
+          ]
+        }
+      ]
+    },
+    ExptIncludeAllTargets: false,
+    InsightsEnabled: false,
+    Version: 1793283970456,
+    IsArchived: false
+  }
+]

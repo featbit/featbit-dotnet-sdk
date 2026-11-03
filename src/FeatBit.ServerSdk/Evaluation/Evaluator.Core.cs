@@ -1,36 +1,35 @@
 using System;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using FeatBit.Sdk.Server.Events;
 using FeatBit.Sdk.Server.Model;
 
 namespace FeatBit.Sdk.Server.Evaluation;
 
 internal partial class Evaluator
 {
-    internal (EvalResult evalResult, EvalEvent evalEvent) Evaluate(FeatureFlag flag, FbUser user)
+    internal EvalResult Evaluate(FeatureFlag flag, FbUser user)
     {
         try
         {
-            var (evalResult, evalEvent) = EvaluateCore();
+            var evalResult = EvaluateCore();
             if (evalResult.Kind == ReasonKind.Error)
             {
-                return (evalResult, null);
+                return evalResult;
             }
 
             if (evalResult.Variation?.Value == null)
             {
-                return (EvalResult.MalformedFlag, null);
+                return EvalResult.MalformedFlag;
             }
 
-            return (evalResult, evalEvent);
+            return evalResult;
         }
         catch (Exception)
         {
-            return (EvalResult.MalformedFlag, null);
+            return EvalResult.MalformedFlag;
         }
 
-        (EvalResult evalResult, EvalEvent evalEvent) EvaluateCore()
+        EvalResult EvaluateCore()
         {
             var flagKey = flag.Key;
 
@@ -91,19 +90,17 @@ internal partial class Evaluator
 
             return Fallthrough();
 
-            (EvalResult evalResult, EvalEvent evalEvent) MalformedFlag() => (EvalResult.MalformedFlag, null);
+            EvalResult MalformedFlag() => EvalResult.MalformedFlag;
 
-            (EvalResult evalResult, EvalEvent evalEvent) FlagOff(Variation variation) =>
-                (EvalResult.FlagOff(variation), new EvalEvent(user, flagKey, variation, false));
+            EvalResult FlagOff(Variation variation) =>
+                EvalResult.FlagOff(variation, flag.InsightsEnabled);
 
-            (EvalResult evalResult, EvalEvent evalEvent) Targeted(Variation variation, bool exptIncludeAllTargets) =>
-                (EvalResult.Targeted(variation), new EvalEvent(user, flagKey, variation, exptIncludeAllTargets));
+            EvalResult Targeted(Variation variation, bool exptIncludeAllTargets) =>
+                EvalResult.Targeted(variation, flag.InsightsEnabled, exptIncludeAllTargets);
 
-            (EvalResult evalResult, EvalEvent evalEvent) RuleMatched(TargetRule rule, RolloutVariation rolloutVariation)
+            EvalResult RuleMatched(TargetRule rule, RolloutVariation rolloutVariation)
             {
                 var variation = flag.GetVariation(rolloutVariation.Id);
-
-                var evalResult = EvalResult.RuleMatched(rule.Name, variation);
 
                 var sendToExperiment = IsSendToExperiment(
                     flag.ExptIncludeAllTargets,
@@ -111,16 +108,13 @@ internal partial class Evaluator
                     dispatchKey,
                     rolloutVariation
                 );
-                var evalEvent = new EvalEvent(user, flagKey, variation, sendToExperiment);
 
-                return (evalResult, evalEvent);
+                return EvalResult.RuleMatched(rule.Name, variation, flag.InsightsEnabled, sendToExperiment);
             }
 
-            (EvalResult evalResult, EvalEvent evalEvent) Fallthrough()
+            EvalResult Fallthrough()
             {
                 var variation = flag.GetVariation(defaultVariation.Id);
-
-                var evalResult = EvalResult.Fallthrough(variation);
 
                 var sendToExperiment = IsSendToExperiment(
                     flag.ExptIncludeAllTargets,
@@ -128,9 +122,8 @@ internal partial class Evaluator
                     dispatchKey,
                     defaultVariation
                 );
-                var evalEvent = new EvalEvent(user, flagKey, variation, sendToExperiment);
 
-                return (evalResult, evalEvent);
+                return EvalResult.Fallthrough(variation, flag.InsightsEnabled, sendToExperiment);
             }
         }
     }

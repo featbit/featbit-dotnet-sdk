@@ -16,12 +16,13 @@ public class EvaluationErrorTests
         store.Populate(new[] { broken });
         var evaluator = new Evaluator(store);
 
-        var (result, evalEvent) = evaluator.Evaluate(
+        var result = evaluator.Evaluate(
             new EvaluationContext { FlagKey = broken.Key, FbUser = User });
 
         Assert.Equal(ReasonKind.Error, result.Kind);
         Assert.Equal(string.Empty, result.Variation.Id);
-        Assert.Null(evalEvent);
+        Assert.False(result.ShouldRecordEvent);
+        Assert.False(result.SendToExperiment);
     }
 
     [Theory]
@@ -50,12 +51,13 @@ public class EvaluationErrorTests
         var store = new Mock<IMemoryStore>(MockBehavior.Strict);
         var evaluator = new Evaluator(store.Object);
 
-        var (result, evalEvent) = evaluator.Evaluate(context);
+        var result = evaluator.Evaluate(context);
 
         Assert.Equal(ReasonKind.Error, result.Kind);
         Assert.Equal("invalid input", result.Reason);
         Assert.Equal(string.Empty, result.Variation.Id);
-        Assert.Null(evalEvent);
+        Assert.False(result.ShouldRecordEvent);
+        Assert.False(result.SendToExperiment);
         store.VerifyNoOtherCalls();
     }
 }

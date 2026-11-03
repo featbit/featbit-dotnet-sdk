@@ -1,6 +1,5 @@
 using System;
 using System.Linq;
-using FeatBit.Sdk.Server.Events;
 using FeatBit.Sdk.Server.Model;
 using FeatBit.Sdk.Server.Store;
 
@@ -15,11 +14,11 @@ namespace FeatBit.Sdk.Server.Evaluation
             _store = store;
         }
 
-        public (EvalResult evalResult, EvalEvent evalEvent) Evaluate(EvaluationContext context)
+        public EvalResult Evaluate(EvaluationContext context)
         {
             if (context?.IsValid() != true)
             {
-                return (EvalResult.InvalidInput, null);
+                return EvalResult.InvalidInput;
             }
 
             var storeKey = StoreKeys.ForFeatureFlag(context.FlagKey);
@@ -27,7 +26,7 @@ namespace FeatBit.Sdk.Server.Evaluation
             var flag = _store.Get<FeatureFlag>(storeKey);
             if (flag == null)
             {
-                return (EvalResult.FlagNotFound, null);
+                return EvalResult.FlagNotFound;
             }
 
             return Evaluate(flag, context.FbUser);
@@ -44,7 +43,7 @@ namespace FeatBit.Sdk.Server.Evaluation
                 .Find<FeatureFlag>(x => x.StoreKey.StartsWith(StoreKeys.FlagPrefix))
                 .Select(flag =>
                 {
-                    var (evalResult, _) = Evaluate(flag, user);
+                    var evalResult = Evaluate(flag, user);
                     return evalResult.AsEvalDetail(flag.Key);
                 })
                 .ToArray();

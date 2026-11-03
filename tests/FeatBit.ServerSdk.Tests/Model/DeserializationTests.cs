@@ -9,18 +9,25 @@ public class DeserializationTests
     [Fact]
     public Task DeserializeFeatureFlag()
     {
-        var json = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Model", "one-flag.json"));
-        var flag = JsonSerializer.Deserialize<FeatureFlag>(json, ReusableJsonSerializerOptions.Web);
+        var json = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Model", "flags.json"));
+        var flags = JsonSerializer.Deserialize<FeatureFlag[]>(json, ReusableJsonSerializerOptions.Web);
 
-        return Verify(flag);
+        Assert.Collection(flags,
+            flag => Assert.True(flag.InsightsEnabled),
+            flag => Assert.True(flag.InsightsEnabled),
+            flag => Assert.False(flag.InsightsEnabled));
+
+        return Verify(flags);
     }
 
     [Fact]
     public Task DeserializeSegment()
     {
-        var json = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Model", "one-segment.json"));
-        var segment = JsonSerializer.Deserialize<Segment>(json, ReusableJsonSerializerOptions.Web);
+        var json = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Model", "segments.json"));
+        var segments = JsonSerializer.Deserialize<Segment[]>(json, ReusableJsonSerializerOptions.Web);
 
-        return Verify(segment);
+        Assert.Equal(2, segments.Length);
+
+        return Verify(segments);
     }
 }

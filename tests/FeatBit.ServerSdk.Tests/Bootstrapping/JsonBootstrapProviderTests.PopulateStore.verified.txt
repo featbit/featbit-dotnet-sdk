@@ -102,6 +102,7 @@
       ]
     },
     ExptIncludeAllTargets: true,
+    InsightsEnabled: true,
     Version: 1674871495616,
     IsArchived: false
   },

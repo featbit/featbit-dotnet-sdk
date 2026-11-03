@@ -116,6 +116,31 @@ public partial class FbClientTests
         }
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task InsightsEnabledControlsEvaluationEvents(bool insightsEnabled)
+    {
+        var events = new Mock<IEventProcessor>();
+        var flag = CreateEvaluationFlag("flag", "fr");
+        flag.InsightsEnabled = insightsEnabled;
+        var store = new DefaultMemoryStore();
+        store.Populate(new[] { flag });
+        var client = new FbClient(FbOptions.Default("unused"), store,
+            new ManualDataSynchronizer(), events.Object);
+
+        try
+        {
+            client.BoolVariation("flag", FbUser.Builder("user").Build());
+
+            events.Verify(x => x.Record(It.IsAny<EvalEvent>()), insightsEnabled ? Times.Once() : Times.Never());
+        }
+        finally
+        {
+            await client.CloseAsync();
+        }
+    }
+
     private static FeatureFlag CreateEvaluationFlag(string key, string pattern) => new FeatureFlagBuilder()
         .Key(key)
         .Variations(new Variation { Id = "on", Value = "true" },

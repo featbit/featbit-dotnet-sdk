@@ -1,0 +1,397 @@
+[
+  {
+    "id": "174c7138-426d-4434-8a91-af8c00306de3",
+    "createdAt": "2023-01-16T02:56:19.531Z",
+    "updatedAt": "2023-01-28T02:04:55.616Z",
+    "creatorId": "197dea2a-1044-497d-8f1e-f01d2e15a756",
+    "updatorId": "197dea2a-1044-497d-8f1e-f01d2e15a756",
+    "envId": "226b9bf8-4af3-4ffa-9b01-162270e4cd40",
+    "name": "example",
+    "key": "example",
+    "variationType": "boolean",
+    "variations": [
+      {
+        "id": "3da96792-debf-4878-905a-c9b5f9178cd0",
+        "value": "true"
+      },
+      {
+        "id": "19cf9fb6-b790-4877-ab96-b5c5e73e0b46",
+        "value": "false"
+      }
+    ],
+    "targetUsers": [
+      {
+        "keyIds": [
+          "true-1",
+          "true-2",
+          "true-3",
+          "true-4",
+          "true-5",
+          "true-6",
+          "true-7",
+          "true-8",
+          "true-9",
+          "true-10"
+        ],
+        "variationId": "3da96792-debf-4878-905a-c9b5f9178cd0"
+      },
+      {
+        "keyIds": [
+          "false-1",
+          "false-2",
+          "false-3",
+          "false-4",
+          "false-5"
+        ],
+        "variationId": "19cf9fb6-b790-4877-ab96-b5c5e73e0b46"
+      }
+    ],
+    "rules": [
+      {
+        "id": "16273e69-8e1f-4828-bb9b-07576724f6d8",
+        "name": "Rule 1",
+        "dispatchKey": null,
+        "includedInExpt": false,
+        "conditions": [
+          {
+            "property": "age",
+            "op": "BiggerThan",
+            "value": "22"
+          },
+          {
+            "property": "name",
+            "op": "EndsWith",
+            "value": "_qa"
+          }
+        ],
+        "variations": [
+          {
+            "id": "3da96792-debf-4878-905a-c9b5f9178cd0",
+            "rollout": [
+              0,
+              1
+            ],
+            "exptRollout": 1
+          }
+        ]
+      },
+      {
+        "id": "05a6e5fa-6fb5-4bf8-8c2d-d556ed44c143",
+        "name": "Rule 2",
+        "dispatchKey": "keyId",
+        "includedInExpt": false,
+        "conditions": [
+          {
+            "property": "country",
+            "op": "IsOneOf",
+            "value": "[\"cn\",\"us\",\"jp\",\"gb\",\"es\",\"ss\"]"
+          }
+        ],
+        "variations": [
+          {
+            "id": "3da96792-debf-4878-905a-c9b5f9178cd0",
+            "rollout": [
+              0,
+              0.2
+            ],
+            "exptRollout": 1
+          },
+          {
+            "id": "19cf9fb6-b790-4877-ab96-b5c5e73e0b46",
+            "rollout": [
+              0.2,
+              1
+            ],
+            "exptRollout": 1
+          }
+        ]
+      }
+    ],
+    "isEnabled": true,
+    "disabledVariationId": "19cf9fb6-b790-4877-ab96-b5c5e73e0b46",
+    "fallthrough": {
+      "dispatchKey": null,
+      "includedInExpt": true,
+      "variations": [
+        {
+          "id": "3da96792-debf-4878-905a-c9b5f9178cd0",
+          "rollout": [
+            0,
+            1
+          ],
+          "exptRollout": 1
+        }
+      ]
+    },
+    "exptIncludeAllTargets": true,
+    "tags": [],
+    "isArchived": false
+  },
+  {
+    "id": "ee2b51e0-8a56-46f4-8de7-ce010203a6d6",
+    "createdAt": "2023-01-16T02:56:19.531Z",
+    "updatedAt": "2026-10-27T08:15:42.123Z",
+    "creatorId": "197dea2a-1044-497d-8f1e-f01d2e15a756",
+    "updatorId": "197dea2a-1044-497d-8f1e-f01d2e15a756",
+    "envId": "226b9bf8-4af3-4ffa-9b01-162270e4cd40",
+    "name": "Checkout layout experiment",
+    "key": "checkout-layout",
+    "variationType": "string",
+    "variations": [
+      {
+        "id": "d522c1f3-0b1e-44b9-9582-1e1396e4a66a",
+        "value": "classic"
+      },
+      {
+        "id": "fc3be5b2-2de2-4a3e-a2ec-32961af1ae6f",
+        "value": "compact"
+      },
+      {
+        "id": "b49ae9f3-e4fc-4dce-b0f6-79e8d4c3c3f3",
+        "value": "guided"
+      }
+    ],
+    "targetUsers": [
+      {
+        "keyIds": [
+          "checkout-qa-17",
+          "checkout-qa-42"
+        ],
+        "variationId": "b49ae9f3-e4fc-4dce-b0f6-79e8d4c3c3f3"
+      }
+    ],
+    "rules": [
+      {
+        "id": "fce92c13-951b-4e39-9928-1796437a6657",
+        "name": "Internal preview",
+        "dispatchKey": null,
+        "includedInExpt": false,
+        "conditions": [
+          {
+            "property": "email",
+            "op": "EndsWith",
+            "value": "@example.test"
+          }
+        ],
+        "variations": [
+          {
+            "id": "b49ae9f3-e4fc-4dce-b0f6-79e8d4c3c3f3",
+            "rollout": [
+              0,
+              1
+            ],
+            "exptRollout": 0
+          }
+        ]
+      },
+      {
+        "id": "38b39fb6-3ef9-443b-8d48-c7c56f931faa",
+        "name": "Paid customers in pilot regions",
+        "dispatchKey": "accountId",
+        "includedInExpt": true,
+        "conditions": [
+          {
+            "property": "plan",
+            "op": "IsOneOf",
+            "value": "[\"pro\",\"enterprise\"]"
+          },
+          {
+            "property": "country",
+            "op": "IsOneOf",
+            "value": "[\"de\",\"nl\",\"se\"]"
+          }
+        ],
+        "variations": [
+          {
+            "id": "d522c1f3-0b1e-44b9-9582-1e1396e4a66a",
+            "rollout": [
+              0,
+              0.2
+            ],
+            "exptRollout": 0.2
+          },
+          {
+            "id": "fc3be5b2-2de2-4a3e-a2ec-32961af1ae6f",
+            "rollout": [
+              0.2,
+              0.55
+            ],
+            "exptRollout": 0.35
+          },
+          {
+            "id": "b49ae9f3-e4fc-4dce-b0f6-79e8d4c3c3f3",
+            "rollout": [
+              0.55,
+              1.0
+            ],
+            "exptRollout": 0.45
+          }
+        ]
+      }
+    ],
+    "isEnabled": true,
+    "disabledVariationId": "d522c1f3-0b1e-44b9-9582-1e1396e4a66a",
+    "fallthrough": {
+      "dispatchKey": "accountId",
+      "includedInExpt": false,
+      "variations": [
+        {
+          "id": "d522c1f3-0b1e-44b9-9582-1e1396e4a66a",
+          "rollout": [
+            0,
+            0.85
+          ],
+          "exptRollout": 0
+        },
+        {
+          "id": "fc3be5b2-2de2-4a3e-a2ec-32961af1ae6f",
+          "rollout": [
+            0.85,
+            1.0
+          ],
+          "exptRollout": 0
+        }
+      ]
+    },
+    "exptIncludeAllTargets": false,
+    "tags": [
+      "checkout",
+      "experiment"
+    ],
+    "isArchived": false,
+    "insightsEnabled": true
+  },
+  {
+    "id": "b51da42e-4853-44af-afe2-e92bfae14d4c",
+    "createdAt": "2023-01-16T02:56:19.531Z",
+    "updatedAt": "2026-10-29T14:26:10.456Z",
+    "creatorId": "197dea2a-1044-497d-8f1e-f01d2e15a756",
+    "updatorId": "197dea2a-1044-497d-8f1e-f01d2e15a756",
+    "envId": "226b9bf8-4af3-4ffa-9b01-162270e4cd40",
+    "name": "Priority search rollout",
+    "key": "priority-search",
+    "variationType": "boolean",
+    "variations": [
+      {
+        "id": "d320041c-5f80-47fa-82d3-6ef692a38de0",
+        "value": "true"
+      },
+      {
+        "id": "083f3778-ef9b-4d9b-bf77-c64404d5debf",
+        "value": "false"
+      }
+    ],
+    "targetUsers": [
+      {
+        "keyIds": [
+          "search-canary-08"
+        ],
+        "variationId": "d320041c-5f80-47fa-82d3-6ef692a38de0"
+      },
+      {
+        "keyIds": [
+          "search-legacy-31",
+          "search-legacy-54"
+        ],
+        "variationId": "083f3778-ef9b-4d9b-bf77-c64404d5debf"
+      }
+    ],
+    "rules": [
+      {
+        "id": "971f9023-7507-487e-928e-4e7072c99f64",
+        "name": "High volume enterprise accounts",
+        "dispatchKey": "accountId",
+        "includedInExpt": false,
+        "conditions": [
+          {
+            "property": "plan",
+            "op": "Equal",
+            "value": "enterprise"
+          },
+          {
+            "property": "monthlySearches",
+            "op": "BiggerEqualThan",
+            "value": "10000"
+          }
+        ],
+        "variations": [
+          {
+            "id": "d320041c-5f80-47fa-82d3-6ef692a38de0",
+            "rollout": [
+              0,
+              0.65
+            ],
+            "exptRollout": 0
+          },
+          {
+            "id": "083f3778-ef9b-4d9b-bf77-c64404d5debf",
+            "rollout": [
+              0.65,
+              1.0
+            ],
+            "exptRollout": 0
+          }
+        ]
+      },
+      {
+        "id": "6048b1b7-0288-4768-8d54-4f64435b3e85",
+        "name": "Recent desktop clients",
+        "dispatchKey": null,
+        "includedInExpt": false,
+        "conditions": [
+          {
+            "property": "platform",
+            "op": "Equal",
+            "value": "desktop"
+          },
+          {
+            "property": "buildNumber",
+            "op": "BiggerEqualThan",
+            "value": "2400"
+          }
+        ],
+        "variations": [
+          {
+            "id": "d320041c-5f80-47fa-82d3-6ef692a38de0",
+            "rollout": [
+              0,
+              0.25
+            ],
+            "exptRollout": 0
+          },
+          {
+            "id": "083f3778-ef9b-4d9b-bf77-c64404d5debf",
+            "rollout": [
+              0.25,
+              1.0
+            ],
+            "exptRollout": 0
+          }
+        ]
+      }
+    ],
+    "isEnabled": true,
+    "disabledVariationId": "083f3778-ef9b-4d9b-bf77-c64404d5debf",
+    "fallthrough": {
+      "dispatchKey": null,
+      "includedInExpt": false,
+      "variations": [
+        {
+          "id": "083f3778-ef9b-4d9b-bf77-c64404d5debf",
+          "rollout": [
+            0,
+            1
+          ],
+          "exptRollout": 0
+        }
+      ]
+    },
+    "exptIncludeAllTargets": false,
+    "tags": [
+      "search",
+      "rollout"
+    ],
+    "isArchived": false,
+    "insightsEnabled": false
+  }
+]

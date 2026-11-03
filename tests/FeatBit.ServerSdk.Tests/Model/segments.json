@@ -1,0 +1,119 @@
+[
+  {
+    "id": "0779d76b-afc6-4886-ab65-af8c004273ad",
+    "createdAt": "2023-01-16T04:01:56.63Z",
+    "updatedAt": "2023-01-28T05:54:43.583Z",
+    "envId": "226b9bf8-4af3-4ffa-9b01-162270e4cd40",
+    "name": "segment-01",
+    "description": "- 10 users in individual targeting return true, 5 returns false\n- Cover types of attribute: Number, String, List, Boolean",
+    "included": [
+      "true-6",
+      "true-5",
+      "true-4",
+      "true-3",
+      "true-1",
+      "true-2",
+      "true-7",
+      "true-8",
+      "true-9",
+      "true-10"
+    ],
+    "excluded": [
+      "false-1",
+      "false-2",
+      "false-3",
+      "false-4",
+      "false-5"
+    ],
+    "rules": [
+      {
+        "id": "19a77402-3ee7-4ea0-83bc-3e019b982d1b",
+        "name": "Rule 1",
+        "conditions": [
+          {
+            "property": "age",
+            "op": "LessEqualThan",
+            "value": "22"
+          },
+          {
+            "property": "country",
+            "op": "IsOneOf",
+            "value": "[\"cn\",\"us\",\"es\"]"
+          },
+          {
+            "property": "name",
+            "op": "NotEqual",
+            "value": "bob"
+          },
+          {
+            "property": "isMember",
+            "op": "IsTrue",
+            "value": "IsTrue"
+          }
+        ]
+      }
+    ],
+    "isArchived": false
+  },
+  {
+    "id": "249a3676-1a18-46db-89a3-b184e1454844",
+    "createdAt": "2026-10-20T09:12:30.123Z",
+    "updatedAt": "2026-10-29T14:26:10.456Z",
+    "envId": "226b9bf8-4af3-4ffa-9b01-162270e4cd40",
+    "name": "enterprise-search-pilot",
+    "description": "Enterprise accounts with high search volume in pilot regions, or internal search testers.",
+    "included": [
+      "search-canary-08",
+      "search-qa-23"
+    ],
+    "excluded": [
+      "search-legacy-31",
+      "search-legacy-54"
+    ],
+    "rules": [
+      {
+        "id": "0b2b8cf6-ff6a-41db-8d3b-b65605654ea3",
+        "name": "High volume enterprise accounts in pilot regions",
+        "conditions": [
+          {
+            "property": "plan",
+            "op": "Equal",
+            "value": "enterprise"
+          },
+          {
+            "property": "monthlySearches",
+            "op": "BiggerEqualThan",
+            "value": "10000"
+          },
+          {
+            "property": "country",
+            "op": "IsOneOf",
+            "value": "[\"de\",\"nl\",\"se\"]"
+          }
+        ]
+      },
+      {
+        "id": "dbe88514-d3dc-4bc9-a1f3-143eb2162d21",
+        "name": "Internal search testers",
+        "conditions": [
+          {
+            "property": "email",
+            "op": "EndsWith",
+            "value": "@example.test"
+          },
+          {
+            "property": "team",
+            "op": "Equal",
+            "value": "search"
+          },
+          {
+            "property": "isActive",
+            "op": "IsTrue",
+            "value": "true"
+          }
+        ]
+      }
+    ],
+    "isArchived": false
+  }
+]
