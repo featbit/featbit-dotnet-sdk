@@ -30,6 +30,8 @@ namespace FeatBit.Sdk.Server.Model
 
         public bool ExptIncludeAllTargets { get; set; }
 
+        public bool InsightsEnabled { get; set; }
+
         public FeatureFlag(
             Guid id,
             string key,
@@ -42,7 +44,8 @@ namespace FeatBit.Sdk.Server.Model
             string disabledVariationId,
             Fallthrough fallthrough,
             bool exptIncludeAllTargets, 
-            bool isArchived)
+            bool isArchived,
+            bool insightsEnabled = true)
         {
             Id = id;
             Key = key;
@@ -56,6 +59,7 @@ namespace FeatBit.Sdk.Server.Model
             Fallthrough = fallthrough;
             ExptIncludeAllTargets = exptIncludeAllTargets;
             IsArchived = isArchived;
+            InsightsEnabled = insightsEnabled;
         }
 
         public Variation GetVariation(string variationId)

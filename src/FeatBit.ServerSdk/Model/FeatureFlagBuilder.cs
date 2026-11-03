@@ -17,11 +17,12 @@ namespace FeatBit.Sdk.Server.Model
         private Fallthrough _fallthrough;
         private bool _exptIncludeAllTargets = true;
         private bool _isArchived = false;
+        private bool _insightsEnabled = true;
 
         public FeatureFlag Build()
         {
             return new FeatureFlag(_id, _key, _version, _variationType, _variations, _targetUsers, _rules, _isEnabled,
-                _disabledVariationId, _fallthrough, _exptIncludeAllTargets, _isArchived);
+                _disabledVariationId, _fallthrough, _exptIncludeAllTargets, _isArchived, _insightsEnabled);
         }
 
         public FeatureFlagBuilder Id(Guid id)
@@ -122,7 +123,13 @@ namespace FeatBit.Sdk.Server.Model
 
         public FeatureFlagBuilder IsArchived(bool isArchived)
         {
-            _isArchived =  isArchived;
+            _isArchived = isArchived;
+            return this;
+        }
+
+        public FeatureFlagBuilder InsightsEnabled(bool insightsEnabled)
+        {
+            _insightsEnabled = insightsEnabled;
             return this;
         }
     }

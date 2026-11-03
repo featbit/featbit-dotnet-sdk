@@ -19,13 +19,14 @@ public class EvaluatorTests
             FbUser = new FbUserBuilder("u1").Build()
         };
 
-        var (evalResult, evalEvent) = evaluator.Evaluate(context);
+        var evalResult = evaluator.Evaluate(context);
 
         Assert.Equal(ReasonKind.Error, evalResult.Kind);
         Assert.Equal("flag not found", evalResult.Reason);
         Assert.Equivalent(Variation.Empty, evalResult.Variation);
 
-        Assert.Null(evalEvent);
+        Assert.False(evalResult.ShouldRecordEvent);
+        Assert.False(evalResult.SendToExperiment);
     }
 
     [Fact]
@@ -46,14 +47,15 @@ public class EvaluatorTests
             FbUser = new FbUserBuilder("u1").Build()
         };
 
-        var (evalResult, evalEvent) = evaluator.Evaluate(context);
+        var evalResult = evaluator.Evaluate(context);
 
         // archived flag is treated as not found
         Assert.Equal(ReasonKind.Error, evalResult.Kind);
         Assert.Equal("flag not found", evalResult.Reason);
         Assert.Equivalent(Variation.Empty, evalResult.Variation);
 
-        Assert.Null(evalEvent);
+        Assert.False(evalResult.ShouldRecordEvent);
+        Assert.False(evalResult.SendToExperiment);
     }
 
     [Fact]
@@ -75,13 +77,14 @@ public class EvaluatorTests
             FbUser = new FbUserBuilder("u1").Build()
         };
 
-        var (evalResult, evalEvent) = evaluator.Evaluate(context);
+        var evalResult = evaluator.Evaluate(context);
 
         Assert.Equal(ReasonKind.Error, evalResult.Kind);
         Assert.Equal("malformed flag", evalResult.Reason);
         Assert.Equivalent(Variation.Empty, evalResult.Variation);
 
-        Assert.Null(evalEvent);
+        Assert.False(evalResult.ShouldRecordEvent);
+        Assert.False(evalResult.SendToExperiment);
     }
 
     [Fact]
@@ -103,14 +106,15 @@ public class EvaluatorTests
             FbUser = new FbUserBuilder("u1").Build()
         };
 
-        var (evalResult, evalEvent) = evaluator.Evaluate(context);
+        var evalResult = evaluator.Evaluate(context);
 
         Assert.Equal(ReasonKind.Off, evalResult.Kind);
         Assert.Equal("flag off", evalResult.Reason);
         Assert.Equivalent(TrueVariation, evalResult.Variation);
 
         // flag is off
-        Assert.False(evalEvent.SendToExperiment);
+        Assert.True(evalResult.ShouldRecordEvent);
+        Assert.False(evalResult.SendToExperiment);
     }
 
     [Fact]
@@ -139,14 +143,15 @@ public class EvaluatorTests
             FbUser = new FbUserBuilder("u1").Build()
         };
 
-        var (evalResult, evalEvent) = evaluator.Evaluate(context);
+        var evalResult = evaluator.Evaluate(context);
 
         Assert.Equal(ReasonKind.TargetMatch, evalResult.Kind);
         Assert.Equal("target match", evalResult.Reason);
         Assert.Equivalent(FalseVariation, evalResult.Variation);
 
         // ExptIncludeAllTargets is true by default
-        Assert.True(evalEvent.SendToExperiment);
+        Assert.True(evalResult.ShouldRecordEvent);
+        Assert.True(evalResult.SendToExperiment);
     }
 
     [Fact]
@@ -198,14 +203,15 @@ public class EvaluatorTests
                 .Build()
         };
 
-        var (evalResult, evalEvent) = evaluator.Evaluate(context);
+        var evalResult = evaluator.Evaluate(context);
 
         Assert.Equal(ReasonKind.RuleMatch, evalResult.Kind);
         Assert.Equal($"match rule {customRule.Name}", evalResult.Reason);
         Assert.Equivalent(TrueVariation, evalResult.Variation);
 
         // customRule.IncludedInExpt is false
-        Assert.False(evalEvent.SendToExperiment);
+        Assert.True(evalResult.ShouldRecordEvent);
+        Assert.False(evalResult.SendToExperiment);
     }
 
     [Fact]
@@ -250,12 +256,13 @@ public class EvaluatorTests
             FbUser = new FbUserBuilder("u1").Build()
         };
 
-        var (evalResult, evalEvent) = evaluator.Evaluate(context);
+        var evalResult = evaluator.Evaluate(context);
 
         Assert.Equal(ReasonKind.Fallthrough, evalResult.Kind);
         Assert.Equal("fall through targets and rules", evalResult.Reason);
         Assert.Equivalent(FalseVariation, evalResult.Variation);
 
-        Assert.True(evalEvent.SendToExperiment);
+        Assert.True(evalResult.ShouldRecordEvent);
+        Assert.True(evalResult.SendToExperiment);
     }
 }

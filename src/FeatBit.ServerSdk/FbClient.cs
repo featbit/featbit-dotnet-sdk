@@ -328,7 +328,7 @@ namespace FeatBit.Sdk.Server
                 FbUser = user
             };
 
-            var (evalResult, evalEvent) = _evaluator.Evaluate(ctx);
+            var evalResult = _evaluator.Evaluate(ctx);
             if (evalResult.Kind == ReasonKind.Error)
             {
                 // error happened when evaluate flag, return default value
@@ -343,7 +343,11 @@ namespace FeatBit.Sdk.Server
             }
 
             // record evaluation event
-            _eventProcessor.Record(evalEvent);
+            if (evalResult.ShouldRecordEvent)
+            {
+                var evalEvent = new EvalEvent(user, key, variation, evalResult.SendToExperiment);
+                _eventProcessor.Record(evalEvent);
+            }
 
             return new EvalDetail<TValue>(key, evalResult.Kind, evalResult.Reason, typedValue, variation.Id);
         }
