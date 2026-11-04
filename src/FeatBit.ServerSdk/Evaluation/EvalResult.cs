@@ -12,11 +12,7 @@ namespace FeatBit.Sdk.Server.Evaluation
 
         public bool ShouldRecordEvent { get; }
 
-        private EvalResult(
-            ReasonKind kind,
-            string reason,
-            Variation variation,
-            bool shouldRecordEvent = false)
+        private EvalResult(ReasonKind kind, string reason, Variation variation, bool shouldRecordEvent = false)
         {
             Kind = kind;
             Reason = reason;
