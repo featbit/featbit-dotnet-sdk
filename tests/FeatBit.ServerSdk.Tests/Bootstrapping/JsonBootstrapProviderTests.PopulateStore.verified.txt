@@ -31,7 +31,6 @@
     Rules: [
       {
         Name: Rule 1,
-        IncludedInExpt: false,
         Conditions: [
           {
             Property: age,
@@ -50,15 +49,13 @@
             Rollout: [
               0.0,
               1.0
-            ],
-            ExptRollout: 1.0
+            ]
           }
         ]
       },
       {
         Name: Rule 2,
         DispatchKey: keyId,
-        IncludedInExpt: false,
         Conditions: [
           {
             Property: country,
@@ -72,16 +69,14 @@
             Rollout: [
               0.0,
               0.2
-            ],
-            ExptRollout: 1.0
+            ]
           },
           {
             Id: Guid_3,
             Rollout: [
               0.2,
               1.0
-            ],
-            ExptRollout: 1.0
+            ]
           }
         ]
       }
@@ -89,19 +84,16 @@
     IsEnabled: true,
     DisabledVariationId: Guid_3,
     Fallthrough: {
-      IncludedInExpt: true,
       Variations: [
         {
           Id: Guid_2,
           Rollout: [
             0.0,
             1.0
-          ],
-          ExptRollout: 1.0
+          ]
         }
       ]
     },
-    ExptIncludeAllTargets: true,
     InsightsEnabled: true,
     Version: 1674871495616,
     IsArchived: false
