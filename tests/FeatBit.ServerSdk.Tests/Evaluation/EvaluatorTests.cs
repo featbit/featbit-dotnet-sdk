@@ -26,7 +26,6 @@ public class EvaluatorTests
         Assert.Equivalent(Variation.Empty, evalResult.Variation);
 
         Assert.False(evalResult.ShouldRecordEvent);
-        Assert.False(evalResult.SendToExperiment);
     }
 
     [Fact]
@@ -55,7 +54,6 @@ public class EvaluatorTests
         Assert.Equivalent(Variation.Empty, evalResult.Variation);
 
         Assert.False(evalResult.ShouldRecordEvent);
-        Assert.False(evalResult.SendToExperiment);
     }
 
     [Fact]
@@ -84,7 +82,6 @@ public class EvaluatorTests
         Assert.Equivalent(Variation.Empty, evalResult.Variation);
 
         Assert.False(evalResult.ShouldRecordEvent);
-        Assert.False(evalResult.SendToExperiment);
     }
 
     [Fact]
@@ -114,7 +111,6 @@ public class EvaluatorTests
 
         // flag is off
         Assert.True(evalResult.ShouldRecordEvent);
-        Assert.False(evalResult.SendToExperiment);
     }
 
     [Fact]
@@ -149,9 +145,7 @@ public class EvaluatorTests
         Assert.Equal("target match", evalResult.Reason);
         Assert.Equivalent(FalseVariation, evalResult.Variation);
 
-        // ExptIncludeAllTargets is true by default
         Assert.True(evalResult.ShouldRecordEvent);
-        Assert.True(evalResult.SendToExperiment);
     }
 
     [Fact]
@@ -173,13 +167,11 @@ public class EvaluatorTests
                 }
             },
             DispatchKey = "keyId",
-            IncludedInExpt = false,
             Variations = new List<RolloutVariation>
             {
                 new()
                 {
                     Id = "trueId",
-                    ExptRollout = 1,
                     Rollout = new double[] { 0, 1 }
                 }
             }
@@ -188,7 +180,6 @@ public class EvaluatorTests
         var flag = new FeatureFlagBuilder()
             .Key("hello")
             .IsEnabled(true)
-            .ExptIncludeAllTargets(false)
             .Rules(customRule)
             .Variations(variations)
             .Build();
@@ -209,9 +200,7 @@ public class EvaluatorTests
         Assert.Equal($"match rule {customRule.Name}", evalResult.Reason);
         Assert.Equivalent(TrueVariation, evalResult.Variation);
 
-        // customRule.IncludedInExpt is false
         Assert.True(evalResult.ShouldRecordEvent);
-        Assert.False(evalResult.SendToExperiment);
     }
 
     [Fact]
@@ -228,13 +217,11 @@ public class EvaluatorTests
         var fallthrough = new Fallthrough
         {
             DispatchKey = "keyId",
-            IncludedInExpt = true,
             Variations = new List<RolloutVariation>
             {
                 new()
                 {
                     Id = "falseId",
-                    ExptRollout = 1,
                     Rollout = new double[] { 0, 1 }
                 }
             }
@@ -243,7 +230,6 @@ public class EvaluatorTests
         var flag = new FeatureFlagBuilder()
             .Key("hello")
             .IsEnabled(true)
-            .ExptIncludeAllTargets(false)
             .Fallthrough(fallthrough)
             .Variations(variations)
             .Build();
@@ -263,6 +249,5 @@ public class EvaluatorTests
         Assert.Equivalent(FalseVariation, evalResult.Variation);
 
         Assert.True(evalResult.ShouldRecordEvent);
-        Assert.True(evalResult.SendToExperiment);
     }
 }

@@ -44,7 +44,6 @@
     Rules: [
       {
         Name: Rule 1,
-        IncludedInExpt: false,
         Conditions: [
           {
             Property: age,
@@ -63,15 +62,13 @@
             Rollout: [
               0.0,
               1.0
-            ],
-            ExptRollout: 1.0
+            ]
           }
         ]
       },
       {
         Name: Rule 2,
         DispatchKey: keyId,
-        IncludedInExpt: false,
         Conditions: [
           {
             Property: country,
@@ -85,16 +82,14 @@
             Rollout: [
               0.0,
               0.2
-            ],
-            ExptRollout: 1.0
+            ]
           },
           {
             Id: Guid_3,
             Rollout: [
               0.2,
               1.0
-            ],
-            ExptRollout: 1.0
+            ]
           }
         ]
       }
@@ -102,19 +97,16 @@
     IsEnabled: true,
     DisabledVariationId: Guid_3,
     Fallthrough: {
-      IncludedInExpt: true,
       Variations: [
         {
           Id: Guid_2,
           Rollout: [
             0.0,
             1.0
-          ],
-          ExptRollout: 1.0
+          ]
         }
       ]
     },
-    ExptIncludeAllTargets: true,
     InsightsEnabled: true,
     Version: 1674871495616,
     IsArchived: false
@@ -150,7 +142,6 @@
     Rules: [
       {
         Name: Internal preview,
-        IncludedInExpt: false,
         Conditions: [
           {
             Property: email,
@@ -171,7 +162,6 @@
       {
         Name: Paid customers in pilot regions,
         DispatchKey: accountId,
-        IncludedInExpt: true,
         Conditions: [
           {
             Property: plan,
@@ -190,24 +180,21 @@
             Rollout: [
               0.0,
               0.2
-            ],
-            ExptRollout: 0.2
+            ]
           },
           {
             Id: Guid_6,
             Rollout: [
               0.2,
               0.55
-            ],
-            ExptRollout: 0.35
+            ]
           },
           {
             Id: Guid_7,
             Rollout: [
               0.55,
               1.0
-            ],
-            ExptRollout: 0.45
+            ]
           }
         ]
       }
@@ -216,7 +203,6 @@
     DisabledVariationId: Guid_5,
     Fallthrough: {
       DispatchKey: accountId,
-      IncludedInExpt: false,
       Variations: [
         {
           Id: Guid_5,
@@ -234,7 +220,6 @@
         }
       ]
     },
-    ExptIncludeAllTargets: false,
     InsightsEnabled: true,
     Version: 1793088942123,
     IsArchived: false
@@ -273,7 +258,6 @@
       {
         Name: High volume enterprise accounts,
         DispatchKey: accountId,
-        IncludedInExpt: false,
         Conditions: [
           {
             Property: plan,
@@ -305,7 +289,6 @@
       },
       {
         Name: Recent desktop clients,
-        IncludedInExpt: false,
         Conditions: [
           {
             Property: platform,
@@ -339,7 +322,6 @@
     IsEnabled: true,
     DisabledVariationId: Guid_10,
     Fallthrough: {
-      IncludedInExpt: false,
       Variations: [
         {
           Id: Guid_10,
@@ -350,7 +332,6 @@
         }
       ]
     },
-    ExptIncludeAllTargets: false,
     InsightsEnabled: false,
     Version: 1793283970456,
     IsArchived: false

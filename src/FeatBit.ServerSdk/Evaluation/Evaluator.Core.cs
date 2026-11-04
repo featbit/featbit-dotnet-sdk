@@ -1,6 +1,5 @@
 using System;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using FeatBit.Sdk.Server.Model;
 
 namespace FeatBit.Sdk.Server.Evaluation;
@@ -50,7 +49,7 @@ internal partial class Evaluator
             if (targetUser != null)
             {
                 var targetedVariation = flag.GetVariation(targetUser.VariationId);
-                return Targeted(targetedVariation, flag.ExptIncludeAllTargets);
+                return Targeted(targetedVariation);
             }
 
             string dispatchKey;
@@ -95,73 +94,22 @@ internal partial class Evaluator
             EvalResult FlagOff(Variation variation) =>
                 EvalResult.FlagOff(variation, flag.InsightsEnabled);
 
-            EvalResult Targeted(Variation variation, bool exptIncludeAllTargets) =>
-                EvalResult.Targeted(variation, flag.InsightsEnabled, exptIncludeAllTargets);
+            EvalResult Targeted(Variation variation) =>
+                EvalResult.Targeted(variation, flag.InsightsEnabled);
 
             EvalResult RuleMatched(TargetRule rule, RolloutVariation rolloutVariation)
             {
                 var variation = flag.GetVariation(rolloutVariation.Id);
 
-                var sendToExperiment = IsSendToExperiment(
-                    flag.ExptIncludeAllTargets,
-                    rule.IncludedInExpt,
-                    dispatchKey,
-                    rolloutVariation
-                );
-
-                return EvalResult.RuleMatched(rule.Name, variation, flag.InsightsEnabled, sendToExperiment);
+                return EvalResult.RuleMatched(rule.Name, variation, flag.InsightsEnabled);
             }
 
             EvalResult Fallthrough()
             {
                 var variation = flag.GetVariation(defaultVariation.Id);
 
-                var sendToExperiment = IsSendToExperiment(
-                    flag.ExptIncludeAllTargets,
-                    flag.Fallthrough.IncludedInExpt,
-                    dispatchKey,
-                    defaultVariation
-                );
-
-                return EvalResult.Fallthrough(variation, flag.InsightsEnabled, sendToExperiment);
+                return EvalResult.Fallthrough(variation, flag.InsightsEnabled);
             }
         }
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static bool IsSendToExperiment(
-        bool exptIncludeAllTargets,
-        bool thisRuleIncludeInExpt,
-        string dispatchKey,
-        RolloutVariation rolloutVariation)
-    {
-        if (exptIncludeAllTargets)
-        {
-            return true;
-        }
-
-        if (!thisRuleIncludeInExpt)
-        {
-            return false;
-        }
-
-        // create a new key to calculate the experiment dispatch percentage
-        const string exptDispatchKeyPrefix = "expt";
-        var sendToExptKey = $"{exptDispatchKeyPrefix}{dispatchKey}";
-
-        var exptRollout = rolloutVariation.ExptRollout;
-        var dispatchRollout = rolloutVariation.DispatchRollout();
-        if (exptRollout == 0.0 || dispatchRollout == 0.0)
-        {
-            return false;
-        }
-
-        var upperBound = exptRollout / dispatchRollout;
-        if (upperBound > 1.0)
-        {
-            upperBound = 1.0;
-        }
-
-        return DispatchAlgorithm.IsInRollout(sendToExptKey, new[] { 0.0, upperBound });
     }
 }

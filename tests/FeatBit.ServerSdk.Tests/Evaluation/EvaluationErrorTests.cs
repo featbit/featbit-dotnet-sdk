@@ -22,7 +22,6 @@ public class EvaluationErrorTests
         Assert.Equal(ReasonKind.Error, result.Kind);
         Assert.Equal(string.Empty, result.Variation.Id);
         Assert.False(result.ShouldRecordEvent);
-        Assert.False(result.SendToExperiment);
     }
 
     [Theory]
@@ -57,7 +56,6 @@ public class EvaluationErrorTests
         Assert.Equal("invalid input", result.Reason);
         Assert.Equal(string.Empty, result.Variation.Id);
         Assert.False(result.ShouldRecordEvent);
-        Assert.False(result.SendToExperiment);
         store.VerifyNoOtherCalls();
     }
 }

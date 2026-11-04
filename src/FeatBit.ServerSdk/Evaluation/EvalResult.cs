@@ -12,20 +12,12 @@ namespace FeatBit.Sdk.Server.Evaluation
 
         public bool ShouldRecordEvent { get; }
 
-        public bool SendToExperiment { get; }
-
-        private EvalResult(
-            ReasonKind kind,
-            string reason,
-            Variation variation,
-            bool shouldRecordEvent = false,
-            bool sendToExperiment = false)
+        private EvalResult(ReasonKind kind, string reason, Variation variation, bool shouldRecordEvent = false)
         {
             Kind = kind;
             Reason = reason;
             Variation = variation;
             ShouldRecordEvent = shouldRecordEvent;
-            SendToExperiment = sendToExperiment;
         }
 
         // Indicates that the evaluation context was invalid, e.g. because the user key was null or empty.
@@ -43,19 +35,19 @@ namespace FeatBit.Sdk.Server.Evaluation
             return new EvalResult(ReasonKind.Off, "flag off", variation, shouldRecordEvent);
         }
 
-        public static EvalResult Targeted(Variation variation, bool shouldRecordEvent, bool sendToExperiment)
+        public static EvalResult Targeted(Variation variation, bool shouldRecordEvent)
         {
-            return new EvalResult(ReasonKind.TargetMatch, "target match", variation, shouldRecordEvent, sendToExperiment);
+            return new EvalResult(ReasonKind.TargetMatch, "target match", variation, shouldRecordEvent);
         }
 
-        public static EvalResult RuleMatched(string ruleName, Variation value, bool shouldRecordEvent, bool sendToExperiment)
+        public static EvalResult RuleMatched(string ruleName, Variation value, bool shouldRecordEvent)
         {
-            return new EvalResult(ReasonKind.RuleMatch, $"match rule {ruleName}", value, shouldRecordEvent, sendToExperiment);
+            return new EvalResult(ReasonKind.RuleMatch, $"match rule {ruleName}", value, shouldRecordEvent);
         }
 
-        public static EvalResult Fallthrough(Variation variation, bool shouldRecordEvent, bool sendToExperiment)
+        public static EvalResult Fallthrough(Variation variation, bool shouldRecordEvent)
         {
-            return new EvalResult(ReasonKind.Fallthrough, "fall through targets and rules", variation, shouldRecordEvent, sendToExperiment);
+            return new EvalResult(ReasonKind.Fallthrough, "fall through targets and rules", variation, shouldRecordEvent);
         }
 
         public EvalDetail<string> AsEvalDetail(string key)

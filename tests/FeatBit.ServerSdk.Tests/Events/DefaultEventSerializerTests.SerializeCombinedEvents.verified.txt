@@ -21,8 +21,7 @@
           id: v1Id,
           value: v1
         },
-        timestamp: {Scrubbed},
-        sendToExperiment: true
+        timestamp: {Scrubbed}
       }
     ]
   },

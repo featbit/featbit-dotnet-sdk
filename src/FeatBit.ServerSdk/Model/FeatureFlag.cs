@@ -28,8 +28,6 @@ namespace FeatBit.Sdk.Server.Model
 
         public Fallthrough Fallthrough { get; set; }
 
-        public bool ExptIncludeAllTargets { get; set; }
-
         public bool InsightsEnabled { get; set; }
 
         public FeatureFlag(
@@ -43,7 +41,6 @@ namespace FeatBit.Sdk.Server.Model
             bool isEnabled,
             string disabledVariationId,
             Fallthrough fallthrough,
-            bool exptIncludeAllTargets, 
             bool isArchived,
             bool insightsEnabled = true)
         {
@@ -57,7 +54,6 @@ namespace FeatBit.Sdk.Server.Model
             IsEnabled = isEnabled;
             DisabledVariationId = disabledVariationId;
             Fallthrough = fallthrough;
-            ExptIncludeAllTargets = exptIncludeAllTargets;
             IsArchived = isArchived;
             InsightsEnabled = insightsEnabled;
         }
@@ -81,8 +77,6 @@ namespace FeatBit.Sdk.Server.Model
 
         public string DispatchKey { get; set; }
 
-        public bool IncludedInExpt { get; set; }
-
         public ICollection<Condition> Conditions { get; set; }
 
         public ICollection<RolloutVariation> Variations { get; set; }
@@ -91,8 +85,6 @@ namespace FeatBit.Sdk.Server.Model
     internal sealed class Fallthrough
     {
         public string DispatchKey { get; set; }
-
-        public bool IncludedInExpt { get; set; }
 
         public ICollection<RolloutVariation> Variations { get; set; }
     }
@@ -103,19 +95,6 @@ namespace FeatBit.Sdk.Server.Model
 
         public double[] Rollout { get; set; }
 
-        public double ExptRollout { get; set; }
-
         public bool IsInRollout(string key) => DispatchAlgorithm.IsInRollout(key, Rollout);
-
-        public double DispatchRollout()
-        {
-            if (Rollout is not { Length: 2 })
-            {
-                // malformed rollout
-                return 0.0;
-            }
-
-            return Rollout[1] - Rollout[0];
-        }
     }
 }

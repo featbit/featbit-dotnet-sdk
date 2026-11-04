@@ -86,7 +86,7 @@ public class DefaultEventSerializerTests
             Id = "v1Id",
             Value = "v1"
         };
-        var event1 = new EvalEvent(user1, "hello", v1Variation, true);
+        var event1 = new EvalEvent(user1, "hello", v1Variation);
 
         var user2 = FbUser.Builder("u2-Id")
             .Name("u2-name")
@@ -97,7 +97,7 @@ public class DefaultEventSerializerTests
             Id = "v2Id",
             Value = "v2"
         };
-        var event2 = new EvalEvent(user2, "hello", v2Variation, false);
+        var event2 = new EvalEvent(user2, "hello", v2Variation);
 
         var user3 = FbUser.Builder("u3-Id")
             .Name("u3-name")
@@ -108,7 +108,7 @@ public class DefaultEventSerializerTests
             Id = "v3Id",
             Value = "v3"
         };
-        var event3 = new EvalEvent(user3, "hello", v3Variation, true);
+        var event3 = new EvalEvent(user3, "hello", v3Variation);
 
         return new IEvent[] { event1, event2, event3 };
     }

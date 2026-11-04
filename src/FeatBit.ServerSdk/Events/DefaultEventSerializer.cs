@@ -62,7 +62,6 @@ namespace FeatBit.Sdk.Server.Events
             writer.WriteString("featureFlagKey", ee.FlagKey);
             WriteVariation(ee.Variation, writer);
             writer.WriteNumber("timestamp", ee.Timestamp);
-            writer.WriteBoolean("sendToExperiment", ee.SendToExperiment);
             writer.WriteEndObject();
 
             writer.WriteEndArray();

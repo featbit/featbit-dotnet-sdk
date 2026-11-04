@@ -345,7 +345,7 @@ namespace FeatBit.Sdk.Server
             // record evaluation event
             if (evalResult.ShouldRecordEvent)
             {
-                var evalEvent = new EvalEvent(user, key, variation, evalResult.SendToExperiment);
+                var evalEvent = new EvalEvent(user, key, variation);
                 _eventProcessor.Record(evalEvent);
             }
 

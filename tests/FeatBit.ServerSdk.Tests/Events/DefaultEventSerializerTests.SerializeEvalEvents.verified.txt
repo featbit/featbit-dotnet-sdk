@@ -17,8 +17,7 @@
           id: v2Id,
           value: v2
         },
-        timestamp: {Scrubbed},
-        sendToExperiment: false
+        timestamp: {Scrubbed}
       }
     ]
   },
@@ -40,8 +39,7 @@
           id: v3Id,
           value: v3
         },
-        timestamp: {Scrubbed},
-        sendToExperiment: true
+        timestamp: {Scrubbed}
       }
     ]
   }
