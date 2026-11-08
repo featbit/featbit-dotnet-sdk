@@ -4,27 +4,41 @@ on:
   release:
     types:
       - published
-
-env:
-  VERSION: 1.0.0
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to publish (e.g. v2.1.0)
+        required: true
+        type: string
 
 jobs:
   build:
     environment: Production
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
+      - name: Set Version Variable
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "Expected a release tag such as v2.1.0 or v2.1.0-rc.1" >&2
+            exit 1
+          fi
+          echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
+          echo "RELEASE_TAG=$TAG" >> "$GITHUB_ENV"
+
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ env.RELEASE_TAG }}
 
       - name: Set up .NET
         uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
-
-      - name: Set Version Variable
-        env:
-          TAG: ${{ github.ref_name }}
-        run: echo "VERSION=${TAG#v}" >> $GITHUB_ENV
 
       - name: Restore Packages
         run: dotnet restore
@@ -36,7 +50,13 @@ jobs:
         run: dotnet test -c Release --no-build --verbosity normal
 
       - name: Pack FeatBit.ServerSdk
-        run: dotnet pack ./src/FeatBit.ServerSdk/FeatBit.ServerSdk.csproj -c Release --no-restore --no-build --output ${VERSION}
+        run: dotnet pack ./src/FeatBit.ServerSdk/FeatBit.ServerSdk.csproj -c Release --no-restore --no-build /p:Version=$VERSION --output ${VERSION}
+
+      - name: NuGet Login
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: ${{ secrets.NUGET_USER }}
 
       - name: Publish NuGet Package
-        run: dotnet nuget push ${VERSION}/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+        run: dotnet nuget push ${VERSION}/*.nupkg --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
