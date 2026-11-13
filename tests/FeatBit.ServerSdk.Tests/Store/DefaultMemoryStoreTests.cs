@@ -4,6 +4,69 @@ namespace FeatBit.Sdk.Server.Store;
 
 public class DefaultMemoryStoreTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void PopulateDuplicateIdentifiersKeepsLatestVersion(bool newestFirst)
+    {
+        var id = Guid.NewGuid();
+        var newestFlag = new FeatureFlagBuilder().Key("duplicate").Version(2).Build();
+        var olderFlag = new FeatureFlagBuilder().Key("duplicate").Version(1).Build();
+        var newestSegment = new SegmentBuilder().Id(id).Version(2).Build();
+        var olderSegment = new SegmentBuilder().Id(id).Version(1).Build();
+        var other = new FeatureFlagBuilder().Key("other").Build();
+        var store = new DefaultMemoryStore();
+
+        store.Populate(newestFirst
+            ? new StorableObject[] { newestFlag, olderFlag, newestSegment, olderSegment, other }
+            : new StorableObject[] { olderFlag, newestFlag, olderSegment, newestSegment, other });
+
+        Assert.True(store.Populated);
+        Assert.Same(newestFlag, store.Get<FeatureFlag>(newestFlag.StoreKey));
+        Assert.Same(newestSegment, store.Get<Segment>(newestSegment.StoreKey));
+        Assert.Same(other, store.Get<FeatureFlag>(other.StoreKey));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void PopulateDuplicateIdentifiersWithEqualVersionsKeepsLast(bool segment)
+    {
+        var id = Guid.NewGuid();
+        StorableObject first = segment
+            ? new SegmentBuilder().Id(id).Version(2).Build()
+            : new FeatureFlagBuilder().Key("duplicate").Version(2).Build();
+        StorableObject second = segment
+            ? new SegmentBuilder().Id(id).Version(2).Build()
+            : new FeatureFlagBuilder().Key("duplicate").Version(2).Build();
+        var store = new DefaultMemoryStore();
+
+        store.Populate(new[] { first, second });
+
+        Assert.Same(second, store.Get<StorableObject>(first.StoreKey));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void UpsertEqualVersionReplacesExistingItem(bool segment)
+    {
+        var id = Guid.NewGuid();
+        StorableObject existing = segment
+            ? new SegmentBuilder().Id(id).Version(2).Included("old-user").Build()
+            : new FeatureFlagBuilder().Key("flag").Version(2).VariationType("boolean").Build();
+        StorableObject incoming = segment
+            ? new SegmentBuilder().Id(id).Version(2).Included("new-user").Build()
+            : new FeatureFlagBuilder().Key("flag").Version(2).VariationType("string").Build();
+        var store = new DefaultMemoryStore();
+        store.Populate(new[] { existing });
+
+        Assert.True(store.Upsert(incoming));
+
+        Assert.Same(incoming, store.Get<StorableObject>(incoming.StoreKey));
+        Assert.Equal(2, store.Version());
+    }
+
     [Fact]
     public void CheckPopulated()
     {
