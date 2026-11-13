@@ -5,6 +5,150 @@ namespace FeatBit.Sdk.Server.Store;
 public class DefaultMemoryStoreTests
 {
     [Fact]
+    public void FindUsesStableSnapshotWhenPredicateUpdatesStore()
+    {
+        var store = new DefaultMemoryStore();
+        var first = new FeatureFlagBuilder().Key("first").Version(1).Build();
+        var second = new FeatureFlagBuilder().Key("second").Version(2).Build();
+        var added = new FeatureFlagBuilder().Key("added").Version(3).Build();
+        store.Populate(new[] { first, second });
+
+        var result = store.Find<FeatureFlag>(_ =>
+        {
+            store.Upsert(added);
+            return true;
+        });
+
+        Assert.Equal(2, result.Count);
+        Assert.Contains(first, result);
+        Assert.Contains(second, result);
+        Assert.Same(added, store.Get<FeatureFlag>(added.StoreKey));
+        Assert.Equal(3, store.Version());
+    }
+
+    [Fact]
+    public async Task ConcurrentUpsertsDoNotLoseItems()
+    {
+        var store = new DefaultMemoryStore();
+        var writers = Enumerable.Range(1, 4).Select(writer => Task.Run(() =>
+        {
+            for (var i = 1; i <= 100; i++)
+            {
+                Assert.True(store.Upsert(new FeatureFlagBuilder()
+                    .Key($"{writer}-{i}").Version(i).Build()));
+            }
+        }));
+
+        await Task.WhenAll(writers);
+
+        Assert.Equal(400, store.Find<FeatureFlag>(_ => true).Count);
+        Assert.Equal(100, store.Version());
+        Assert.False(store.Populated);
+    }
+
+    [Fact]
+    public async Task ConcurrentReadsAndWritesCompleteSuccessfully()
+    {
+        var store = new DefaultMemoryStore();
+        var initial = new FeatureFlagBuilder().Key("flag").Build();
+        store.Populate(new[] { initial });
+        using var start = new System.Threading.ManualResetEventSlim();
+        var writer = Task.Run(() =>
+        {
+            start.Wait();
+            for (var i = 1; i <= 1000; i++)
+            {
+                var flag = new FeatureFlagBuilder().Key("flag").Version(i).Build();
+                store.Upsert(flag);
+                store.Upsert(new FeatureFlagBuilder().Key($"flag-{i}").Version(i).Build());
+                if (i % 10 == 0)
+                {
+                    store.Populate(new[] { flag });
+                }
+            }
+        });
+        var readers = Enumerable.Range(0, 4).Select(_ => Task.Run(() =>
+        {
+            start.Wait();
+            for (var i = 0; i < 1000; i++)
+            {
+                Assert.True(store.Populated);
+                Assert.NotNull(store.Get<FeatureFlag>(initial.StoreKey));
+                Assert.NotEmpty(store.Find<FeatureFlag>(item => true));
+                Assert.InRange(store.Version(), 0, 1000);
+            }
+        })).ToArray();
+
+        start.Set();
+        await Task.WhenAll(readers.Append(writer));
+
+        Assert.Equal(1000, store.Version());
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void PopulateDuplicateIdentifiersKeepsLatestVersion(bool newestFirst)
+    {
+        var id = Guid.NewGuid();
+        var newestFlag = new FeatureFlagBuilder().Key("duplicate").Version(2).Build();
+        var olderFlag = new FeatureFlagBuilder().Key("duplicate").Version(1).Build();
+        var newestSegment = new SegmentBuilder().Id(id).Version(2).Build();
+        var olderSegment = new SegmentBuilder().Id(id).Version(1).Build();
+        var other = new FeatureFlagBuilder().Key("other").Build();
+        var store = new DefaultMemoryStore();
+
+        store.Populate(newestFirst
+            ? new StorableObject[] { newestFlag, olderFlag, newestSegment, olderSegment, other }
+            : new StorableObject[] { olderFlag, newestFlag, olderSegment, newestSegment, other });
+
+        Assert.True(store.Populated);
+        Assert.Same(newestFlag, store.Get<FeatureFlag>(newestFlag.StoreKey));
+        Assert.Same(newestSegment, store.Get<Segment>(newestSegment.StoreKey));
+        Assert.Same(other, store.Get<FeatureFlag>(other.StoreKey));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void PopulateDuplicateIdentifiersWithEqualVersionsKeepsLast(bool segment)
+    {
+        var id = Guid.NewGuid();
+        StorableObject first = segment
+            ? new SegmentBuilder().Id(id).Version(2).Build()
+            : new FeatureFlagBuilder().Key("duplicate").Version(2).Build();
+        StorableObject second = segment
+            ? new SegmentBuilder().Id(id).Version(2).Build()
+            : new FeatureFlagBuilder().Key("duplicate").Version(2).Build();
+        var store = new DefaultMemoryStore();
+
+        store.Populate(new[] { first, second });
+
+        Assert.Same(second, store.Get<StorableObject>(first.StoreKey));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void UpsertEqualVersionReplacesExistingItem(bool segment)
+    {
+        var id = Guid.NewGuid();
+        StorableObject existing = segment
+            ? new SegmentBuilder().Id(id).Version(2).Included("old-user").Build()
+            : new FeatureFlagBuilder().Key("flag").Version(2).VariationType("boolean").Build();
+        StorableObject incoming = segment
+            ? new SegmentBuilder().Id(id).Version(2).Included("new-user").Build()
+            : new FeatureFlagBuilder().Key("flag").Version(2).VariationType("string").Build();
+        var store = new DefaultMemoryStore();
+        store.Populate(new[] { existing });
+
+        Assert.True(store.Upsert(incoming));
+
+        Assert.Same(incoming, store.Get<StorableObject>(incoming.StoreKey));
+        Assert.Equal(2, store.Version());
+    }
+
+    [Fact]
     public void CheckPopulated()
     {
         var store = new DefaultMemoryStore();

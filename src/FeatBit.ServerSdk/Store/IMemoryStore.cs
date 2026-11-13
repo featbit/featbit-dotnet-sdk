@@ -25,6 +25,8 @@ namespace FeatBit.Sdk.Server.Store
         /// <remarks>
         /// <para>
         /// All previous data will be discarded, regardless of versioning.
+        /// Duplicate store keys retain the item with the greatest version; when versions
+        /// are equal, the last item in the input wins.
         /// </para>
         /// </remarks>
         /// <param name="objects">a list of <see cref="StorableObject"/> instances with
@@ -48,11 +50,11 @@ namespace FeatBit.Sdk.Server.Store
 
         /// <summary>
         /// Updates or inserts an item in the store. For updates, the object will only be
-        /// updated if the existing version is less than the new version.
+        /// updated if the existing version is less than or equal to the new version.
         /// </summary>
         /// <param name="storableObj">the item to insert or update</param>
         /// <returns>true if the item was updated; false if it was not updated because the
-        /// store contains an equal or greater version</returns>
+        /// store contains a greater version</returns>
         bool Upsert(StorableObject storableObj);
 
         /// <summary>
