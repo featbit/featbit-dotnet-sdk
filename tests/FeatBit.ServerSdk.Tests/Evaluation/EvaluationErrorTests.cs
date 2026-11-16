@@ -28,14 +28,47 @@ public class EvaluationErrorTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void InvalidKeysReturnsInvalidInput(string key)
+    public void InvalidFlagKeysReturnsInvalidInput(string key)
     {
         AssertRejectedWithoutStoreAccess(new EvaluationContext { FlagKey = key, FbUser = User });
-        AssertRejectedWithoutStoreAccess(new EvaluationContext
-        {
-            FlagKey = "healthy",
-            FbUser = FbUser.Builder(key).Build()
-        });
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void MissingUserKeyAllowsSingleAndBulkEvaluation(string key)
+    {
+        var flag = new FeatureFlagBuilder()
+            .Key("global-switch")
+            .IsEnabled(true)
+            .Variations(new Variation { Id = "on", Value = "true" })
+            .Fallthrough(new Fallthrough
+            {
+                Variations = [new RolloutVariation { Id = "on", Rollout = new[] { 0d, 1d } }]
+            })
+            .Build();
+        var store = new DefaultMemoryStore();
+        store.Populate(new[] { flag });
+        var evaluator = new Evaluator(store);
+        var user = FbUser.Builder(key).Build();
+
+        var result = evaluator.Evaluate(new EvaluationContext { FlagKey = flag.Key, FbUser = user });
+
+        Assert.Equal(ReasonKind.Fallthrough, result.Kind);
+        Assert.Equal("true", result.Variation.Value);
+        var bulkResult = Assert.Single(evaluator.EvaluateAll(user));
+        Assert.Equal("true", bulkResult.Value);
+    }
+
+    [Fact]
+    public void EvaluateAllWithNullUserReturnsEmpty()
+    {
+        var store = new Mock<IMemoryStore>(MockBehavior.Strict);
+        var evaluator = new Evaluator(store.Object);
+
+        Assert.Empty(evaluator.EvaluateAll(null));
+        store.VerifyNoOtherCalls();
     }
 
     [Fact]
