@@ -10,7 +10,7 @@ namespace FeatBit.Sdk.Server.Evaluation
 
         public bool IsValid()
         {
-            return !string.IsNullOrWhiteSpace(FlagKey) && !string.IsNullOrWhiteSpace(FbUser?.Key);
+            return !string.IsNullOrWhiteSpace(FlagKey) && FbUser != null;
         }
     }
 }

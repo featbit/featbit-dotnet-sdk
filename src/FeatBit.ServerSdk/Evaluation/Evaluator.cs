@@ -34,7 +34,7 @@ namespace FeatBit.Sdk.Server.Evaluation
 
         public EvalDetail<string>[] EvaluateAll(FbUser user)
         {
-            if (string.IsNullOrWhiteSpace(user?.Key))
+            if (user == null)
             {
                 return Array.Empty<EvalDetail<string>>();
             }
