@@ -109,10 +109,8 @@ public class TestStartup : StartupBase
 
                     var response = token switch
                     {
-                        "empty-full" => TestData.EmptyFullDataSet,
                         "delayed-full" => TestData.FullDataSet,
                         _ when timestamp == 0 => TestData.FullDataSet,
-                        "segment-patch" => TestData.SegmentPatchDataSet,
                         _ => TestData.PatchDataSet
                     };
 
