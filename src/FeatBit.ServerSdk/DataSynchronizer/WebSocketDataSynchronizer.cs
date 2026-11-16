@@ -5,7 +5,6 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using FeatBit.Sdk.Server.Concurrent;
-using FeatBit.Sdk.Server.Model;
 using FeatBit.Sdk.Server.Options;
 using FeatBit.Sdk.Server.Store;
 using FeatBit.Sdk.Server.Transport;
@@ -16,6 +15,9 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
 {
     internal sealed class WebSocketDataSynchronizer : IDataSynchronizer
     {
+        private static readonly byte[] FullDataSync =
+            Encoding.UTF8.GetBytes("{\"messageType\":\"data-sync\",\"data\":{\"timestamp\":0}}");
+
         private readonly StatusManager<DataSynchronizerStatus> _statusManager;
         private readonly AtomicBoolean _initialized;
 
@@ -30,8 +32,7 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
         private readonly TaskCompletionSource<bool> _initTcs;
         private readonly ILogger<WebSocketDataSynchronizer> _logger;
 
-        private static readonly byte[] FullDataSync =
-            Encoding.UTF8.GetBytes("{\"messageType\":\"data-sync\",\"data\":{\"timestamp\":0}}");
+        private readonly DataSyncProcessor _dataSyncProcessor;
 
         public WebSocketDataSynchronizer(
             FbOptions options,
@@ -60,6 +61,7 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
             _initialized = new AtomicBoolean();
 
             _logger = options.LoggerFactory.CreateLogger<WebSocketDataSynchronizer>();
+            _dataSyncProcessor = new DataSyncProcessor(store, _logger);
         }
 
         private static FbWebSocket DefaultFbWebSocketFactory(FbOptions options)
@@ -83,19 +85,40 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
             }
             catch (Exception ex)
             {
-                _logger.LogDebug(ex, "Exception occurred when performing data synchronization request");
+                _logger.LogWarning(ex, "Exception occurred when performing data synchronization request");
             }
         }
 
-        private Task OnReceived(ReadOnlySequence<byte> bytes)
+        private Task OnReceived(ReadOnlySequence<byte> sequence)
         {
+            var bytes = sequence.IsSingleSegment
+                ? sequence.First // this should be the hot path
+                : sequence.ToArray();
+
+            if (_logger.IsEnabled(LogLevel.Debug))
+            {
+                _logger.LogDebug(
+                    "Received message from server: {Message}",
+                    Encoding.UTF8.GetString(bytes.ToArray())
+                );
+            }
+
             try
             {
-                HandleMessage(bytes);
+                using var jsonDocument = JsonDocument.Parse(bytes);
+                var root = jsonDocument.RootElement;
+                var messageType = root.GetProperty("messageType").GetString();
+                if (messageType == "data-sync")
+                {
+                    ProcessDataSyncMessage(root.GetProperty("data"));
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogDebug(ex, "Exception occurred when handling server message");
+                _logger.LogWarning(ex,
+                    "Exception occurred when handling server message : {Message}",
+                    Encoding.UTF8.GetString(bytes.ToArray())
+                );
             }
 
             return Task.CompletedTask;
@@ -123,7 +146,7 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
         {
             byte[] request;
 
-            var version = _store.Version();
+            var version = Initialized ? _store.Version() : 0;
             if (version == 0)
             {
                 // this should be the hot path
@@ -147,76 +170,6 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
             await _webSocket.SendAsync(request);
         }
 
-        private void HandleMessage(ReadOnlySequence<byte> sequence)
-        {
-            var bytes = sequence.IsSingleSegment
-                ? sequence.First // this should be the hot path
-                : sequence.ToArray();
-
-            using (var jsonDocument = JsonDocument.Parse(bytes))
-            {
-                var root = jsonDocument.RootElement;
-                var messageType = root.GetProperty("messageType").GetString();
-
-                // handle 'data-sync' message
-                if (messageType == "data-sync")
-                {
-                    HandleDataSyncMessage(root);
-                }
-            }
-
-            return;
-
-            void HandleDataSyncMessage(JsonElement root)
-            {
-                var dataSet = DataSet.FromJsonElement(root.GetProperty("data"));
-                _logger.LogDebug("Received {Type} data-sync message", dataSet.EventType);
-                var objects = dataSet.GetStorableObjects();
-
-                // populate data store
-                if (dataSet.EventType == DataSet.Full)
-                {
-                    _store.Populate(objects);
-
-                    // raise data changed event
-                    DataChanged?.Invoke(
-                        this,
-                        new DataChangeEventArgs(DataChangeKind.Full, true, true)
-                    );
-                }
-                // upsert objects
-                else if (dataSet.EventType == DataSet.Patch)
-                {
-                    var featureFlagsChanged = false;
-                    var segmentsChanged = false;
-
-                    foreach (var storableObject in objects)
-                    {
-                        if (_store.Upsert(storableObject))
-                        {
-                            featureFlagsChanged |= storableObject is FeatureFlag;
-                            segmentsChanged |= storableObject is Segment;
-                        }
-                    }
-
-                    // raise data changed event
-                    if (featureFlagsChanged || segmentsChanged)
-                    {
-                        DataChanged?.Invoke(
-                            this,
-                            new DataChangeEventArgs(DataChangeKind.Patch, featureFlagsChanged, segmentsChanged)
-                        );
-                    }
-                }
-
-                _statusManager.SetStatus(DataSynchronizerStatus.Stable);
-                if (_initialized.CompareAndSet(false, true))
-                {
-                    _initTcs.TrySetResult(true);
-                }
-            }
-        }
-
         public async Task StopAsync()
         {
             _webSocket.OnConnected -= OnConnected;
@@ -227,6 +180,39 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
             await _webSocket.CloseAsync();
 
             _statusManager.SetStatus(DataSynchronizerStatus.Stopped);
+        }
+
+        private void ProcessDataSyncMessage(JsonElement data)
+        {
+            var dataSet = DataSet.FromJsonElement(data);
+            if (dataSet.EventType == DataSet.Patch && !Initialized)
+            {
+                // Patch data-sync message received before full synchronization has initialized the client, ignore it
+                _logger.LogWarning(
+                    "Ignoring patch data-sync message before full synchronization has initialized the client"
+                );
+
+                return;
+            }
+
+            var result = _dataSyncProcessor.Process(dataSet);
+            if (!result.Applied)
+            {
+                // Ignore if the data-sync message is not applied, e.g. unknown event type
+                return;
+            }
+
+            _statusManager.SetStatus(DataSynchronizerStatus.Stable);
+            if (dataSet.EventType == DataSet.Full && _initialized.CompareAndSet(false, true))
+            {
+                _initTcs.TrySetResult(true);
+            }
+
+            // Notify subscribers of data changes if there are any
+            if (result.Change != null)
+            {
+                DataChanged?.Invoke(this, result.Change);
+            }
         }
     }
 }
