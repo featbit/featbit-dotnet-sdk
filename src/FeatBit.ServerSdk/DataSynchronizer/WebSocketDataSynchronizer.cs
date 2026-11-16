@@ -97,10 +97,7 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
 
             if (_logger.IsEnabled(LogLevel.Debug))
             {
-                _logger.LogDebug(
-                    "Received message from server: {Message}",
-                    Encoding.UTF8.GetString(bytes.ToArray())
-                );
+                _logger.LogDebug("Received server message. Length: {Length} bytes", bytes.Length);
             }
 
             try
@@ -113,12 +110,13 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
                     ProcessDataSyncMessage(root.GetProperty("data"));
                 }
             }
+            catch (JsonException ex)
+            {
+                _logger.LogWarning(ex, "Failed to parse or deserialize server message");
+            }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex,
-                    "Exception occurred when handling server message : {Message}",
-                    Encoding.UTF8.GetString(bytes.ToArray())
-                );
+                _logger.LogWarning(ex, "Exception occurred when handling server message.");
             }
 
             return Task.CompletedTask;
