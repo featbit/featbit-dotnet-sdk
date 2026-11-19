@@ -22,6 +22,20 @@ namespace FeatBit.Sdk.Server.Events
         private readonly AtomicBoolean _stopped;
         internal bool HasStopped => _stopped.Value; // internal for testing
 
+        // set once every flush worker has finished during shutdown; until then the workers still use
+        // _flushWorkersCounter, so Dispose must not dispose it
+        private volatile bool _flushWorkersFinished;
+
+        // When the server rejects events (e.g. 401/403/404), delivery is paused instead of stopped forever.
+        // Events keep accumulating in the (bounded) buffer and are sent once the pause ends.
+        private readonly TimeSpan _initialRejectionBackoff;
+        private readonly TimeSpan _maxRejectionBackoff;
+        private readonly object _suspensionLock = new object();
+        private DateTime _resumeAt = DateTime.MinValue;
+        private TimeSpan _nextRejectionBackoff;
+        internal bool IsSuspended => DateTime.UtcNow < ResumeAt; // internal for testing
+        internal int DroppedOnLastRejection { get; private set; } // internal for testing
+
         private readonly ILogger<DefaultEventDispatcher> _logger;
 
         internal DefaultEventDispatcher(
@@ -37,6 +51,16 @@ namespace FeatBit.Sdk.Server.Events
 
             _logger = options.LoggerFactory.CreateLogger<DefaultEventDispatcher>();
 
+            _buffer = buffer ?? new DefaultEventBuffer(options.MaxEventsInQueue);
+            _sender = sender ?? new DefaultEventSender(options);
+            _serializer = serializer ?? new DefaultEventSerializer();
+            _stopped = new AtomicBoolean();
+
+            _initialRejectionBackoff = options.EventRejectionBackoff;
+            _maxRejectionBackoff = options.EventRejectionMaxBackoff;
+            _nextRejectionBackoff = _initialRejectionBackoff;
+
+            // Start the loop only after every field it uses has been assigned.
             // Here we use TaskFactory.StartNew instead of Task.Run() because that allows us to specify the
             // LongRunning option. This option tells the task scheduler that the task is likely to hang on
             // to a thread for a long time, so it should consider growing the thread pool.
@@ -44,11 +68,17 @@ namespace FeatBit.Sdk.Server.Events
                 () => DispatchLoop(queue),
                 TaskCreationOptions.LongRunning
             );
+        }
 
-            _buffer = buffer ?? new DefaultEventBuffer(options.MaxEventsInQueue);
-            _sender = sender ?? new DefaultEventSender(options);
-            _serializer = serializer ?? new DefaultEventSerializer();
-            _stopped = new AtomicBoolean();
+        private DateTime ResumeAt
+        {
+            get
+            {
+                lock (_suspensionLock)
+                {
+                    return _resumeAt;
+                }
+            }
         }
 
         private void DispatchLoop(BlockingCollection<IEvent> queue)
@@ -71,6 +101,7 @@ namespace FeatBit.Sdk.Server.Events
                             break;
                         case ShutdownEvent se:
                             WaitForFlushes();
+                            _flushWorkersFinished = true;
                             running = false;
                             se.Complete();
                             break;
@@ -115,6 +146,14 @@ namespace FeatBit.Sdk.Server.Events
                 Log.FlushEmptyBuffer(_logger);
                 // There are no events to flush. If we don't complete the message, then the async task may never
                 // complete (if it had a non-zero positive timeout, then it would complete after the timeout).
+                @event.Complete();
+                return;
+            }
+
+            if (IsSuspended)
+            {
+                // Delivery is paused after a rejection; keep the events buffered until the pause ends.
+                Log.DeliverySuspended(_logger, ResumeAt);
                 @event.Complete();
                 return;
             }
@@ -165,13 +204,80 @@ namespace FeatBit.Sdk.Server.Events
             {
                 var length = Math.Min(_maxEventPerRequest, total - i);
                 var slice = memory.Slice(i, length);
-                var payload = _serializer.Serialize(slice);
 
-                var deliveryStatus = await _sender.SendAsync(payload);
-                if (deliveryStatus == DeliveryStatus.FailedAndMustShutDown)
+                var result = await SendBatchAsync(slice);
+                if (result.Status == DeliveryStatus.Rejected)
                 {
-                    _stopped.CompareAndSet(false, true);
+                    // Do not keep sending the rest of this flush into a rejection: drop it and pause delivery.
+                    // Dropped = what was not delivered from this slice + every slice after it.
+                    var remainingAfterSlice = total - i - length;
+                    SuspendDelivery(droppedEvents: result.RejectedEvents + remainingAfterSlice);
+                    return;
                 }
+            }
+        }
+
+        /// <param name="batch">events to send in one request (split further if the server says it is too large)</param>
+        /// <returns>
+        /// The final status, and when it is <see cref="DeliveryStatus.Rejected"/>, how many events of this batch
+        /// were not delivered (after a split, the halves sent before the rejection were delivered).
+        /// </returns>
+        private async Task<(DeliveryStatus Status, int RejectedEvents)> SendBatchAsync(ReadOnlyMemory<IEvent> batch)
+        {
+            var payload = _serializer.Serialize(batch);
+            var status = await _sender.SendAsync(payload);
+
+            switch (status)
+            {
+                case DeliveryStatus.Succeeded:
+                    ResetRejectionBackoff();
+                    return (status, 0);
+
+                case DeliveryStatus.Rejected:
+                    return (status, batch.Length);
+
+                case DeliveryStatus.PayloadTooLarge when batch.Length > 1:
+                {
+                    // split the batch in half and send each half on its own
+                    var half = batch.Length / 2;
+                    var first = await SendBatchAsync(batch.Slice(0, half));
+                    if (first.Status == DeliveryStatus.Rejected)
+                    {
+                        // the second half is never sent
+                        return (first.Status, first.RejectedEvents + (batch.Length - half));
+                    }
+
+                    return await SendBatchAsync(batch.Slice(half));
+                }
+
+                case DeliveryStatus.PayloadTooLarge:
+                    Log.SingleEventTooLarge(_logger);
+                    return (DeliveryStatus.Failed, 0);
+
+                default:
+                    return (status, 0);
+            }
+        }
+
+        private void SuspendDelivery(int droppedEvents)
+        {
+            TimeSpan backoff;
+            lock (_suspensionLock)
+            {
+                backoff = _nextRejectionBackoff;
+                _resumeAt = DateTime.UtcNow + backoff;
+                _nextRejectionBackoff = TimeSpan.FromTicks(Math.Min(backoff.Ticks * 2, _maxRejectionBackoff.Ticks));
+                DroppedOnLastRejection = droppedEvents;
+            }
+
+            Log.DeliveryRejected(_logger, droppedEvents, backoff);
+        }
+
+        private void ResetRejectionBackoff()
+        {
+            lock (_suspensionLock)
+            {
+                _nextRejectionBackoff = _initialRejectionBackoff;
             }
         }
 
@@ -192,7 +298,14 @@ namespace FeatBit.Sdk.Server.Events
 
         public void Dispose()
         {
-            _flushWorkersCounter?.Dispose();
+            // FlushAndClose disposes us when its timeout elapses, which can be while a flush worker is still
+            // sending (e.g. retrying a timed-out request). Disposing the counter then would make that worker's
+            // Signal() and the dispatch loop's Wait() throw, so shutdown would never complete. In that case the
+            // counter is left to the GC; the workers finish and the dispatch loop exits on its own.
+            if (_flushWorkersFinished)
+            {
+                _flushWorkersCounter?.Dispose();
+            }
         }
     }
 }

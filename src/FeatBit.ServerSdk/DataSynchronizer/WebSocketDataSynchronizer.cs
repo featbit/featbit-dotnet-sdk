@@ -3,6 +3,7 @@ using System.Buffers;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using FeatBit.Sdk.Server.Concurrent;
 using FeatBit.Sdk.Server.Options;
@@ -34,6 +35,15 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
 
         private readonly DataSyncProcessor _dataSyncProcessor;
 
+        // canceled when a data-sync reply is applied; if it fires first, the connection is replaced
+        private CancellationTokenSource _dataSyncTimeoutCts;
+
+        // DataChanged subscribers run here, in order, never on the WebSocket receive loop
+        private readonly SerialDispatcher<DataChangeEventArgs> _dataChangedDispatcher;
+
+        // internal for testing: raised on the receive loop right after a change has been posted for delivery
+        internal event Action<DataChangeEventArgs> DataChangePosted;
+
         public WebSocketDataSynchronizer(
             FbOptions options,
             IMemoryStore store,
@@ -62,7 +72,22 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
 
             _logger = options.LoggerFactory.CreateLogger<WebSocketDataSynchronizer>();
             _dataSyncProcessor = new DataSyncProcessor(store, _logger);
+            _dataChangedDispatcher = new SerialDispatcher<DataChangeEventArgs>(
+                change => DataChanged?.Invoke(this, change),
+                _logger,
+                // notifications only say "something changed": merge any that pile up behind a slow subscriber
+                MergeDataChanges
+            );
         }
+
+        internal static DataChangeEventArgs MergeDataChanges(DataChangeEventArgs pending, DataChangeEventArgs next) =>
+            new(
+                pending.Kind == DataChangeKind.Full || next.Kind == DataChangeKind.Full
+                    ? DataChangeKind.Full
+                    : DataChangeKind.Patch,
+                pending.FeatureFlagsChanged || next.FeatureFlagsChanged,
+                pending.SegmentsChanged || next.SegmentsChanged
+            );
 
         private static FbWebSocket DefaultFbWebSocketFactory(FbOptions options)
         {
@@ -80,7 +105,8 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
         {
             try
             {
-                // do data-sync once the connection is established
+                // do data-sync once the connection is established, and make sure we hear back
+                StartDataSyncTimeout();
                 await DoDataSyncAsync();
             }
             catch (Exception ex)
@@ -124,18 +150,63 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
 
         private Task OnReconnecting(Exception ex)
         {
+            CancelDataSyncTimeout();
             _statusManager.CompareAndSet(DataSynchronizerStatus.Stable, DataSynchronizerStatus.Interrupted);
             return Task.CompletedTask;
         }
 
         private Task OnClosed(
-            Exception ex, 
-            WebSocketCloseStatus? closeStatus, 
-            string closeStatusDescription, 
+            Exception ex,
+            WebSocketCloseStatus? closeStatus,
+            string closeStatusDescription,
             string closeMessage)
         {
+            CancelDataSyncTimeout();
             _statusManager.SetStatus(DataSynchronizerStatus.Stopped);
             return Task.CompletedTask;
+        }
+
+        private void StartDataSyncTimeout()
+        {
+            var cts = new CancellationTokenSource();
+            Interlocked.Exchange(ref _dataSyncTimeoutCts, cts)?.Cancel();
+
+            // OnConnected runs after the connection is established, so this is the connection the request goes to
+            _ = WatchDataSyncReplyAsync(_webSocket.ConnectionId, cts.Token);
+        }
+
+        private void CancelDataSyncTimeout() => Interlocked.Exchange(ref _dataSyncTimeoutCts, null)?.Cancel();
+
+        private async Task WatchDataSyncReplyAsync(int connectionId, CancellationToken token)
+        {
+            var timeout = _options.DataSyncTimeout;
+            try
+            {
+                await Task.Delay(timeout, token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                // reply arrived (or the connection went away) in time
+                return;
+            }
+
+            // The reply may have been applied between the delay completing and this continuation running,
+            // or the connection may already have been replaced: neither should be aborted (or logged).
+            if (token.IsCancellationRequested || connectionId != _webSocket.ConnectionId)
+            {
+                return;
+            }
+
+            // The server accepted the request but never replied (e.g. its data-sync handler failed and it
+            // logged the error without responding). Pings still succeed, so nothing else would notice.
+            // Scoped to the connection the request was sent on: a later connection is never aborted by this.
+            _logger.LogWarning(
+                "No data-sync response received within {Timeout} seconds; replacing the connection.",
+                timeout.TotalSeconds
+            );
+            _webSocket.AbortConnection(new TimeoutException(
+                $"No data-sync response received within {timeout.TotalSeconds:F0} seconds."
+            ), connectionId);
         }
 
         private void OnStatusChanged(DataSynchronizerStatus status) => StatusChanged?.Invoke(status);
@@ -174,6 +245,7 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
             _webSocket.OnReceived -= OnReceived;
             _webSocket.OnReconnecting -= OnReconnecting;
             _webSocket.OnClosed -= OnClosed;
+            CancelDataSyncTimeout();
 
             await _webSocket.CloseAsync();
 
@@ -182,7 +254,16 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
 
         private void ProcessDataSyncMessage(JsonElement data)
         {
-            var dataSet = DataSet.FromJsonElement(data);
+            var dataSet = DataSet.FromJsonElement(data, _logger);
+            if (dataSet.SkippedCount > 0)
+            {
+                _logger.LogError(
+                    "{SkippedCount} malformed entities were skipped in a {EventType} data-sync message; " +
+                    "the remaining entities were applied.",
+                    dataSet.SkippedCount, dataSet.EventType
+                );
+            }
+
             if (dataSet.EventType == DataSet.Patch && !Initialized)
             {
                 // Patch data-sync message received before full synchronization has initialized the client, ignore it
@@ -200,16 +281,22 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
                 return;
             }
 
+            // the server answered: the connection is useful, stop waiting and reset the reconnect backoff
+            CancelDataSyncTimeout();
+            _webSocket.MarkConnectionHealthy();
+
             _statusManager.SetStatus(DataSynchronizerStatus.Stable);
             if (dataSet.EventType == DataSet.Full && _initialized.CompareAndSet(false, true))
             {
                 _initTcs.TrySetResult(true);
             }
 
-            // Notify subscribers of data changes if there are any
+            // Notify subscribers of data changes if there are any. Subscribers run on a background dispatcher
+            // so a slow handler cannot delay the processing of later messages (flag updates, pongs).
             if (result.Change != null)
             {
-                DataChanged?.Invoke(this, result.Change);
+                _dataChangedDispatcher.Post(result.Change);
+                DataChangePosted?.Invoke(result.Change);
             }
         }
     }

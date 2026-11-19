@@ -13,7 +13,7 @@ namespace FeatBit.Sdk.Server.Events
             [LoggerMessage(2, LogLevel.Debug, "Event delivery took {ElapsedMs} ms, response status {Status}.")]
             public static partial void SendFinished(ILogger logger, long elapsedMs, int status);
 
-            [LoggerMessage(3, LogLevel.Debug, "Event sending task was cancelled due to a handle timeout.")]
+            [LoggerMessage(3, LogLevel.Debug, "Event sending attempt timed out.")]
             public static partial void SendTaskWasCanceled(ILogger logger);
 
             [LoggerMessage(4, LogLevel.Debug, "Exception occurred when sending event.")]

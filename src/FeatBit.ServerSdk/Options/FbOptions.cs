@@ -72,6 +72,20 @@ namespace FeatBit.Sdk.Server.Options
         public TimeSpan KeepAliveInterval { get; set; }
 
         /// <summary>
+        /// How long the connection may go without receiving any message from the server (including the
+        /// reply to a keep-alive ping) before it is considered dead and replaced. Only enforced once the
+        /// server has answered at least one ping on the connection.
+        /// </summary>
+        /// <value>Defaults to 3 x <see cref="KeepAliveInterval"/></value>
+        public TimeSpan KeepAliveTimeout { get; set; }
+
+        /// <summary>
+        /// How long to wait for the reply to a data-sync request before the connection is replaced.
+        /// </summary>
+        /// <value>Defaults to 10 seconds</value>
+        public TimeSpan DataSyncTimeout { get; set; }
+
+        /// <summary>
         /// The connection retry delays.
         /// </summary>
         public TimeSpan[] ReconnectRetryDelays { get; set; }
@@ -119,6 +133,21 @@ namespace FeatBit.Sdk.Server.Options
         public TimeSpan SendEventRetryInterval { get; set; }
 
         /// <summary>
+        /// The timeout for a single attempt to send events. A timed-out attempt is retried
+        /// (up to <see cref="MaxSendEventAttempts"/>).
+        /// </summary>
+        /// <value>Defaults to 5 seconds</value>
+        public TimeSpan SendEventTimeout { get; set; }
+
+        /// <summary>
+        /// How long event delivery is paused after the server rejects events (e.g. 401/403/404).
+        /// Doubles on each consecutive rejection up to <see cref="EventRejectionMaxBackoff"/>.
+        /// </summary>
+        internal TimeSpan EventRejectionBackoff { get; set; } = TimeSpan.FromMinutes(1);
+
+        internal TimeSpan EventRejectionMaxBackoff { get; set; } = TimeSpan.FromMinutes(15);
+
+        /// <summary>
         /// The logger factory used by FbClient.
         /// </summary>
         /// <value>Defaults to <see cref="NullLoggerFactory.Instance"/></value>
@@ -144,6 +173,8 @@ namespace FeatBit.Sdk.Server.Options
             TimeSpan connectTimeout,
             TimeSpan closeTimeout,
             TimeSpan keepAliveInterval,
+            TimeSpan keepAliveTimeout,
+            TimeSpan dataSyncTimeout,
             TimeSpan[] reconnectRetryDelays,
             int maxFlushWorker,
             TimeSpan autoFlushInterval,
@@ -152,6 +183,7 @@ namespace FeatBit.Sdk.Server.Options
             int maxEventPerRequest,
             int maxSendEventAttempts,
             TimeSpan sendEventRetryInterval,
+            TimeSpan sendEventTimeout,
             IBootstrapProvider bootstrapProvider,
             ILoggerFactory loggerFactory)
         {
@@ -165,6 +197,8 @@ namespace FeatBit.Sdk.Server.Options
             ConnectTimeout = connectTimeout;
             CloseTimeout = closeTimeout;
             KeepAliveInterval = keepAliveInterval;
+            KeepAliveTimeout = keepAliveTimeout;
+            DataSyncTimeout = dataSyncTimeout;
             ReconnectRetryDelays = reconnectRetryDelays;
 
             MaxFlushWorker = maxFlushWorker;
@@ -174,6 +208,7 @@ namespace FeatBit.Sdk.Server.Options
             MaxEventPerRequest = maxEventPerRequest;
             MaxSendEventAttempts = maxSendEventAttempts;
             SendEventRetryInterval = sendEventRetryInterval;
+            SendEventTimeout = sendEventTimeout;
 
             BootstrapProvider = bootstrapProvider;
 
@@ -183,9 +218,14 @@ namespace FeatBit.Sdk.Server.Options
         internal FbOptions ShallowCopy()
         {
             var newOptions = new FbOptions(StartWaitTime, Offline, DisableEvents, EnvSecret, StreamingUri, EventUri,
-                ConnectTimeout, CloseTimeout, KeepAliveInterval, ReconnectRetryDelays, MaxFlushWorker,
+                ConnectTimeout, CloseTimeout, KeepAliveInterval, KeepAliveTimeout, DataSyncTimeout,
+                ReconnectRetryDelays, MaxFlushWorker,
                 AutoFlushInterval, FlushTimeout, MaxEventsInQueue, MaxEventPerRequest, MaxSendEventAttempts,
-                SendEventRetryInterval, BootstrapProvider, LoggerFactory);
+                SendEventRetryInterval, SendEventTimeout, BootstrapProvider, LoggerFactory)
+            {
+                EventRejectionBackoff = EventRejectionBackoff,
+                EventRejectionMaxBackoff = EventRejectionMaxBackoff
+            };
 
             return newOptions;
         }

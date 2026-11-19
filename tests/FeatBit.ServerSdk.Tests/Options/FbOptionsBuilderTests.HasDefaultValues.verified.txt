@@ -8,6 +8,8 @@
   ConnectTimeout: 00:00:03,
   CloseTimeout: 00:00:02,
   KeepAliveInterval: 00:00:15,
+  KeepAliveTimeout: 00:00:45,
+  DataSyncTimeout: 00:00:10,
   ReconnectRetryDelays: [
     00:00:00,
     00:00:01,
@@ -26,5 +28,6 @@
   MaxEventsInQueue: 10000,
   MaxEventPerRequest: 50,
   MaxSendEventAttempts: 2,
-  SendEventRetryInterval: 00:00:00.2000000
+  SendEventRetryInterval: 00:00:00.2000000,
+  SendEventTimeout: 00:00:05
 }
