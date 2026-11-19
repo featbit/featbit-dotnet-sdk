@@ -106,16 +106,57 @@ public class DataSyncProcessingTests
         Assert.Equal(3, dataSet.SkippedCount);
     }
 
-    [Fact]
-    public void DataSet_tolerates_missing_arrays()
+    // A malformed payload shape must reject the whole message: treating it as empty would let a full sync
+    // replace the store with nothing and still mark the client ready.
+    [Theory]
+    [InlineData("""{"eventType":"full","featureFlags":{},"segments":[]}""")]
+    [InlineData("""{"eventType":"full","featureFlags":"oops","segments":[]}""")]
+    [InlineData("""{"eventType":"full","featureFlags":null,"segments":[]}""")]
+    [InlineData("""{"eventType":"full","featureFlags":[],"segments":{}}""")]
+    [InlineData("""{"eventType":"full","segments":[]}""")]
+    [InlineData("""{"eventType":"full","featureFlags":[]}""")]
+    public void DataSet_rejects_a_payload_whose_arrays_are_missing_or_not_arrays(string payload)
     {
-        var json = JsonDocument.Parse("""{"eventType":"patch"}""").RootElement;
+        var json = JsonDocument.Parse(payload).RootElement;
 
-        var dataSet = DataSet.FromJsonElement(json);
+        Assert.Throws<JsonException>(() => DataSet.FromJsonElement(json));
+    }
 
-        Assert.Equal(DataSet.Patch, dataSet.EventType);
-        Assert.Empty(dataSet.GetStorableObjects());
-        Assert.Equal(0, dataSet.SkippedCount);
+    [Fact]
+    public async Task Full_sync_with_a_non_array_featureFlags_does_not_initialize_with_an_empty_store()
+    {
+        await using var els = await FakeEls.StartAsync();
+        els.OnStreaming = async (ws, n, ct) =>
+        {
+            await foreach (var type in FakeEls.ReadMessagesAsync(ws, ct))
+            {
+                if (type == "data-sync")
+                {
+                    await FakeEls.SendAsync(ws,
+                        """{"messageType":"data-sync","data":{"eventType":"full","featureFlags":{},"segments":[]}}""",
+                        ct);
+                }
+                else
+                {
+                    await els.RespondAsync(ws, type, ct);
+                }
+            }
+        };
+
+        var client = new FbClient(els.Options().Builder
+            .ConnectTimeout(TimeSpan.FromMilliseconds(500))
+            .StartWaitTime(TimeSpan.FromSeconds(1))
+            .Build());
+
+        try
+        {
+            Assert.False(client.Initialized);
+            Assert.NotEqual(FbClientStatus.Ready, client.Status);
+        }
+        finally
+        {
+            await client.CloseAsync();
+        }
     }
 
     // #49
@@ -143,12 +184,16 @@ public class DataSyncProcessingTests
         var client = new FbClient(els.Options().Builder.Build());
         Assert.True(client.Initialized);
 
+        // Count patches only: the initial Full notification is delivered asynchronously and may or may not
+        // reach a subscriber attached right after construction.
         var notifications = 0;
         client.DataChanged += (_, e) =>
         {
+            if (e.Kind != DataChangeKind.Patch) return;
+
             Interlocked.Increment(ref notifications);
             // e.g. a subscriber that refreshes a cache or calls another service
-            if (e.Kind == DataChangeKind.Patch) Thread.Sleep(TimeSpan.FromSeconds(2));
+            Thread.Sleep(TimeSpan.FromSeconds(2));
         };
 
         await pushed.Task.WaitAsync(TimeSpan.FromSeconds(5));

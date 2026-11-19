@@ -37,6 +37,11 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
         /// Reads a data-sync payload. Each flag and segment is deserialized on its own, so a single malformed
         /// entity is skipped (and logged) instead of causing every other entity in the message to be dropped.
         /// </summary>
+        /// <exception cref="JsonException">
+        /// The payload itself is malformed: <c>featureFlags</c> or <c>segments</c> is missing or is not an array.
+        /// The whole message must be rejected in that case; treating it as empty would let a full sync silently
+        /// erase every flag or segment.
+        /// </exception>
         internal static DataSet FromJsonElement(JsonElement jsonElement, ILogger logger = null)
         {
             var dataSet = new DataSet
@@ -62,9 +67,16 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
             ILogger logger,
             ref int skipped) where T : StorableObject
         {
-            if (!TryGetProperty(parent, propertyName, out var array) || array.ValueKind != JsonValueKind.Array)
+            if (!TryGetProperty(parent, propertyName, out var array))
             {
-                return Array.Empty<T>();
+                throw new JsonException($"Malformed data-sync payload: '{propertyName}' is missing.");
+            }
+
+            if (array.ValueKind != JsonValueKind.Array)
+            {
+                throw new JsonException(
+                    $"Malformed data-sync payload: '{propertyName}' must be an array but was {array.ValueKind}."
+                );
             }
 
             var entities = new List<T>(array.GetArrayLength());
