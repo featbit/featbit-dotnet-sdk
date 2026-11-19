@@ -24,12 +24,24 @@ public interface IFbClient
     /// Occurs after a full synchronization replaces data or a patch changes stored data.
     /// </summary>
     /// <remarks>
-    /// The event does not expose feature flag keys, values, segments, or evaluation results. Event
-    /// handlers should finish quickly and must not rely on the event for every connection or status change.
-    /// Handlers are invoked synchronously while the SDK processes updated data. They must not block
-    /// or synchronously wait for <see cref="CloseAsync"/>; queue long-running work and return promptly.
+    /// <para>
+    /// The event does not expose feature flag keys, values, segments, or evaluation results, and handlers
+    /// must not rely on it for every connection or status change.
+    /// </para>
+    /// <para>
+    /// Handlers are invoked on a background thread after the store has been updated, one notification at a
+    /// time and in order. A slow handler does not delay later updates: flag evaluations keep reflecting new
+    /// data while it runs. Notifications that arrive while an earlier one is still being handled are combined
+    /// into a single notification (its <see cref="DataChangeEventArgs.Kind"/> is
+    /// <see cref="DataChangeKind.Full"/> if any combined change was a full synchronization, and its changed
+    /// flags cover every combined change), so a handler is not called once per individual update. By the
+    /// time a handler runs, the data may already include later changes. Handlers should still return
+    /// promptly, because combined notifications are delivered only after the current handler returns.
+    /// </para>
+    /// <para>
     /// Notifications that occurred before a handler was added are not replayed. A subscriber that needs
     /// initial state should add its handler before explicitly refreshing that state.
+    /// </para>
     /// </remarks>
     event EventHandler<DataChangeEventArgs> DataChanged;
 
