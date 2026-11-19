@@ -22,6 +22,15 @@ namespace FeatBit.Sdk.Server.Events
         private readonly AtomicBoolean _stopped;
         internal bool HasStopped => _stopped.Value; // internal for testing
 
+        // When the server rejects events (e.g. 401/403/404), delivery is paused instead of stopped forever.
+        // Events keep accumulating in the (bounded) buffer and are sent once the pause ends.
+        private readonly TimeSpan _initialRejectionBackoff;
+        private readonly TimeSpan _maxRejectionBackoff;
+        private readonly object _suspensionLock = new object();
+        private DateTime _resumeAt = DateTime.MinValue;
+        private TimeSpan _nextRejectionBackoff;
+        internal bool IsSuspended => DateTime.UtcNow < ResumeAt; // internal for testing
+
         private readonly ILogger<DefaultEventDispatcher> _logger;
 
         internal DefaultEventDispatcher(
@@ -37,6 +46,16 @@ namespace FeatBit.Sdk.Server.Events
 
             _logger = options.LoggerFactory.CreateLogger<DefaultEventDispatcher>();
 
+            _buffer = buffer ?? new DefaultEventBuffer(options.MaxEventsInQueue);
+            _sender = sender ?? new DefaultEventSender(options);
+            _serializer = serializer ?? new DefaultEventSerializer();
+            _stopped = new AtomicBoolean();
+
+            _initialRejectionBackoff = options.EventRejectionBackoff;
+            _maxRejectionBackoff = options.EventRejectionMaxBackoff;
+            _nextRejectionBackoff = _initialRejectionBackoff;
+
+            // Start the loop only after every field it uses has been assigned.
             // Here we use TaskFactory.StartNew instead of Task.Run() because that allows us to specify the
             // LongRunning option. This option tells the task scheduler that the task is likely to hang on
             // to a thread for a long time, so it should consider growing the thread pool.
@@ -44,11 +63,17 @@ namespace FeatBit.Sdk.Server.Events
                 () => DispatchLoop(queue),
                 TaskCreationOptions.LongRunning
             );
+        }
 
-            _buffer = buffer ?? new DefaultEventBuffer(options.MaxEventsInQueue);
-            _sender = sender ?? new DefaultEventSender(options);
-            _serializer = serializer ?? new DefaultEventSerializer();
-            _stopped = new AtomicBoolean();
+        private DateTime ResumeAt
+        {
+            get
+            {
+                lock (_suspensionLock)
+                {
+                    return _resumeAt;
+                }
+            }
         }
 
         private void DispatchLoop(BlockingCollection<IEvent> queue)
@@ -119,6 +144,14 @@ namespace FeatBit.Sdk.Server.Events
                 return;
             }
 
+            if (IsSuspended)
+            {
+                // Delivery is paused after a rejection; keep the events buffered until the pause ends.
+                Log.DeliverySuspended(_logger, ResumeAt);
+                @event.Complete();
+                return;
+            }
+
             lock (_flushWorkerCounterLock)
             {
                 // Note that this counter will be 1, not 0, when there are no active flush workers.
@@ -165,13 +198,68 @@ namespace FeatBit.Sdk.Server.Events
             {
                 var length = Math.Min(_maxEventPerRequest, total - i);
                 var slice = memory.Slice(i, length);
-                var payload = _serializer.Serialize(slice);
 
-                var deliveryStatus = await _sender.SendAsync(payload);
-                if (deliveryStatus == DeliveryStatus.FailedAndMustShutDown)
+                var deliveryStatus = await SendBatchAsync(slice);
+                if (deliveryStatus == DeliveryStatus.Rejected)
                 {
-                    _stopped.CompareAndSet(false, true);
+                    // Do not keep sending the rest of this flush into a rejection: drop it and pause delivery.
+                    SuspendDelivery(droppedEvents: total - i);
+                    return;
                 }
+            }
+        }
+
+        private async Task<DeliveryStatus> SendBatchAsync(ReadOnlyMemory<IEvent> batch)
+        {
+            var payload = _serializer.Serialize(batch);
+            var status = await _sender.SendAsync(payload);
+
+            switch (status)
+            {
+                case DeliveryStatus.Succeeded:
+                    ResetRejectionBackoff();
+                    return status;
+
+                case DeliveryStatus.PayloadTooLarge when batch.Length > 1:
+                {
+                    // split the batch in half and send each half on its own
+                    var half = batch.Length / 2;
+                    var first = await SendBatchAsync(batch.Slice(0, half));
+                    if (first == DeliveryStatus.Rejected)
+                    {
+                        return first;
+                    }
+
+                    return await SendBatchAsync(batch.Slice(half));
+                }
+
+                case DeliveryStatus.PayloadTooLarge:
+                    Log.SingleEventTooLarge(_logger);
+                    return DeliveryStatus.Failed;
+
+                default:
+                    return status;
+            }
+        }
+
+        private void SuspendDelivery(int droppedEvents)
+        {
+            TimeSpan backoff;
+            lock (_suspensionLock)
+            {
+                backoff = _nextRejectionBackoff;
+                _resumeAt = DateTime.UtcNow + backoff;
+                _nextRejectionBackoff = TimeSpan.FromTicks(Math.Min(backoff.Ticks * 2, _maxRejectionBackoff.Ticks));
+            }
+
+            Log.DeliveryRejected(_logger, droppedEvents, backoff);
+        }
+
+        private void ResetRejectionBackoff()
+        {
+            lock (_suspensionLock)
+            {
+                _nextRejectionBackoff = _initialRejectionBackoff;
             }
         }
 
