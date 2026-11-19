@@ -149,6 +149,26 @@ public class FbWebSocketTests
     }
 
     [Fact]
+    public void ShouldReconnectWhenServerRejectsAfterConnectionWasHealthy()
+    {
+        Assert.True(FbWebSocket.ShouldReconnect(
+            FbWebSocket.ServerRejectedCloseStatus,
+            stopRequested: false,
+            hasBeenHealthy: true
+        ));
+    }
+
+    [Fact]
+    public void ShouldNotReconnectWhenStoppedEvenIfHealthyBefore()
+    {
+        Assert.False(FbWebSocket.ShouldReconnect(
+            FbWebSocket.ServerRejectedCloseStatus,
+            stopRequested: true,
+            hasBeenHealthy: true
+        ));
+    }
+
+    [Fact]
     public async Task TestOnKeepAlive()
     {
         var fbWebSocket = _app.CreateFbWebSocket(

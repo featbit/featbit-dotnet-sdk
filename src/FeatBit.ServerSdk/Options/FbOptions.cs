@@ -72,6 +72,20 @@ namespace FeatBit.Sdk.Server.Options
         public TimeSpan KeepAliveInterval { get; set; }
 
         /// <summary>
+        /// How long the connection may go without receiving any message from the server (including the
+        /// reply to a keep-alive ping) before it is considered dead and replaced. Only enforced once the
+        /// server has answered at least one ping on the connection.
+        /// </summary>
+        /// <value>Defaults to 3 x <see cref="KeepAliveInterval"/></value>
+        public TimeSpan KeepAliveTimeout { get; set; }
+
+        /// <summary>
+        /// How long to wait for the reply to a data-sync request before the connection is replaced.
+        /// </summary>
+        /// <value>Defaults to 10 seconds</value>
+        public TimeSpan DataSyncTimeout { get; set; }
+
+        /// <summary>
         /// The connection retry delays.
         /// </summary>
         public TimeSpan[] ReconnectRetryDelays { get; set; }
@@ -144,6 +158,8 @@ namespace FeatBit.Sdk.Server.Options
             TimeSpan connectTimeout,
             TimeSpan closeTimeout,
             TimeSpan keepAliveInterval,
+            TimeSpan keepAliveTimeout,
+            TimeSpan dataSyncTimeout,
             TimeSpan[] reconnectRetryDelays,
             int maxFlushWorker,
             TimeSpan autoFlushInterval,
@@ -165,6 +181,8 @@ namespace FeatBit.Sdk.Server.Options
             ConnectTimeout = connectTimeout;
             CloseTimeout = closeTimeout;
             KeepAliveInterval = keepAliveInterval;
+            KeepAliveTimeout = keepAliveTimeout;
+            DataSyncTimeout = dataSyncTimeout;
             ReconnectRetryDelays = reconnectRetryDelays;
 
             MaxFlushWorker = maxFlushWorker;
@@ -183,7 +201,8 @@ namespace FeatBit.Sdk.Server.Options
         internal FbOptions ShallowCopy()
         {
             var newOptions = new FbOptions(StartWaitTime, Offline, DisableEvents, EnvSecret, StreamingUri, EventUri,
-                ConnectTimeout, CloseTimeout, KeepAliveInterval, ReconnectRetryDelays, MaxFlushWorker,
+                ConnectTimeout, CloseTimeout, KeepAliveInterval, KeepAliveTimeout, DataSyncTimeout,
+                ReconnectRetryDelays, MaxFlushWorker,
                 AutoFlushInterval, FlushTimeout, MaxEventsInQueue, MaxEventPerRequest, MaxSendEventAttempts,
                 SendEventRetryInterval, BootstrapProvider, LoggerFactory);
 
