@@ -53,14 +53,29 @@ namespace FeatBit.Sdk.Server.Transport
         private int _retryAttempt;
         private volatile bool _hasBeenHealthy;
 
-        // incremented for every established connection; lets timers abort only the connection they belong to
-        private int _connectionId;
+        // The established connection and its id, published together as one immutable object only once the
+        // transport has started. AbortConnection reads it once, so the id check and the transport it acts on
+        // can never belong to different connections.
+        private sealed class EstablishedConnection
+        {
+            public readonly int Id;
+            public readonly WebSocketTransport Transport;
+
+            public EstablishedConnection(int id, WebSocketTransport transport)
+            {
+                Id = id;
+                Transport = transport;
+            }
+        }
+
+        private volatile EstablishedConnection _connection;
+        private int _connectionCount;
 
         /// <summary>
         /// Identifies the current connection. Pass it to <see cref="AbortConnection"/> so that a check started
         /// for one connection can never tear down a later one.
         /// </summary>
-        internal int ConnectionId => Volatile.Read(ref _connectionId);
+        internal int ConnectionId => _connection?.Id ?? 0;
 
         internal FbWebSocket(
             FbOptions options,
@@ -125,7 +140,10 @@ namespace FeatBit.Sdk.Server.Transport
             // a new connection starts with a fresh liveness clock and must prove it answers pings again
             _serverAnswersPing = false;
             Interlocked.Exchange(ref _lastReceivedTimestamp, Stopwatch.GetTimestamp());
-            var connectionId = Interlocked.Increment(ref _connectionId);
+            // publish the started transport and its id together; until now _connection still referred to the
+            // previous (already closed) connection, so a stale abort could only ever target that one
+            var connectionId = Interlocked.Increment(ref _connectionCount);
+            _connection = new EstablishedConnection(connectionId, transport);
 
             Log.StartingReceiveLoop(_logger);
             _receiveTask = ReceiveLoop();
@@ -301,13 +319,15 @@ namespace FeatBit.Sdk.Server.Transport
         /// </param>
         internal void AbortConnection(Exception reason, int connectionId)
         {
-            if (connectionId != ConnectionId)
+            // read the id and its transport in one go: they always describe the same connection
+            var connection = _connection;
+            if (connection == null || connection.Id != connectionId)
             {
                 return;
             }
 
-            var transport = _transport;
-            if (transport == null || transport.State != WebSocketState.Open || _stopCts.IsCancellationRequested)
+            var transport = connection.Transport;
+            if (transport.State != WebSocketState.Open || _stopCts.IsCancellationRequested)
             {
                 return;
             }
