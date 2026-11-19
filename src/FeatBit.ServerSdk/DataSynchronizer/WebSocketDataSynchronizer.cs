@@ -71,9 +71,20 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
             _dataSyncProcessor = new DataSyncProcessor(store, _logger);
             _dataChangedDispatcher = new SerialDispatcher<DataChangeEventArgs>(
                 change => DataChanged?.Invoke(this, change),
-                _logger
+                _logger,
+                // notifications only say "something changed": merge any that pile up behind a slow subscriber
+                MergeDataChanges
             );
         }
+
+        internal static DataChangeEventArgs MergeDataChanges(DataChangeEventArgs pending, DataChangeEventArgs next) =>
+            new(
+                pending.Kind == DataChangeKind.Full || next.Kind == DataChangeKind.Full
+                    ? DataChangeKind.Full
+                    : DataChangeKind.Patch,
+                pending.FeatureFlagsChanged || next.FeatureFlagsChanged,
+                pending.SegmentsChanged || next.SegmentsChanged
+            );
 
         private static FbWebSocket DefaultFbWebSocketFactory(FbOptions options)
         {

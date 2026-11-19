@@ -206,7 +206,7 @@ public class DataSyncProcessingTests
                 "Kill-switch update is queued behind a slow DataChanged handler"
             );
 
-            // subscribers still receive every change, in order, once the slow handler returns
+            // the subscriber is still told about the later change once the slow handler returns
             await WaitUntilAsync(() => Volatile.Read(ref notifications) == 2, timeoutMs: 6000);
             Assert.Equal(2, notifications);
         }
@@ -251,6 +251,105 @@ public class DataSyncProcessingTests
         dispatcher.Post(1);
 
         Assert.Equal(1, await done.Task.WaitAsync(TimeSpan.FromSeconds(5)));
+    }
+
+    [Fact]
+    public async Task SerialDispatcher_coalesces_items_that_pile_up_behind_a_slow_handler()
+    {
+        var release = new ManualResetEventSlim();
+        var received = new List<int>();
+        var firstStarted = new TaskCompletionSource();
+        var dispatcher = new SerialDispatcher<int>(i =>
+        {
+            firstStarted.TrySetResult();
+            release.Wait();
+            lock (received) received.Add(i);
+        }, NullLogger.Instance, coalesce: (pending, next) => pending + next);
+
+        dispatcher.Post(1);
+        await firstStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        // the handler is stuck: 1000 more posts must not queue 1000 items
+        for (var i = 0; i < 1000; i++) dispatcher.Post(1);
+        release.Set();
+
+        await WaitUntilAsync(() => { lock (received) return received.Count == 2; });
+        await Task.Delay(100);
+
+        lock (received)
+        {
+            // one in-flight item, then a single merged item carrying all 1000 posts
+            Assert.Equal(new[] { 1, 1000 }, received);
+        }
+    }
+
+    [Fact]
+    public async Task Patches_that_pile_up_behind_a_slow_subscriber_arrive_as_one_notification()
+    {
+        // two patches that arrive while a slow subscriber is busy with the first are delivered as one notification
+        var pushed = new TaskCompletionSource();
+        await using var els = await FakeEls.StartAsync();
+        els.OnStreaming = async (ws, n, ct) =>
+        {
+            await foreach (var type in FakeEls.ReadMessagesAsync(ws, ct))
+            {
+                await els.RespondAsync(ws, type, ct);
+                if (type == "data-sync") break;
+            }
+
+            await Task.Delay(300, ct);
+            await FakeEls.SendAsync(ws, FakeEls.DataSync("patch", FakeEls.Flag(true, 2)), ct);   // in flight
+            await Task.Delay(100, ct);
+            await FakeEls.SendAsync(ws, FakeEls.DataSync("patch", FakeEls.Flag(false, 3)), ct);  // pending
+            await FakeEls.SendAsync(ws, FakeEls.DataSync("patch", FakeEls.Flag(true, 4)), ct);   // merged
+            pushed.SetResult();
+            await els.ServeNormallyAsync(ws, n, ct);
+        };
+
+        var client = new FbClient(els.Options().Builder.Build());
+        var patches = new List<DataChangeEventArgs>();
+        try
+        {
+            Assert.True(client.Initialized);
+            client.DataChanged += (_, e) =>
+            {
+                if (e.Kind != DataChangeKind.Patch) return;
+                lock (patches) patches.Add(e);
+                Thread.Sleep(500);
+            };
+
+            await pushed.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await WaitUntilAsync(() => { lock (patches) return patches.Count >= 2; });
+            await Task.Delay(700);
+
+            lock (patches)
+            {
+                Assert.Equal(2, patches.Count);
+                Assert.All(patches, p => Assert.True(p.FeatureFlagsChanged));
+            }
+
+            Assert.True(client.BoolVariation("f", User));
+        }
+        finally
+        {
+            await client.CloseAsync();
+        }
+    }
+
+    [Theory]
+    [InlineData(DataChangeKind.Patch, DataChangeKind.Patch, DataChangeKind.Patch)]
+    [InlineData(DataChangeKind.Full, DataChangeKind.Patch, DataChangeKind.Full)]
+    [InlineData(DataChangeKind.Patch, DataChangeKind.Full, DataChangeKind.Full)]
+    public void Merged_notification_is_Full_if_either_was_Full(DataChangeKind a, DataChangeKind b, DataChangeKind expected)
+    {
+        var merged = WebSocketDataSynchronizer.MergeDataChanges(
+            new DataChangeEventArgs(a, featureFlagsChanged: true, segmentsChanged: false),
+            new DataChangeEventArgs(b, featureFlagsChanged: false, segmentsChanged: true)
+        );
+
+        Assert.Equal(expected, merged.Kind);
+        Assert.True(merged.FeatureFlagsChanged);
+        Assert.True(merged.SegmentsChanged);
     }
 
     private static async Task WaitUntilAsync(Func<bool> condition, int timeoutMs = 5000)
