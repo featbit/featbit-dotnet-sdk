@@ -36,27 +36,44 @@ public class FbWebSocketTests
     {
         var fbWebSocket = _app.CreateFbWebSocket("echo");
 
-        var reconnecting = false;
+        var reconnecting = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         fbWebSocket.OnReconnecting += _ =>
         {
-            reconnecting = true;
+            reconnecting.TrySetResult();
             return Task.CompletedTask;
         };
 
-        await fbWebSocket.ConnectAsync();
-        var current = fbWebSocket.ConnectionId;
+        var echoed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        fbWebSocket.OnReceived += _ =>
+        {
+            echoed.TrySetResult();
+            return Task.CompletedTask;
+        };
 
-        // a timer started for a previous connection fires late
-        fbWebSocket.AbortConnection(new TimeoutException("stale"), current - 1);
-        await Task.Delay(200);
-        Assert.False(reconnecting);
-        Assert.Equal(current, fbWebSocket.ConnectionId);
+        try
+        {
+            await fbWebSocket.ConnectAsync();
+            var current = fbWebSocket.ConnectionId;
 
-        // the same request for the current connection does replace it
-        fbWebSocket.AbortConnection(new TimeoutException("current"), current);
-        Assert.True(SpinWait.SpinUntil(() => reconnecting, 2000));
+            // a timer started for a previous connection fires late
+            fbWebSocket.AbortConnection(new TimeoutException("stale"), current - 1);
 
-        await fbWebSocket.CloseAsync();
+            // Observed boundary instead of a sleep: an abort cancels the receive loop synchronously, so if this
+            // one had been applied, the echo sent afterwards could not be received on this connection.
+            await fbWebSocket.SendAsync(Encoding.UTF8.GetBytes("probe"));
+            await echoed.Task.WaitAsync(TimeSpan.FromSeconds(2));
+
+            Assert.False(reconnecting.Task.IsCompleted);
+            Assert.Equal(current, fbWebSocket.ConnectionId);
+
+            // the same request for the current connection does replace it
+            fbWebSocket.AbortConnection(new TimeoutException("current"), current);
+            await reconnecting.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        }
+        finally
+        {
+            await fbWebSocket.CloseAsync();
+        }
     }
 
     [Fact]
