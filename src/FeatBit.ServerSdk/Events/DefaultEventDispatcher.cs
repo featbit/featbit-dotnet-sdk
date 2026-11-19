@@ -22,6 +22,10 @@ namespace FeatBit.Sdk.Server.Events
         private readonly AtomicBoolean _stopped;
         internal bool HasStopped => _stopped.Value; // internal for testing
 
+        // set once every flush worker has finished during shutdown; until then the workers still use
+        // _flushWorkersCounter, so Dispose must not dispose it
+        private volatile bool _flushWorkersFinished;
+
         // When the server rejects events (e.g. 401/403/404), delivery is paused instead of stopped forever.
         // Events keep accumulating in the (bounded) buffer and are sent once the pause ends.
         private readonly TimeSpan _initialRejectionBackoff;
@@ -30,6 +34,7 @@ namespace FeatBit.Sdk.Server.Events
         private DateTime _resumeAt = DateTime.MinValue;
         private TimeSpan _nextRejectionBackoff;
         internal bool IsSuspended => DateTime.UtcNow < ResumeAt; // internal for testing
+        internal int DroppedOnLastRejection { get; private set; } // internal for testing
 
         private readonly ILogger<DefaultEventDispatcher> _logger;
 
@@ -96,6 +101,7 @@ namespace FeatBit.Sdk.Server.Events
                             break;
                         case ShutdownEvent se:
                             WaitForFlushes();
+                            _flushWorkersFinished = true;
                             running = false;
                             se.Complete();
                             break;
@@ -199,17 +205,24 @@ namespace FeatBit.Sdk.Server.Events
                 var length = Math.Min(_maxEventPerRequest, total - i);
                 var slice = memory.Slice(i, length);
 
-                var deliveryStatus = await SendBatchAsync(slice);
-                if (deliveryStatus == DeliveryStatus.Rejected)
+                var result = await SendBatchAsync(slice);
+                if (result.Status == DeliveryStatus.Rejected)
                 {
                     // Do not keep sending the rest of this flush into a rejection: drop it and pause delivery.
-                    SuspendDelivery(droppedEvents: total - i);
+                    // Dropped = what was not delivered from this slice + every slice after it.
+                    var remainingAfterSlice = total - i - length;
+                    SuspendDelivery(droppedEvents: result.RejectedEvents + remainingAfterSlice);
                     return;
                 }
             }
         }
 
-        private async Task<DeliveryStatus> SendBatchAsync(ReadOnlyMemory<IEvent> batch)
+        /// <param name="batch">events to send in one request (split further if the server says it is too large)</param>
+        /// <returns>
+        /// The final status, and when it is <see cref="DeliveryStatus.Rejected"/>, how many events of this batch
+        /// were not delivered (after a split, the halves sent before the rejection were delivered).
+        /// </returns>
+        private async Task<(DeliveryStatus Status, int RejectedEvents)> SendBatchAsync(ReadOnlyMemory<IEvent> batch)
         {
             var payload = _serializer.Serialize(batch);
             var status = await _sender.SendAsync(payload);
@@ -218,16 +231,20 @@ namespace FeatBit.Sdk.Server.Events
             {
                 case DeliveryStatus.Succeeded:
                     ResetRejectionBackoff();
-                    return status;
+                    return (status, 0);
+
+                case DeliveryStatus.Rejected:
+                    return (status, batch.Length);
 
                 case DeliveryStatus.PayloadTooLarge when batch.Length > 1:
                 {
                     // split the batch in half and send each half on its own
                     var half = batch.Length / 2;
                     var first = await SendBatchAsync(batch.Slice(0, half));
-                    if (first == DeliveryStatus.Rejected)
+                    if (first.Status == DeliveryStatus.Rejected)
                     {
-                        return first;
+                        // the second half is never sent
+                        return (first.Status, first.RejectedEvents + (batch.Length - half));
                     }
 
                     return await SendBatchAsync(batch.Slice(half));
@@ -235,10 +252,10 @@ namespace FeatBit.Sdk.Server.Events
 
                 case DeliveryStatus.PayloadTooLarge:
                     Log.SingleEventTooLarge(_logger);
-                    return DeliveryStatus.Failed;
+                    return (DeliveryStatus.Failed, 0);
 
                 default:
-                    return status;
+                    return (status, 0);
             }
         }
 
@@ -250,6 +267,7 @@ namespace FeatBit.Sdk.Server.Events
                 backoff = _nextRejectionBackoff;
                 _resumeAt = DateTime.UtcNow + backoff;
                 _nextRejectionBackoff = TimeSpan.FromTicks(Math.Min(backoff.Ticks * 2, _maxRejectionBackoff.Ticks));
+                DroppedOnLastRejection = droppedEvents;
             }
 
             Log.DeliveryRejected(_logger, droppedEvents, backoff);
@@ -280,7 +298,14 @@ namespace FeatBit.Sdk.Server.Events
 
         public void Dispose()
         {
-            _flushWorkersCounter?.Dispose();
+            // FlushAndClose disposes us when its timeout elapses, which can be while a flush worker is still
+            // sending (e.g. retrying a timed-out request). Disposing the counter then would make that worker's
+            // Signal() and the dispatch loop's Wait() throw, so shutdown would never complete. In that case the
+            // counter is left to the GC; the workers finish and the dispatch loop exits on its own.
+            if (_flushWorkersFinished)
+            {
+                _flushWorkersCounter?.Dispose();
+            }
         }
     }
 }
