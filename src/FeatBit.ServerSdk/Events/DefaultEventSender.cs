@@ -131,7 +131,12 @@ namespace FeatBit.Sdk.Server.Events
 #else
             var handler = new HttpClientHandler();
 #endif
-            var client = new HttpClient(handler, false);
+            var client = new HttpClient(handler, false)
+            {
+                // each attempt is bounded by SendEventTimeout; HttpClient's own 100s default would otherwise
+                // cut off attempts when SendEventTimeout is configured above 100 seconds
+                Timeout = System.Threading.Timeout.InfiniteTimeSpan
+            };
             return client;
         }
 

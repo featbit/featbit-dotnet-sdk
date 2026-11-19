@@ -131,6 +131,58 @@ public class DefaultEventDispatcherTests
     }
 
     [Fact]
+    public void DroppedCountExcludesHalvesDeliveredBeforeARejection()
+    {
+        var queue = new BlockingCollection<IEvent>();
+        var options = new FbOptionsBuilder("fake-secret").MaxEventPerRequest(4).Build();
+
+        // 8 events = two 4-event slices. Slice 1: 413, first half delivered, second half rejected.
+        var mockSender = new Mock<IEventSender>();
+        mockSender.SetupSequence(x => x.SendAsync(It.IsAny<byte[]>()))
+            .Returns(Task.FromResult(DeliveryStatus.PayloadTooLarge))
+            .Returns(Task.FromResult(DeliveryStatus.Succeeded))
+            .Returns(Task.FromResult(DeliveryStatus.Rejected));
+
+        using var dispatcher = new DefaultEventDispatcher(options, queue, sender: mockSender.Object);
+
+        for (var i = 0; i < 8; i++) queue.Add(new IntEvent(i));
+        FlushAndWaitComplete(queue);
+
+        // 2 rejected from slice 1 + 4 never sent from slice 2; the 2 delivered events are not counted
+        Assert.Equal(6, dispatcher.DroppedOnLastRejection);
+        mockSender.Verify(x => x.SendAsync(It.IsAny<byte[]>()), Times.Exactly(3));
+    }
+
+    [Fact]
+    public void ShutdownCompletesWhenDisposedWhileAFlushIsStillSending()
+    {
+        var queue = new BlockingCollection<IEvent>();
+        var options = new FbOptionsBuilder("fake-secret").Build();
+
+        // a send that is still in progress (e.g. retrying a timed-out request) when the close timeout elapses
+        var release = new TaskCompletionSource<DeliveryStatus>();
+        var mockSender = new Mock<IEventSender>();
+        mockSender.Setup(x => x.SendAsync(It.IsAny<byte[]>())).Returns(release.Task);
+
+        var dispatcher = new DefaultEventDispatcher(options, queue, sender: mockSender.Object);
+
+        queue.Add(new IntEvent(1));
+        queue.Add(new FlushEvent());
+        Assert.True(SpinWait.SpinUntil(() => mockSender.Invocations.Count == 1, 1000));
+
+        var shutdown = new ShutdownEvent();
+        queue.Add(shutdown);
+
+        // FlushAndClose gave up waiting and disposes the dispatcher while the worker is still sending
+        dispatcher.Dispose();
+
+        release.SetResult(DeliveryStatus.Succeeded);
+
+        // previously the worker's Signal() and the loop's Wait() hit a disposed CountdownEvent and shutdown hung
+        Assert.True(SpinWait.SpinUntil(() => shutdown.IsCompleted, 2000), "shutdown never completed");
+    }
+
+    [Fact]
     public void PayloadTooLargeSplitsTheBatch()
     {
         var queue = new BlockingCollection<IEvent>();
