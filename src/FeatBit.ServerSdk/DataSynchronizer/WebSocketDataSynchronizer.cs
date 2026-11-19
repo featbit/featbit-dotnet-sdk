@@ -38,6 +38,9 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
         // canceled when a data-sync reply is applied; if it fires first, the connection is replaced
         private CancellationTokenSource _dataSyncTimeoutCts;
 
+        // DataChanged subscribers run here, in order, never on the WebSocket receive loop
+        private readonly SerialDispatcher<DataChangeEventArgs> _dataChangedDispatcher;
+
         public WebSocketDataSynchronizer(
             FbOptions options,
             IMemoryStore store,
@@ -66,6 +69,10 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
 
             _logger = options.LoggerFactory.CreateLogger<WebSocketDataSynchronizer>();
             _dataSyncProcessor = new DataSyncProcessor(store, _logger);
+            _dataChangedDispatcher = new SerialDispatcher<DataChangeEventArgs>(
+                change => DataChanged?.Invoke(this, change),
+                _logger
+            );
         }
 
         private static FbWebSocket DefaultFbWebSocketFactory(FbOptions options)
@@ -233,7 +240,16 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
 
         private void ProcessDataSyncMessage(JsonElement data)
         {
-            var dataSet = DataSet.FromJsonElement(data);
+            var dataSet = DataSet.FromJsonElement(data, _logger);
+            if (dataSet.SkippedCount > 0)
+            {
+                _logger.LogError(
+                    "{SkippedCount} malformed entities were skipped in a {EventType} data-sync message; " +
+                    "the remaining entities were applied.",
+                    dataSet.SkippedCount, dataSet.EventType
+                );
+            }
+
             if (dataSet.EventType == DataSet.Patch && !Initialized)
             {
                 // Patch data-sync message received before full synchronization has initialized the client, ignore it
@@ -261,10 +277,11 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
                 _initTcs.TrySetResult(true);
             }
 
-            // Notify subscribers of data changes if there are any
+            // Notify subscribers of data changes if there are any. Subscribers run on a background dispatcher
+            // so a slow handler cannot delay the processing of later messages (flag updates, pongs).
             if (result.Change != null)
             {
-                DataChanged?.Invoke(this, result.Change);
+                _dataChangedDispatcher.Post(result.Change);
             }
         }
     }
