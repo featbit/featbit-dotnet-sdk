@@ -32,5 +32,16 @@ internal sealed partial class DefaultEventDispatcher
 
         [LoggerMessage(8, LogLevel.Error, "Unexpected error in event dispatcher thread.")]
         public static partial void DispatchError(ILogger logger, Exception ex);
+
+        [LoggerMessage(9, LogLevel.Error,
+            "Event delivery was rejected by the server; {DroppedEvents} events were dropped. " +
+            "Delivery is paused for {Backoff} and will then resume.")]
+        public static partial void DeliveryRejected(ILogger logger, int droppedEvents, TimeSpan backoff);
+
+        [LoggerMessage(10, LogLevel.Debug, "Event delivery is paused until {ResumeAt:O} after a rejection.")]
+        public static partial void DeliverySuspended(ILogger logger, DateTime resumeAt);
+
+        [LoggerMessage(11, LogLevel.Warning, "A single event exceeds the server's payload size limit and was dropped.")]
+        public static partial void SingleEventTooLarge(ILogger logger);
     }
 }

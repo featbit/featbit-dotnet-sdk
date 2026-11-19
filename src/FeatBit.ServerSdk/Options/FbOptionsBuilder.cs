@@ -31,6 +31,7 @@ namespace FeatBit.Sdk.Server.Options
         private int _maxEventPerRequest;
         private int _maxSendEventAttempts;
         private TimeSpan _sendEventRetryInterval;
+        private TimeSpan _sendEventTimeout;
 
         private IBootstrapProvider _bootstrapProvider;
 
@@ -68,6 +69,7 @@ namespace FeatBit.Sdk.Server.Options
             _maxEventPerRequest = 50;
             _maxSendEventAttempts = 2;
             _sendEventRetryInterval = TimeSpan.FromMilliseconds(200);
+            _sendEventTimeout = TimeSpan.FromSeconds(5);
 
             _bootstrapProvider = new NullBootstrapProvider();
 
@@ -81,7 +83,7 @@ namespace FeatBit.Sdk.Server.Options
                 _keepAliveTimeout ?? TimeSpan.FromTicks(_keepAliveInterval.Ticks * 3), _dataSyncTimeout,
                 _reconnectRetryDelays, _maxFlushWorker,
                 _autoFlushInterval, _flushTimeout, _maxEventsInQueue, _maxEventPerRequest, _maxSendEventAttempts,
-                _sendEventRetryInterval, _bootstrapProvider, _loggerFactory);
+                _sendEventRetryInterval, _sendEventTimeout, _bootstrapProvider, _loggerFactory);
         }
 
         public FbOptionsBuilder StartWaitTime(TimeSpan timeout)
@@ -175,6 +177,21 @@ namespace FeatBit.Sdk.Server.Options
         public FbOptionsBuilder SendEventRetryInterval(TimeSpan sendEventRetryInterval)
         {
             _sendEventRetryInterval = sendEventRetryInterval;
+            return this;
+        }
+
+        /// <summary>
+        /// Sets the timeout for a single attempt to send events. Defaults to 5 seconds.
+        /// A timed-out attempt is retried up to the configured number of send attempts.
+        /// </summary>
+        public FbOptionsBuilder SendEventTimeout(TimeSpan timeout)
+        {
+            if (timeout <= TimeSpan.Zero)
+            {
+                throw new ArgumentOutOfRangeException(nameof(timeout), "The send event timeout must be positive.");
+            }
+
+            _sendEventTimeout = timeout;
             return this;
         }
 

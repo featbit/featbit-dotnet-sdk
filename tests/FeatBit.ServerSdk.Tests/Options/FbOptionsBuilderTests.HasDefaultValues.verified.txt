@@ -28,5 +28,6 @@
   MaxEventsInQueue: 10000,
   MaxEventPerRequest: 50,
   MaxSendEventAttempts: 2,
-  SendEventRetryInterval: 00:00:00.2000000
+  SendEventRetryInterval: 00:00:00.2000000,
+  SendEventTimeout: 00:00:05
 }

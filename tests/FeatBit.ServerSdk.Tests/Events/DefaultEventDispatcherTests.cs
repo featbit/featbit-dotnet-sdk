@@ -75,37 +75,81 @@ public class DefaultEventDispatcherTests
     }
 
     [Fact]
-    public void EventSenderStopDispatcher()
+    public void RejectionPausesDeliveryThenResumes()
     {
         var queue = new BlockingCollection<IEvent>();
         var options = new FbOptionsBuilder("fake-secret").Build();
+        options.EventRejectionBackoff = TimeSpan.FromMilliseconds(300);
 
         var mockSender = new Mock<IEventSender>();
-        mockSender.Setup(x => x.SendAsync(It.IsAny<byte[]>()))
-            .Returns(Task.FromResult(DeliveryStatus.FailedAndMustShutDown));
+        mockSender.SetupSequence(x => x.SendAsync(It.IsAny<byte[]>()))
+            .Returns(Task.FromResult(DeliveryStatus.Rejected))
+            .Returns(Task.FromResult(DeliveryStatus.Succeeded));
 
-        // Create a dispatcher with a mock sender that always fails
         using var dispatcher = new DefaultEventDispatcher(options, queue, sender: mockSender.Object);
 
-        // Add an event and flush it to trigger the sender
+        // first flush is rejected: delivery pauses, but the dispatcher is not stopped
         AddEventThenFlush();
         mockSender.Verify(x => x.SendAsync(It.IsAny<byte[]>()), Times.Once);
+        Assert.True(dispatcher.IsSuspended);
+        Assert.False(dispatcher.HasStopped);
 
-        // Clear previous invocations for later verification
+        // while paused, events are buffered rather than sent
         mockSender.Invocations.Clear();
-
-        // Check if dispatcher stopped after event sender return FailedAndMustShutDown
-        Assert.True(dispatcher.HasStopped);
-
-        // Check if add and flush operations are no-op after dispatcher has stopped
         AddEventThenFlush();
         mockSender.Verify(x => x.SendAsync(It.IsAny<byte[]>()), Times.Never);
+
+        // once the pause ends, buffered events are delivered
+        Assert.True(SpinWait.SpinUntil(() => !dispatcher.IsSuspended, 2000));
+        FlushAndWaitComplete(queue);
+        mockSender.Verify(x => x.SendAsync(It.IsAny<byte[]>()), Times.Once);
 
         void AddEventThenFlush()
         {
             queue.Add(new IntEvent(1));
             FlushAndWaitComplete(queue);
         }
+    }
+
+    [Fact]
+    public void RejectionStopsSendingTheRestOfTheFlush()
+    {
+        var queue = new BlockingCollection<IEvent>();
+        var options = new FbOptionsBuilder("fake-secret").MaxEventPerRequest(1).Build();
+
+        var mockSender = new Mock<IEventSender>();
+        mockSender.Setup(x => x.SendAsync(It.IsAny<byte[]>()))
+            .Returns(Task.FromResult(DeliveryStatus.Rejected));
+
+        using var dispatcher = new DefaultEventDispatcher(options, queue, sender: mockSender.Object);
+
+        for (var i = 0; i < 5; i++) queue.Add(new IntEvent(i));
+        FlushAndWaitComplete(queue);
+
+        // one request rejected; the other four batches are not sent into the rejection
+        mockSender.Verify(x => x.SendAsync(It.IsAny<byte[]>()), Times.Once);
+    }
+
+    [Fact]
+    public void PayloadTooLargeSplitsTheBatch()
+    {
+        var queue = new BlockingCollection<IEvent>();
+        var options = new FbOptionsBuilder("fake-secret").Build();
+
+        var mockSender = new Mock<IEventSender>();
+        mockSender.SetupSequence(x => x.SendAsync(It.IsAny<byte[]>()))
+            .Returns(Task.FromResult(DeliveryStatus.PayloadTooLarge))
+            .Returns(Task.FromResult(DeliveryStatus.Succeeded))
+            .Returns(Task.FromResult(DeliveryStatus.Succeeded));
+
+        using var dispatcher = new DefaultEventDispatcher(options, queue, sender: mockSender.Object);
+
+        for (var i = 0; i < 4; i++) queue.Add(new IntEvent(i));
+        FlushAndWaitComplete(queue);
+
+        // the 4-event batch is rejected as too large, then sent as two 2-event halves
+        mockSender.Verify(x => x.SendAsync(It.IsAny<byte[]>()), Times.Exactly(3));
+        Assert.False(dispatcher.IsSuspended);
     }
 
     [Theory]
