@@ -148,6 +148,15 @@ namespace FeatBit.Sdk.Server.Transport
             Log.StartingReceiveLoop(_logger);
             _receiveTask = ReceiveLoop();
 
+            // CloseAsync may have run while this transport was starting. It only cancels the last connection it
+            // can see, so if stop was requested, shut this new connection down here: whichever side runs second
+            // sees the other's change. (The token is checked too, since CompleteClose replaces _stopCts.)
+            if (cancellationToken.IsCancellationRequested || _stopCts.IsCancellationRequested)
+            {
+                CancelPendingRead(transport);
+                return;
+            }
+
             Log.StartingKeepAliveTimer(_logger);
             _keepAliveTimer = new Timer(
                 _ => _ = KeepAliveAsync(connectionId),
@@ -335,6 +344,17 @@ namespace FeatBit.Sdk.Server.Transport
             Log.AbortingConnection(_logger, reason.Message);
             _closeException = reason;
 
+            CancelPendingRead(transport);
+        }
+
+        /// <summary>Makes the receive loop of a started transport exit so its connection shuts down.</summary>
+        private static void CancelPendingRead(WebSocketTransport transport)
+        {
+            if (transport == null)
+            {
+                return;
+            }
+
             try
             {
                 transport.Input.CancelPendingRead();
@@ -519,13 +539,25 @@ namespace FeatBit.Sdk.Server.Transport
                 _stopCts.Cancel();
                 _keepAliveTimer?.Dispose();
 
+                // Only a started transport has a receive loop to cancel. _transport may be a replacement that a
+                // reconnect created but has not started yet (its pipes do not exist, so touching Input throws);
+                // that one observes the canceled token, or the stop check in ConnectAsync, and shuts itself down.
                 Log.TerminatingReceiveLoop(_logger);
-                _transport.Input.CancelPendingRead();
+                CancelPendingRead(_connection?.Transport);
 
+                // A reconnect can publish a new receive loop while we wait, so keep waiting until no new receive
+                // loop or reconnect has started.
                 Log.WaitingForReceiveLoopToTerminate(_logger);
-                await (_receiveTask ?? Task.CompletedTask).ConfigureAwait(false);
+                Task receiveTask, reconnectTask;
+                do
+                {
+                    receiveTask = _receiveTask ?? Task.CompletedTask;
+                    reconnectTask = _reconnectTask ?? Task.CompletedTask;
 
-                await (_reconnectTask ?? Task.CompletedTask).ConfigureAwait(false);
+                    await receiveTask.ConfigureAwait(false);
+                    await reconnectTask.ConfigureAwait(false);
+                } while (!ReferenceEquals(receiveTask, _receiveTask ?? Task.CompletedTask) ||
+                         !ReferenceEquals(reconnectTask, _reconnectTask ?? Task.CompletedTask));
             }
 
             Log.Closed(_logger, _transport?.CloseStatus);

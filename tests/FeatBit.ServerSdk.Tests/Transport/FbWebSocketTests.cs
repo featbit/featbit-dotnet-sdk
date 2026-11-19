@@ -307,6 +307,34 @@ public class FbWebSocketTests
     }
 
     [Fact]
+    public async Task CloseAsyncDuringAnImmediateReconnectNeverThrows()
+    {
+        // The server closes every connection and the client reconnects immediately, so CloseAsync regularly lands
+        // while a replacement transport has been created but not started yet. Repeat to cover that window.
+        for (var i = 0; i < 200; i++)
+        {
+            var fbWebSocket = _app.CreateFbWebSocket(
+                "close-normally",
+                builder => builder.ReconnectRetryDelays([TimeSpan.Zero])
+            );
+            var reconnecting = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            fbWebSocket.OnReconnecting += _ =>
+            {
+                reconnecting.TrySetResult();
+                return Task.CompletedTask;
+            };
+
+            await fbWebSocket.ConnectAsync();
+            await reconnecting.Task.WaitAsync(TimeSpan.FromSeconds(1));
+
+            var close = fbWebSocket.CloseAsync();
+            var finished = await Task.WhenAny(close, Task.Delay(TimeSpan.FromSeconds(5))) == close;
+            Assert.True(finished, $"CloseAsync hung on iteration {i}");
+            await close; // rethrows if CloseAsync failed
+        }
+    }
+
+    [Fact]
     public async Task CanStopFbWebSocketWhenReconnecting()
     {
         var fbWebSocket = _app.CreateFbWebSocket(
