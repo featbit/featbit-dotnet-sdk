@@ -324,13 +324,25 @@ public class FbWebSocketTests
                 return Task.CompletedTask;
             };
 
-            await fbWebSocket.ConnectAsync();
-            await reconnecting.Task.WaitAsync(TimeSpan.FromSeconds(1));
+            Task close = null;
+            try
+            {
+                await fbWebSocket.ConnectAsync();
+                await reconnecting.Task.WaitAsync(TimeSpan.FromSeconds(1));
 
-            var close = fbWebSocket.CloseAsync();
-            var finished = await Task.WhenAny(close, Task.Delay(TimeSpan.FromSeconds(5))) == close;
-            Assert.True(finished, $"CloseAsync hung on iteration {i}");
-            await close; // rethrows if CloseAsync failed
+                close = fbWebSocket.CloseAsync();
+                var finished = await Task.WhenAny(close, Task.Delay(TimeSpan.FromSeconds(5))) == close;
+                Assert.True(finished, $"CloseAsync hung on iteration {i}");
+                await close; // rethrows if CloseAsync failed
+            }
+            finally
+            {
+                // never leave a zero-delay reconnect loop running against the shared test server
+                if (close == null)
+                {
+                    await fbWebSocket.CloseAsync();
+                }
+            }
         }
     }
 
