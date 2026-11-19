@@ -110,6 +110,7 @@ internal sealed class FakeEls : IAsyncDisposable
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
     {
         var buffer = new byte[64 * 1024];
+        using var message = new MemoryStream();
         while (ws.State == WebSocketState.Open)
         {
             WebSocketReceiveResult result;
@@ -127,7 +128,15 @@ internal sealed class FakeEls : IAsyncDisposable
                 yield break;
             }
 
-            using var doc = JsonDocument.Parse(buffer.AsMemory(0, result.Count));
+            // a message can arrive in several frames; parse it only once it is complete
+            message.Write(buffer, 0, result.Count);
+            if (!result.EndOfMessage)
+            {
+                continue;
+            }
+
+            using var doc = JsonDocument.Parse(message.ToArray());
+            message.SetLength(0);
             yield return doc.RootElement.GetProperty("messageType").GetString();
         }
     }
