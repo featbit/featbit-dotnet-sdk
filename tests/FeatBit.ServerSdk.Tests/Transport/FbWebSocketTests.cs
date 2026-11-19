@@ -32,6 +32,51 @@ public class FbWebSocketTests
     }
 
     [Fact]
+    public async Task AbortConnectionForAnEarlierConnectionIsIgnored()
+    {
+        var fbWebSocket = _app.CreateFbWebSocket("echo");
+
+        var reconnecting = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        fbWebSocket.OnReconnecting += _ =>
+        {
+            reconnecting.TrySetResult();
+            return Task.CompletedTask;
+        };
+
+        var echoed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        fbWebSocket.OnReceived += _ =>
+        {
+            echoed.TrySetResult();
+            return Task.CompletedTask;
+        };
+
+        try
+        {
+            await fbWebSocket.ConnectAsync();
+            var current = fbWebSocket.ConnectionId;
+
+            // a timer started for a previous connection fires late
+            fbWebSocket.AbortConnection(new TimeoutException("stale"), current - 1);
+
+            // Observed boundary instead of a sleep: an abort cancels the receive loop synchronously, so if this
+            // one had been applied, the echo sent afterwards could not be received on this connection.
+            await fbWebSocket.SendAsync(Encoding.UTF8.GetBytes("probe"));
+            await echoed.Task.WaitAsync(TimeSpan.FromSeconds(2));
+
+            Assert.False(reconnecting.Task.IsCompleted);
+            Assert.Equal(current, fbWebSocket.ConnectionId);
+
+            // the same request for the current connection does replace it
+            fbWebSocket.AbortConnection(new TimeoutException("current"), current);
+            await reconnecting.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        }
+        finally
+        {
+            await fbWebSocket.CloseAsync();
+        }
+    }
+
+    [Fact]
     public async Task TestConnectError()
     {
         var fbWebSocket = _app.CreateFbWebSocket(
@@ -149,6 +194,26 @@ public class FbWebSocketTests
     }
 
     [Fact]
+    public void ShouldReconnectWhenServerRejectsAfterConnectionWasHealthy()
+    {
+        Assert.True(FbWebSocket.ShouldReconnect(
+            FbWebSocket.ServerRejectedCloseStatus,
+            stopRequested: false,
+            hasBeenHealthy: true
+        ));
+    }
+
+    [Fact]
+    public void ShouldNotReconnectWhenStoppedEvenIfHealthyBefore()
+    {
+        Assert.False(FbWebSocket.ShouldReconnect(
+            FbWebSocket.ServerRejectedCloseStatus,
+            stopRequested: true,
+            hasBeenHealthy: true
+        ));
+    }
+
+    [Fact]
     public async Task TestOnKeepAlive()
     {
         var fbWebSocket = _app.CreateFbWebSocket(
@@ -255,6 +320,46 @@ public class FbWebSocketTests
         finally
         {
             await fbWebSocket.CloseAsync();
+        }
+    }
+
+    [Fact]
+    public async Task CloseAsyncDuringAnImmediateReconnectNeverThrows()
+    {
+        // The server closes every connection and the client reconnects immediately, so CloseAsync regularly lands
+        // while a replacement transport has been created but not started yet. Repeat to cover that window.
+        for (var i = 0; i < 200; i++)
+        {
+            var fbWebSocket = _app.CreateFbWebSocket(
+                "close-normally",
+                builder => builder.ReconnectRetryDelays([TimeSpan.Zero])
+            );
+            var reconnecting = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            fbWebSocket.OnReconnecting += _ =>
+            {
+                reconnecting.TrySetResult();
+                return Task.CompletedTask;
+            };
+
+            Task close = null;
+            try
+            {
+                await fbWebSocket.ConnectAsync();
+                await reconnecting.Task.WaitAsync(TimeSpan.FromSeconds(1));
+
+                close = fbWebSocket.CloseAsync();
+                var finished = await Task.WhenAny(close, Task.Delay(TimeSpan.FromSeconds(5))) == close;
+                Assert.True(finished, $"CloseAsync hung on iteration {i}");
+                await close; // rethrows if CloseAsync failed
+            }
+            finally
+            {
+                // never leave a zero-delay reconnect loop running against the shared test server
+                if (close == null)
+                {
+                    await fbWebSocket.CloseAsync();
+                }
+            }
         }
     }
 
