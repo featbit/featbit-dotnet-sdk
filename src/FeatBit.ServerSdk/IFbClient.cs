@@ -39,8 +39,12 @@ public interface IFbClient
     /// promptly, because combined notifications are delivered only after the current handler returns.
     /// </para>
     /// <para>
-    /// Notifications that occurred before a handler was added are not replayed. A subscriber that needs
-    /// initial state should add its handler before explicitly refreshing that state.
+    /// Handlers are looked up when a notification is delivered, not when the change occurred. A handler
+    /// added shortly after a change may therefore still receive that change's notification if it had not
+    /// been delivered yet, and a handler that has been removed is not called for notifications still
+    /// waiting. Beyond that, notifications delivered before a handler was added are not replayed. A
+    /// subscriber that needs initial state should add its handler before explicitly refreshing that
+    /// state; an extra notification just means refreshing again.
     /// </para>
     /// </remarks>
     event EventHandler<DataChangeEventArgs> DataChanged;
