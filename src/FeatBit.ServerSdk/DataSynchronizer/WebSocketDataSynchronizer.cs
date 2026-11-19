@@ -41,6 +41,9 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
         // DataChanged subscribers run here, in order, never on the WebSocket receive loop
         private readonly SerialDispatcher<DataChangeEventArgs> _dataChangedDispatcher;
 
+        // internal for testing: raised on the receive loop right after a change has been posted for delivery
+        internal event Action<DataChangeEventArgs> DataChangePosted;
+
         public WebSocketDataSynchronizer(
             FbOptions options,
             IMemoryStore store,
@@ -293,6 +296,7 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
             if (result.Change != null)
             {
                 _dataChangedDispatcher.Post(result.Change);
+                DataChangePosted?.Invoke(result.Change);
             }
         }
     }

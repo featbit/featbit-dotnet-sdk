@@ -1,7 +1,9 @@
 using System.Text.Json;
 using FeatBit.Sdk.Server.Concurrent;
 using FeatBit.Sdk.Server.DataSynchronizer;
+using FeatBit.Sdk.Server.Events;
 using FeatBit.Sdk.Server.Model;
+using FeatBit.Sdk.Server.Store;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FeatBit.Sdk.Server.Resiliency;
@@ -163,7 +165,7 @@ public class DataSyncProcessingTests
     [Fact]
     public async Task Slow_DataChanged_subscriber_does_not_delay_flag_updates()
     {
-        var subscribed = NewSignal();
+        var fullDelivered = NewSignal();
         var firstHandlerStarted = NewSignal();
         var pushed = NewSignal();
         await using var els = await FakeEls.StartAsync();
@@ -175,7 +177,8 @@ public class DataSyncProcessingTests
                 if (type == "data-sync") break;
             }
 
-            await subscribed.Task.WaitAsync(ct);
+            // patches only after the initial Full notification was delivered, so they cannot merge into it
+            await fullDelivered.Task.WaitAsync(ct);
             await FakeEls.SendAsync(ws, FakeEls.DataSync("patch", FakeEls.Flag(true, 2)), ct);
 
             // send the kill switch only while the subscriber is busy with the first patch
@@ -185,24 +188,23 @@ public class DataSyncProcessingTests
             await els.ServeNormallyAsync(ws, n, ct);
         };
 
-        var client = new FbClient(els.Options().Builder.Build());
+        var notifications = 0;
+        var (client, _) = CreateClientWithSubscriber(els, (_, e) =>
+        {
+            if (e.Kind == DataChangeKind.Full)
+            {
+                fullDelivered.TrySetResult();
+                return;
+            }
+
+            Interlocked.Increment(ref notifications);
+            firstHandlerStarted.TrySetResult();
+            // e.g. a subscriber that refreshes a cache or calls another service
+            Thread.Sleep(TimeSpan.FromSeconds(2));
+        });
         try
         {
             Assert.True(client.Initialized);
-
-            // Count patches only: the initial Full notification is delivered asynchronously and may or may not
-            // reach a subscriber attached right after construction.
-            var notifications = 0;
-            client.DataChanged += (_, e) =>
-            {
-                if (e.Kind != DataChangeKind.Patch) return;
-
-                Interlocked.Increment(ref notifications);
-                firstHandlerStarted.TrySetResult();
-                // e.g. a subscriber that refreshes a cache or calls another service
-                Thread.Sleep(TimeSpan.FromSeconds(2));
-            };
-            subscribed.SetResult();
 
             await pushed.Task.WaitAsync(TimeSpan.FromSeconds(5));
             await WaitUntilAsync(() => !client.BoolVariation("f", User), timeoutMs: 1000);
@@ -293,9 +295,8 @@ public class DataSyncProcessingTests
     public async Task Patches_that_pile_up_behind_a_slow_subscriber_arrive_as_one_notification()
     {
         // two patches that arrive while a subscriber is busy with the first are delivered as one notification
-        var subscribed = NewSignal();
+        var fullDelivered = NewSignal();
         var firstHandlerStarted = NewSignal();
-        var pushed = NewSignal();
         var release = new ManualResetEventSlim();
 
         // the last patch uses a second flag so the test can observe that both later patches were applied
@@ -310,34 +311,43 @@ public class DataSyncProcessingTests
                 if (type == "data-sync") break;
             }
 
-            await subscribed.Task.WaitAsync(ct);
+            // patches only after the initial Full notification was delivered, so they cannot merge into it
+            await fullDelivered.Task.WaitAsync(ct);
             await FakeEls.SendAsync(ws, FakeEls.DataSync("patch", FakeEls.Flag(true, 2)), ct);   // handled first
 
             await firstHandlerStarted.Task.WaitAsync(ct);
             await FakeEls.SendAsync(ws, FakeEls.DataSync("patch", FakeEls.Flag(false, 3)), ct);  // pending
             await FakeEls.SendAsync(ws, FakeEls.DataSync("patch", flagG), ct);                   // merged into it
-            pushed.SetResult();
             await els.ServeNormallyAsync(ws, n, ct);
         };
 
-        var client = new FbClient(els.Options().Builder.Build());
         var patches = new List<DataChangeEventArgs>();
+        var (client, synchronizer) = CreateClientWithSubscriber(els, (_, e) =>
+        {
+            if (e.Kind == DataChangeKind.Full)
+            {
+                fullDelivered.TrySetResult();
+                return;
+            }
+
+            lock (patches) patches.Add(e);
+            firstHandlerStarted.TrySetResult();
+            release.Wait(TimeSpan.FromSeconds(10)); // stay busy until all later patches have been posted
+        });
+
+        // the store is updated before a change is posted for delivery, so wait for the posts themselves
+        var postedPatches = 0;
+        synchronizer.DataChangePosted += e =>
+        {
+            if (e.Kind == DataChangeKind.Patch) Interlocked.Increment(ref postedPatches);
+        };
         try
         {
             Assert.True(client.Initialized);
-            client.DataChanged += (_, e) =>
-            {
-                if (e.Kind != DataChangeKind.Patch) return;
 
-                lock (patches) patches.Add(e);
-                firstHandlerStarted.TrySetResult();
-                release.Wait(TimeSpan.FromSeconds(10)); // stay busy until the test has seen both later patches
-            };
-            subscribed.SetResult();
-
-            // both later patches are applied while the first notification is still being handled
-            await pushed.Task.WaitAsync(TimeSpan.FromSeconds(5));
-            await WaitUntilAsync(() => client.BoolVariation("g", User));
+            // all three patches are posted while the first notification is still being handled
+            await WaitUntilAsync(() => Volatile.Read(ref postedPatches) == 3);
+            Assert.Equal(3, Volatile.Read(ref postedPatches));
             Assert.True(client.BoolVariation("g", User));
             Assert.False(client.BoolVariation("f", User));
 
@@ -371,6 +381,22 @@ public class DataSyncProcessingTests
         Assert.Equal(expected, merged.Kind);
         Assert.True(merged.FeatureFlagsChanged);
         Assert.True(merged.SegmentsChanged);
+    }
+
+    /// <summary>
+    /// Builds a client whose DataChanged subscriber is attached to the synchronizer before it starts, so the
+    /// subscriber deterministically receives the initial Full notification.
+    /// </summary>
+    private static (FbClient Client, WebSocketDataSynchronizer Synchronizer) CreateClientWithSubscriber(
+        FakeEls els,
+        EventHandler<DataChangeEventArgs> subscriber)
+    {
+        var options = els.Options().Builder.Build();
+        var store = new DefaultMemoryStore();
+        var synchronizer = new WebSocketDataSynchronizer(options, store);
+        synchronizer.DataChanged += subscriber;
+
+        return (new FbClient(options, store, synchronizer, new NullEventProcessor()), synchronizer);
     }
 
     private static TaskCompletionSource NewSignal() => new(TaskCreationOptions.RunContinuationsAsynchronously);
