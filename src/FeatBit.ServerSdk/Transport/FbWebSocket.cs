@@ -53,6 +53,15 @@ namespace FeatBit.Sdk.Server.Transport
         private int _retryAttempt;
         private volatile bool _hasBeenHealthy;
 
+        // incremented for every established connection; lets timers abort only the connection they belong to
+        private int _connectionId;
+
+        /// <summary>
+        /// Identifies the current connection. Pass it to <see cref="AbortConnection"/> so that a check started
+        /// for one connection can never tear down a later one.
+        /// </summary>
+        internal int ConnectionId => Volatile.Read(ref _connectionId);
+
         internal FbWebSocket(
             FbOptions options,
             Func<FbOptions, WebSocketTransport> transportFactory = null,
@@ -116,13 +125,14 @@ namespace FeatBit.Sdk.Server.Transport
             // a new connection starts with a fresh liveness clock and must prove it answers pings again
             _serverAnswersPing = false;
             Interlocked.Exchange(ref _lastReceivedTimestamp, Stopwatch.GetTimestamp());
+            var connectionId = Interlocked.Increment(ref _connectionId);
 
             Log.StartingReceiveLoop(_logger);
             _receiveTask = ReceiveLoop();
 
             Log.StartingKeepAliveTimer(_logger);
             _keepAliveTimer = new Timer(
-                state => _ = KeepAliveAsync(),
+                _ => _ = KeepAliveAsync(connectionId),
                 null,
                 _keepAliveInterval,
                 _keepAliveInterval
@@ -284,8 +294,18 @@ namespace FeatBit.Sdk.Server.Transport
         /// Tears down the current connection (without stopping the client) so the normal reconnect path runs.
         /// Used when the connection is open but no longer useful, e.g. it stopped answering.
         /// </summary>
-        internal void AbortConnection(Exception reason)
+        /// <param name="reason">Why the connection is being replaced (logged, and reported to OnReconnecting).</param>
+        /// <param name="connectionId">
+        /// The <see cref="ConnectionId"/> the caller observed when it started its check. If a different connection
+        /// is current by now, the request is stale and ignored.
+        /// </param>
+        internal void AbortConnection(Exception reason, int connectionId)
         {
+            if (connectionId != ConnectionId)
+            {
+                return;
+            }
+
             var transport = _transport;
             if (transport == null || transport.State != WebSocketState.Open || _stopCts.IsCancellationRequested)
             {
@@ -412,8 +432,14 @@ namespace FeatBit.Sdk.Server.Transport
             }
         }
 
-        private async Task KeepAliveAsync(CancellationToken ct = default)
+        private async Task KeepAliveAsync(int connectionId)
         {
+            // a tick from the timer of an earlier connection (disposal does not stop in-flight callbacks)
+            if (connectionId != ConnectionId)
+            {
+                return;
+            }
+
             // Liveness check: the server answers every ping, so if it has done so before on this connection
             // and nothing at all has arrived for the keep-alive timeout, the connection is dead (half-open,
             // black-holed by a proxy/NAT, or the server is hung) even though the socket looks open.
@@ -425,14 +451,14 @@ namespace FeatBit.Sdk.Server.Transport
                     AbortConnection(new TimeoutException(
                         $"No message received from the server for {silentFor.TotalSeconds:F0}s " +
                         $"(keep-alive timeout {_keepAliveTimeout.TotalSeconds:F0}s)."
-                    ));
+                    ), connectionId);
                     return;
                 }
             }
 
             try
             {
-                await SendAsync(PingMessage, ct);
+                await SendAsync(PingMessage);
             }
             catch (InvalidOperationException)
             {

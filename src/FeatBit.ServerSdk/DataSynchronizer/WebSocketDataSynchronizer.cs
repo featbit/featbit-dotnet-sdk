@@ -150,12 +150,13 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
             var cts = new CancellationTokenSource();
             Interlocked.Exchange(ref _dataSyncTimeoutCts, cts)?.Cancel();
 
-            _ = WatchDataSyncReplyAsync(cts.Token);
+            // OnConnected runs after the connection is established, so this is the connection the request goes to
+            _ = WatchDataSyncReplyAsync(_webSocket.ConnectionId, cts.Token);
         }
 
         private void CancelDataSyncTimeout() => Interlocked.Exchange(ref _dataSyncTimeoutCts, null)?.Cancel();
 
-        private async Task WatchDataSyncReplyAsync(CancellationToken token)
+        private async Task WatchDataSyncReplyAsync(int connectionId, CancellationToken token)
         {
             var timeout = _options.DataSyncTimeout;
             try
@@ -168,15 +169,23 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
                 return;
             }
 
+            // The reply may have been applied between the delay completing and this continuation running,
+            // or the connection may already have been replaced: neither should be aborted (or logged).
+            if (token.IsCancellationRequested || connectionId != _webSocket.ConnectionId)
+            {
+                return;
+            }
+
             // The server accepted the request but never replied (e.g. its data-sync handler failed and it
             // logged the error without responding). Pings still succeed, so nothing else would notice.
+            // Scoped to the connection the request was sent on: a later connection is never aborted by this.
             _logger.LogWarning(
                 "No data-sync response received within {Timeout} seconds; replacing the connection.",
                 timeout.TotalSeconds
             );
             _webSocket.AbortConnection(new TimeoutException(
                 $"No data-sync response received within {timeout.TotalSeconds:F0} seconds."
-            ));
+            ), connectionId);
         }
 
         private void OnStatusChanged(DataSynchronizerStatus status) => StatusChanged?.Invoke(status);

@@ -32,6 +32,34 @@ public class FbWebSocketTests
     }
 
     [Fact]
+    public async Task AbortConnectionForAnEarlierConnectionIsIgnored()
+    {
+        var fbWebSocket = _app.CreateFbWebSocket("echo");
+
+        var reconnecting = false;
+        fbWebSocket.OnReconnecting += _ =>
+        {
+            reconnecting = true;
+            return Task.CompletedTask;
+        };
+
+        await fbWebSocket.ConnectAsync();
+        var current = fbWebSocket.ConnectionId;
+
+        // a timer started for a previous connection fires late
+        fbWebSocket.AbortConnection(new TimeoutException("stale"), current - 1);
+        await Task.Delay(200);
+        Assert.False(reconnecting);
+        Assert.Equal(current, fbWebSocket.ConnectionId);
+
+        // the same request for the current connection does replace it
+        fbWebSocket.AbortConnection(new TimeoutException("current"), current);
+        Assert.True(SpinWait.SpinUntil(() => reconnecting, 2000));
+
+        await fbWebSocket.CloseAsync();
+    }
+
+    [Fact]
     public async Task TestConnectError()
     {
         var fbWebSocket = _app.CreateFbWebSocket(
