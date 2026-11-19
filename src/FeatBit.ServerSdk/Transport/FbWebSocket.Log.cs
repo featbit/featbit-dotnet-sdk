@@ -112,6 +112,16 @@ namespace FeatBit.Sdk.Server.Transport
                 "FbWebSocket closed abnormally with status: {Status}, description: {Description}.",
                 EventName = "AbnormallyClosed")]
             public static partial void AbnormallyClosed(ILogger logger, WebSocketCloseStatus? status, string description);
+
+            [LoggerMessage(30, LogLevel.Error,
+                "Server rejected the connection (4003: {Description}). This client has synchronized with the same " +
+                "configuration before, so the rejection is treated as transient and reconnecting will continue with backoff.",
+                EventName = "ServerRejectedRetrying")]
+            public static partial void ServerRejectedRetrying(ILogger logger, string description);
+
+            [LoggerMessage(31, LogLevel.Warning, "Aborting the current connection and reconnecting: {Reason}",
+                EventName = "AbortingConnection")]
+            public static partial void AbortingConnection(ILogger logger, string reason);
         }
     }
 }

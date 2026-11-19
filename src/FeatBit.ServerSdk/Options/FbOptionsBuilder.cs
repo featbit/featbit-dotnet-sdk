@@ -20,6 +20,8 @@ namespace FeatBit.Sdk.Server.Options
         private TimeSpan _connectTimeout;
         private TimeSpan _closeTimeout;
         private TimeSpan _keepAliveInterval;
+        private TimeSpan? _keepAliveTimeout;
+        private TimeSpan _dataSyncTimeout;
         private TimeSpan[] _reconnectRetryDelays;
 
         private int _maxFlushWorker;
@@ -54,6 +56,8 @@ namespace FeatBit.Sdk.Server.Options
             _connectTimeout = TimeSpan.FromSeconds(3);
             _closeTimeout = TimeSpan.FromSeconds(2);
             _keepAliveInterval = TimeSpan.FromSeconds(15);
+            _keepAliveTimeout = null; // defaults to 3 x keep-alive interval
+            _dataSyncTimeout = TimeSpan.FromSeconds(10);
             _reconnectRetryDelays = DefaultRetryPolicy.DefaultRetryDelays;
 
             // event configs
@@ -73,7 +77,9 @@ namespace FeatBit.Sdk.Server.Options
         public FbOptions Build()
         {
             return new FbOptions(_startWaitTime, _offline, _disableEvents, _envSecret, _streamingUri, _eventUri,
-                _connectTimeout, _closeTimeout, _keepAliveInterval, _reconnectRetryDelays, _maxFlushWorker,
+                _connectTimeout, _closeTimeout, _keepAliveInterval,
+                _keepAliveTimeout ?? TimeSpan.FromTicks(_keepAliveInterval.Ticks * 3), _dataSyncTimeout,
+                _reconnectRetryDelays, _maxFlushWorker,
                 _autoFlushInterval, _flushTimeout, _maxEventsInQueue, _maxEventPerRequest, _maxSendEventAttempts,
                 _sendEventRetryInterval, _bootstrapProvider, _loggerFactory);
         }
@@ -175,6 +181,36 @@ namespace FeatBit.Sdk.Server.Options
         public FbOptionsBuilder KeepAliveInterval(TimeSpan interval)
         {
             _keepAliveInterval = interval;
+            return this;
+        }
+
+        /// <summary>
+        /// Sets how long the connection may go without receiving anything from the server before it is
+        /// considered dead and replaced. Defaults to 3 x the keep-alive interval.
+        /// </summary>
+        public FbOptionsBuilder KeepAliveTimeout(TimeSpan timeout)
+        {
+            if (timeout <= TimeSpan.Zero)
+            {
+                throw new ArgumentOutOfRangeException(nameof(timeout), "The keep-alive timeout must be positive.");
+            }
+
+            _keepAliveTimeout = timeout;
+            return this;
+        }
+
+        /// <summary>
+        /// Sets how long to wait for the reply to a data-sync request before the connection is replaced.
+        /// Defaults to 10 seconds.
+        /// </summary>
+        public FbOptionsBuilder DataSyncTimeout(TimeSpan timeout)
+        {
+            if (timeout <= TimeSpan.Zero)
+            {
+                throw new ArgumentOutOfRangeException(nameof(timeout), "The data-sync timeout must be positive.");
+            }
+
+            _dataSyncTimeout = timeout;
             return this;
         }
 

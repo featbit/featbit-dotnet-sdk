@@ -1,5 +1,6 @@
 using System;
 using System.Buffers;
+using System.Diagnostics;
 using System.IO;
 using System.Net.WebSockets;
 using System.Text;
@@ -25,6 +26,8 @@ namespace FeatBit.Sdk.Server.Transport
         private static readonly ReadOnlyMemory<byte> PingMessage =
             new ReadOnlyMemory<byte>(Encoding.UTF8.GetBytes("{\"messageType\":\"ping\",\"data\":{}}"));
 
+        private static readonly byte[] PongMarker = Encoding.UTF8.GetBytes("\"pong\"");
+
         private readonly FbOptions _options;
         private readonly Func<FbOptions, WebSocketTransport> _transportFactory;
         private readonly Func<FbOptions, Uri> _webSocketUriResolver;
@@ -32,12 +35,47 @@ namespace FeatBit.Sdk.Server.Transport
         private Task _receiveTask;
         private Task _reconnectTask;
         private readonly TimeSpan _keepAliveInterval;
+        private readonly TimeSpan _keepAliveTimeout;
         private Timer _keepAliveTimer;
         private Exception _closeException;
         private readonly IRetryPolicy _retryPolicy;
         private CancellationTokenSource _stopCts = new CancellationTokenSource();
         private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger<FbWebSocket> _logger;
+
+        // liveness: Stopwatch timestamp of the last message received on the current connection, and
+        // whether the server on the current connection has answered a ping (timeout is only enforced then)
+        private long _lastReceivedTimestamp;
+        private volatile bool _serverAnswersPing;
+
+        // reconnect backoff: only reset once a connection has proven healthy (see MarkConnectionHealthy),
+        // so a server that accepts and immediately closes the socket still gets an increasing delay
+        private int _retryAttempt;
+        private volatile bool _hasBeenHealthy;
+
+        // The established connection and its id, published together as one immutable object only once the
+        // transport has started. AbortConnection reads it once, so the id check and the transport it acts on
+        // can never belong to different connections.
+        private sealed class EstablishedConnection
+        {
+            public readonly int Id;
+            public readonly WebSocketTransport Transport;
+
+            public EstablishedConnection(int id, WebSocketTransport transport)
+            {
+                Id = id;
+                Transport = transport;
+            }
+        }
+
+        private volatile EstablishedConnection _connection;
+        private int _connectionCount;
+
+        /// <summary>
+        /// Identifies the current connection. Pass it to <see cref="AbortConnection"/> so that a check started
+        /// for one connection can never tear down a later one.
+        /// </summary>
+        internal int ConnectionId => _connection?.Id ?? 0;
 
         internal FbWebSocket(
             FbOptions options,
@@ -48,6 +86,11 @@ namespace FeatBit.Sdk.Server.Transport
             _transportFactory = transportFactory;
             _webSocketUriResolver = webSocketUriResolver;
             _keepAliveInterval = options.KeepAliveInterval;
+
+            // never shorter than two keep-alive intervals, even if KeepAliveInterval was changed after Build()
+            var minTimeout = TimeSpan.FromTicks(options.KeepAliveInterval.Ticks * 2);
+            _keepAliveTimeout = options.KeepAliveTimeout > minTimeout ? options.KeepAliveTimeout : minTimeout;
+
             _retryPolicy = options.ReconnectRetryDelays?.Length > 0
                 ? new DefaultRetryPolicy(options.ReconnectRetryDelays)
                 : new DefaultRetryPolicy();
@@ -94,12 +137,29 @@ namespace FeatBit.Sdk.Server.Transport
                 throw;
             }
 
+            // a new connection starts with a fresh liveness clock and must prove it answers pings again
+            _serverAnswersPing = false;
+            Interlocked.Exchange(ref _lastReceivedTimestamp, Stopwatch.GetTimestamp());
+            // publish the started transport and its id together; until now _connection still referred to the
+            // previous (already closed) connection, so a stale abort could only ever target that one
+            var connectionId = Interlocked.Increment(ref _connectionCount);
+            _connection = new EstablishedConnection(connectionId, transport);
+
             Log.StartingReceiveLoop(_logger);
             _receiveTask = ReceiveLoop();
 
+            // CloseAsync may have run while this transport was starting. It only cancels the last connection it
+            // can see, so if stop was requested, shut this new connection down here: whichever side runs second
+            // sees the other's change. (The token is checked too, since CompleteClose replaces _stopCts.)
+            if (cancellationToken.IsCancellationRequested || _stopCts.IsCancellationRequested)
+            {
+                CancelPendingRead(transport);
+                return;
+            }
+
             Log.StartingKeepAliveTimer(_logger);
             _keepAliveTimer = new Timer(
-                state => _ = KeepAliveAsync(),
+                _ => _ = KeepAliveAsync(connectionId),
                 null,
                 _keepAliveInterval,
                 _keepAliveInterval
@@ -147,6 +207,12 @@ namespace FeatBit.Sdk.Server.Transport
                             Log.ProcessingMessage(_logger, buffer.Length);
                             while (TextMessageParser.TryParseMessage(ref buffer, out var payload))
                             {
+                                Interlocked.Exchange(ref _lastReceivedTimestamp, Stopwatch.GetTimestamp());
+                                if (!_serverAnswersPing && IsPong(payload))
+                                {
+                                    _serverAnswersPing = true;
+                                }
+
                                 Log.InvokingEventHandler(_logger, nameof(OnReceived));
                                 _ = OnReceived?.Invoke(payload);
                             }
@@ -200,6 +266,12 @@ namespace FeatBit.Sdk.Server.Transport
 
             if (ShouldReconnect())
             {
+                if (_transport.CloseStatus == ServerRejectedCloseStatus)
+                {
+                    // we have synchronized with this secret before, so treat the rejection as transient
+                    Log.ServerRejectedRetrying(_logger, _transport.CloseDescription);
+                }
+
                 _reconnectTask = ReconnectAsync();
             }
             else
@@ -208,24 +280,102 @@ namespace FeatBit.Sdk.Server.Transport
             }
         }
 
-        private bool ShouldReconnect() => ShouldReconnect(_transport.CloseStatus, _stopCts.IsCancellationRequested);
+        private bool ShouldReconnect() =>
+            ShouldReconnect(_transport.CloseStatus, _stopCts.IsCancellationRequested, _hasBeenHealthy);
 
-        internal static bool ShouldReconnect(WebSocketCloseStatus? closeStatus, bool stopRequested)
+        internal static bool ShouldReconnect(
+            WebSocketCloseStatus? closeStatus,
+            bool stopRequested,
+            bool hasBeenHealthy = false)
         {
-            if (closeStatus == ServerRejectedCloseStatus)
-            {
-                // server rejected the connection explicitly, so we should not reconnect
-                return false;
-            }
-
             if (stopRequested)
             {
                 // connection was stopped manually, so we should not reconnect
                 return false;
             }
 
+            if (closeStatus == ServerRejectedCloseStatus)
+            {
+                // The server rejected the connection. If this client has never synchronized, the configuration
+                // is most likely wrong (e.g. invalid secret), so give up. If it has synchronized before with
+                // the same configuration, the rejection is likely transient (e.g. the server's secret store
+                // is still repopulating, or a temporary clock skew), so keep retrying with backoff.
+                return hasBeenHealthy;
+            }
+
             // otherwise, we should reconnect
             return true;
+        }
+
+        /// <summary>
+        /// Called once the current connection has proven healthy (e.g. a data-sync reply was applied).
+        /// Resets the reconnect backoff and allows retrying after a later server rejection.
+        /// </summary>
+        internal void MarkConnectionHealthy()
+        {
+            Interlocked.Exchange(ref _retryAttempt, 0);
+            _hasBeenHealthy = true;
+        }
+
+        /// <summary>
+        /// Tears down the current connection (without stopping the client) so the normal reconnect path runs.
+        /// Used when the connection is open but no longer useful, e.g. it stopped answering.
+        /// </summary>
+        /// <param name="reason">Why the connection is being replaced (logged, and reported to OnReconnecting).</param>
+        /// <param name="connectionId">
+        /// The <see cref="ConnectionId"/> the caller observed when it started its check. If a different connection
+        /// is current by now, the request is stale and ignored.
+        /// </param>
+        internal void AbortConnection(Exception reason, int connectionId)
+        {
+            // read the id and its transport in one go: they always describe the same connection
+            var connection = _connection;
+            if (connection == null || connection.Id != connectionId)
+            {
+                return;
+            }
+
+            var transport = connection.Transport;
+            if (transport.State != WebSocketState.Open || _stopCts.IsCancellationRequested)
+            {
+                return;
+            }
+
+            Log.AbortingConnection(_logger, reason.Message);
+            _closeException = reason;
+
+            CancelPendingRead(transport);
+        }
+
+        /// <summary>Makes the receive loop of a started transport exit so its connection shuts down.</summary>
+        private static void CancelPendingRead(WebSocketTransport transport)
+        {
+            if (transport == null)
+            {
+                return;
+            }
+
+            try
+            {
+                transport.Input.CancelPendingRead();
+            }
+            catch (Exception)
+            {
+                // the transport is already shutting down; the receive loop will handle the close
+            }
+        }
+
+        private static bool IsPong(in ReadOnlySequence<byte> payload)
+        {
+            // pong is a tiny fixed message: {"messageType":"pong","data":{}}
+            if (payload.Length > 128)
+            {
+                return false;
+            }
+
+            Span<byte> bytes = stackalloc byte[(int)payload.Length];
+            payload.CopyTo(bytes);
+            return bytes.IndexOf(PongMarker) >= 0;
         }
 
         private async Task ReconnectAsync()
@@ -253,10 +403,13 @@ namespace FeatBit.Sdk.Server.Transport
                     return;
                 }
 
-                var nextRetryDelay = _retryPolicy.NextRetryDelay(new RetryContext { RetryAttempt = retryTimes });
+                // The attempt counter is shared across reconnect cycles and only reset by MarkConnectionHealthy,
+                // so a server that accepts the socket and then closes it again keeps getting longer delays.
+                var retryAttempt = Interlocked.Increment(ref _retryAttempt) - 1;
+                var nextRetryDelay = _retryPolicy.NextRetryDelay(new RetryContext { RetryAttempt = retryAttempt });
                 try
                 {
-                    Log.AwaitingReconnectRetryDelay(_logger, retryTimes, nextRetryDelay);
+                    Log.AwaitingReconnectRetryDelay(_logger, retryAttempt, nextRetryDelay);
                     await Task.Delay(nextRetryDelay, _stopCts.Token).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException)
@@ -319,11 +472,33 @@ namespace FeatBit.Sdk.Server.Transport
             }
         }
 
-        private async Task KeepAliveAsync(CancellationToken ct = default)
+        private async Task KeepAliveAsync(int connectionId)
         {
+            // a tick from the timer of an earlier connection (disposal does not stop in-flight callbacks)
+            if (connectionId != ConnectionId)
+            {
+                return;
+            }
+
+            // Liveness check: the server answers every ping, so if it has done so before on this connection
+            // and nothing at all has arrived for the keep-alive timeout, the connection is dead (half-open,
+            // black-holed by a proxy/NAT, or the server is hung) even though the socket looks open.
+            if (_serverAnswersPing)
+            {
+                var silentFor = ElapsedSince(Interlocked.Read(ref _lastReceivedTimestamp));
+                if (silentFor > _keepAliveTimeout)
+                {
+                    AbortConnection(new TimeoutException(
+                        $"No message received from the server for {silentFor.TotalSeconds:F0}s " +
+                        $"(keep-alive timeout {_keepAliveTimeout.TotalSeconds:F0}s)."
+                    ), connectionId);
+                    return;
+                }
+            }
+
             try
             {
-                await SendAsync(PingMessage, ct);
+                await SendAsync(PingMessage);
             }
             catch (InvalidOperationException)
             {
@@ -335,15 +510,24 @@ namespace FeatBit.Sdk.Server.Transport
             _ = OnKeepAlive?.Invoke();
         }
 
+        private static TimeSpan ElapsedSince(long stopwatchTimestamp)
+        {
+            var elapsedTicks = Stopwatch.GetTimestamp() - stopwatchTimestamp;
+            return TimeSpan.FromSeconds((double)elapsedTicks / Stopwatch.Frequency);
+        }
+
         public async Task SendAsync(ReadOnlyMemory<byte> source, CancellationToken ct = default)
         {
-            if (_transport.State == WebSocketState.Open)
+            // CloseAsync clears _transport; a late keep-alive tick must not throw
+            var transport = _transport;
+            var state = transport?.State ?? WebSocketState.Closed;
+            if (state == WebSocketState.Open)
             {
-                await _transport.Output.WriteAsync(source, ct);
+                await transport.Output.WriteAsync(source, ct);
             }
             else
             {
-                Log.FailedToSendMessage(_logger, _transport.State);
+                Log.FailedToSendMessage(_logger, state);
             }
         }
 
@@ -355,13 +539,25 @@ namespace FeatBit.Sdk.Server.Transport
                 _stopCts.Cancel();
                 _keepAliveTimer?.Dispose();
 
+                // Only a started transport has a receive loop to cancel. _transport may be a replacement that a
+                // reconnect created but has not started yet (its pipes do not exist, so touching Input throws);
+                // that one observes the canceled token, or the stop check in ConnectAsync, and shuts itself down.
                 Log.TerminatingReceiveLoop(_logger);
-                _transport.Input.CancelPendingRead();
+                CancelPendingRead(_connection?.Transport);
 
+                // A reconnect can publish a new receive loop while we wait, so keep waiting until no new receive
+                // loop or reconnect has started.
                 Log.WaitingForReceiveLoopToTerminate(_logger);
-                await (_receiveTask ?? Task.CompletedTask).ConfigureAwait(false);
+                Task receiveTask, reconnectTask;
+                do
+                {
+                    receiveTask = _receiveTask ?? Task.CompletedTask;
+                    reconnectTask = _reconnectTask ?? Task.CompletedTask;
 
-                await (_reconnectTask ?? Task.CompletedTask).ConfigureAwait(false);
+                    await receiveTask.ConfigureAwait(false);
+                    await reconnectTask.ConfigureAwait(false);
+                } while (!ReferenceEquals(receiveTask, _receiveTask ?? Task.CompletedTask) ||
+                         !ReferenceEquals(reconnectTask, _reconnectTask ?? Task.CompletedTask));
             }
 
             Log.Closed(_logger, _transport?.CloseStatus);
