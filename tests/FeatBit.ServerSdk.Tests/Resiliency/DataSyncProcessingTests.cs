@@ -163,7 +163,9 @@ public class DataSyncProcessingTests
     [Fact]
     public async Task Slow_DataChanged_subscriber_does_not_delay_flag_updates()
     {
-        var pushed = new TaskCompletionSource();
+        var subscribed = NewSignal();
+        var firstHandlerStarted = NewSignal();
+        var pushed = NewSignal();
         await using var els = await FakeEls.StartAsync();
         els.OnStreaming = async (ws, n, ct) =>
         {
@@ -173,34 +175,38 @@ public class DataSyncProcessingTests
                 if (type == "data-sync") break;
             }
 
-            await Task.Delay(300, ct);
+            await subscribed.Task.WaitAsync(ct);
             await FakeEls.SendAsync(ws, FakeEls.DataSync("patch", FakeEls.Flag(true, 2)), ct);
-            await Task.Delay(100, ct);
-            await FakeEls.SendAsync(ws, FakeEls.DataSync("patch", FakeEls.Flag(false, 3)), ct); // kill switch
+
+            // send the kill switch only while the subscriber is busy with the first patch
+            await firstHandlerStarted.Task.WaitAsync(ct);
+            await FakeEls.SendAsync(ws, FakeEls.DataSync("patch", FakeEls.Flag(false, 3)), ct);
             pushed.SetResult();
             await els.ServeNormallyAsync(ws, n, ct);
         };
 
         var client = new FbClient(els.Options().Builder.Build());
-        Assert.True(client.Initialized);
-
-        // Count patches only: the initial Full notification is delivered asynchronously and may or may not
-        // reach a subscriber attached right after construction.
-        var notifications = 0;
-        client.DataChanged += (_, e) =>
-        {
-            if (e.Kind != DataChangeKind.Patch) return;
-
-            Interlocked.Increment(ref notifications);
-            // e.g. a subscriber that refreshes a cache or calls another service
-            Thread.Sleep(TimeSpan.FromSeconds(2));
-        };
-
-        await pushed.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        await WaitUntilAsync(() => !client.BoolVariation("f", User), timeoutMs: 1000);
-
         try
         {
+            Assert.True(client.Initialized);
+
+            // Count patches only: the initial Full notification is delivered asynchronously and may or may not
+            // reach a subscriber attached right after construction.
+            var notifications = 0;
+            client.DataChanged += (_, e) =>
+            {
+                if (e.Kind != DataChangeKind.Patch) return;
+
+                Interlocked.Increment(ref notifications);
+                firstHandlerStarted.TrySetResult();
+                // e.g. a subscriber that refreshes a cache or calls another service
+                Thread.Sleep(TimeSpan.FromSeconds(2));
+            };
+            subscribed.SetResult();
+
+            await pushed.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await WaitUntilAsync(() => !client.BoolVariation("f", User), timeoutMs: 1000);
+
             Assert.False(
                 client.BoolVariation("f", User),
                 "Kill-switch update is queued behind a slow DataChanged handler"
@@ -286,8 +292,15 @@ public class DataSyncProcessingTests
     [Fact]
     public async Task Patches_that_pile_up_behind_a_slow_subscriber_arrive_as_one_notification()
     {
-        // two patches that arrive while a slow subscriber is busy with the first are delivered as one notification
-        var pushed = new TaskCompletionSource();
+        // two patches that arrive while a subscriber is busy with the first are delivered as one notification
+        var subscribed = NewSignal();
+        var firstHandlerStarted = NewSignal();
+        var pushed = NewSignal();
+        var release = new ManualResetEventSlim();
+
+        // the last patch uses a second flag so the test can observe that both later patches were applied
+        var flagG = FakeEls.Flag(true, 4).Replace("\"key\":\"f\"", "\"key\":\"g\"");
+
         await using var els = await FakeEls.StartAsync();
         els.OnStreaming = async (ws, n, ct) =>
         {
@@ -297,11 +310,12 @@ public class DataSyncProcessingTests
                 if (type == "data-sync") break;
             }
 
-            await Task.Delay(300, ct);
-            await FakeEls.SendAsync(ws, FakeEls.DataSync("patch", FakeEls.Flag(true, 2)), ct);   // in flight
-            await Task.Delay(100, ct);
+            await subscribed.Task.WaitAsync(ct);
+            await FakeEls.SendAsync(ws, FakeEls.DataSync("patch", FakeEls.Flag(true, 2)), ct);   // handled first
+
+            await firstHandlerStarted.Task.WaitAsync(ct);
             await FakeEls.SendAsync(ws, FakeEls.DataSync("patch", FakeEls.Flag(false, 3)), ct);  // pending
-            await FakeEls.SendAsync(ws, FakeEls.DataSync("patch", FakeEls.Flag(true, 4)), ct);   // merged
+            await FakeEls.SendAsync(ws, FakeEls.DataSync("patch", flagG), ct);                   // merged into it
             pushed.SetResult();
             await els.ServeNormallyAsync(ws, n, ct);
         };
@@ -314,21 +328,28 @@ public class DataSyncProcessingTests
             client.DataChanged += (_, e) =>
             {
                 if (e.Kind != DataChangeKind.Patch) return;
-                lock (patches) patches.Add(e);
-                Thread.Sleep(500);
-            };
 
+                lock (patches) patches.Add(e);
+                firstHandlerStarted.TrySetResult();
+                release.Wait(TimeSpan.FromSeconds(10)); // stay busy until the test has seen both later patches
+            };
+            subscribed.SetResult();
+
+            // both later patches are applied while the first notification is still being handled
             await pushed.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await WaitUntilAsync(() => client.BoolVariation("g", User));
+            Assert.True(client.BoolVariation("g", User));
+            Assert.False(client.BoolVariation("f", User));
+
+            release.Set();
             await WaitUntilAsync(() => { lock (patches) return patches.Count >= 2; });
-            await Task.Delay(700);
+            await Task.Delay(200); // a third notification would show up here if the patches were not merged
 
             lock (patches)
             {
                 Assert.Equal(2, patches.Count);
                 Assert.All(patches, p => Assert.True(p.FeatureFlagsChanged));
             }
-
-            Assert.True(client.BoolVariation("f", User));
         }
         finally
         {
@@ -351,6 +372,8 @@ public class DataSyncProcessingTests
         Assert.True(merged.FeatureFlagsChanged);
         Assert.True(merged.SegmentsChanged);
     }
+
+    private static TaskCompletionSource NewSignal() => new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     private static async Task WaitUntilAsync(Func<bool> condition, int timeoutMs = 5000)
     {
