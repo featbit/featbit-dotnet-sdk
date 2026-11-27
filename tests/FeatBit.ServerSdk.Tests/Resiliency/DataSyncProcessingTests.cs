@@ -100,7 +100,7 @@ public class DataSyncProcessingTests
             FakeEls.DataSync("full", FakeEls.Flag(true, 1), NonGuidIdFlag, NullUpdatedAtFlag, "null")
         ).RootElement.GetProperty("data");
 
-        var dataSet = DataSet.FromJsonElement(json, NullLogger.Instance);
+        var dataSet = DataSetJsonParser.Parse(json, NullLogger.Instance);
 
         Assert.Equal(DataSet.Full, dataSet.EventType);
         Assert.Equal("f", Assert.Single(dataSet.FeatureFlags).Key);
@@ -121,7 +121,7 @@ public class DataSyncProcessingTests
     {
         var json = JsonDocument.Parse(payload).RootElement;
 
-        Assert.Throws<JsonException>(() => DataSet.FromJsonElement(json));
+        Assert.Throws<JsonException>(() => DataSetJsonParser.Parse(json));
     }
 
     [Fact]

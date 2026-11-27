@@ -234,7 +234,7 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
 
         private void ProcessDataSyncMessage(JsonElement data)
         {
-            var dataSet = DataSet.FromJsonElement(data, _logger);
+            var dataSet = DataSetJsonParser.Parse(data, _logger);
             if (dataSet.SkippedCount > 0)
             {
                 _logger.LogError(

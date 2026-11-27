@@ -12,7 +12,7 @@ internal sealed class JsonBootstrapProvider : IBootstrapProvider
     {
         using var jsonDocument = JsonDocument.Parse(json);
         var root = jsonDocument.RootElement;
-        _dataSet = DataSynchronizer.DataSet.FromJsonElement(root.GetProperty("data"));
+        _dataSet = DataSetJsonParser.Parse(root.GetProperty("data"));
     }
 
     public DataSet DataSet() => _dataSet;
