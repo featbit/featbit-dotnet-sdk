@@ -488,10 +488,12 @@ namespace FeatBit.Sdk.Server.Transport
                 var silentFor = ElapsedSince(Interlocked.Read(ref _lastReceivedTimestamp));
                 if (silentFor > _keepAliveTimeout)
                 {
-                    AbortConnection(new TimeoutException(
+                    var timeoutException = new TimeoutException(
                         $"No message received from the server for {silentFor.TotalSeconds:F0}s " +
                         $"(keep-alive timeout {_keepAliveTimeout.TotalSeconds:F0}s)."
-                    ), connectionId);
+                    );
+                    AbortConnection(timeoutException, connectionId);
+
                     return;
                 }
             }

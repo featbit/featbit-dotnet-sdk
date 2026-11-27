@@ -14,7 +14,7 @@ public class ConnectionResilienceTests
 
     // #47: a connection that goes silent (hung server, black-holed LB/NAT path) must be detected.
     [Fact]
-    public async Task Silent_connection_is_detected_and_replaced()
+    public async Task SilentConnectionIsDetectedAndReplaced()
     {
         await using var els = await FakeEls.StartAsync();
         els.OnStreaming = async (ws, n, ct) =>
@@ -63,7 +63,7 @@ public class ConnectionResilienceTests
 
     // #47 guard: a server that never answers pings must not be treated as dead.
     [Fact]
-    public async Task Server_that_never_answers_pings_is_not_disconnected()
+    public async Task ConnectionStaysOpenWhenServerNeverAnswersPings()
     {
         var pingsReceived = 0;
         await using var els = await FakeEls.StartAsync();
@@ -104,7 +104,7 @@ public class ConnectionResilienceTests
 
     // #48: a 4003 after the client has synchronized is treated as transient.
     [Fact]
-    public async Task Single_4003_during_reconnect_does_not_permanently_stop_sync()
+    public async Task SyncRecoversAfterSingle4003DuringReconnect()
     {
         var flagChanged = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         await using var els = await FakeEls.StartAsync();
@@ -158,7 +158,7 @@ public class ConnectionResilienceTests
 
     // #48 guard: a client that has never synchronized still gives up on 4003 (e.g. invalid secret).
     [Fact]
-    public async Task Rejection_before_first_sync_still_stops_reconnecting()
+    public async Task RejectionBeforeFirstSyncStopsReconnecting()
     {
         await using var els = await FakeEls.StartAsync();
         els.OnStreaming = (ws, n, ct) =>
@@ -183,7 +183,7 @@ public class ConnectionResilienceTests
     // #52: a server that accepts the socket and immediately closes it must not be hammered,
     // but the client must keep retrying.
     [Fact]
-    public async Task Accept_then_close_server_gets_increasing_reconnect_delays()
+    public async Task ReconnectDelaysIncreaseWhenServerAcceptsThenCloses()
     {
         await using var els = await FakeEls.StartAsync();
         els.OnStreaming = (ws, n, ct) =>
@@ -216,7 +216,7 @@ public class ConnectionResilienceTests
 
     // #53: a data-sync request that gets no reply is retried on a new connection.
     [Fact]
-    public async Task Unanswered_initial_data_sync_is_retried()
+    public async Task UnansweredInitialDataSyncIsRetried()
     {
         await using var els = await FakeEls.StartAsync();
         els.OnStreaming = async (ws, n, ct) =>
@@ -258,7 +258,7 @@ public class ConnectionResilienceTests
     }
 
     [Fact]
-    public async Task Unanswered_data_sync_after_reconnect_is_retried()
+    public async Task UnansweredDataSyncAfterReconnectIsRetried()
     {
         var flagChanged = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         await using var els = await FakeEls.StartAsync();
