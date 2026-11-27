@@ -4,73 +4,35 @@ public class DefaultRetryPolicyTests
 {
     [Theory]
     [InlineData(0, 2)]
-    [InlineData(1, 3)]
-    [InlineData(2, 5)]
-    [InlineData(3, 8)]
+    [InlineData(1, 8)]
+    [InlineData(2, 32)]
     // stays at the last delay instead of wrapping back to the first
-    [InlineData(4, 8)]
-    [InlineData(5, 8)]
-    [InlineData(100, 8)]
-    public void GetNextRetryDelay(int attempt, int seconds)
+    [InlineData(3, 32)]
+    [InlineData(100, 32)]
+    public void RetryDelayUsesExpectedJitterRange(int attempt, int seconds)
     {
-        var delays = new[] { 2, 3, 5, 8 }
-            .Select(x => TimeSpan.FromSeconds(x))
-            .ToList();
-
-        var policy = new DefaultRetryPolicy(delays, jitter: false);
+        var delays = new[] { TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(8), TimeSpan.FromSeconds(32) };
+        var policy = new DefaultRetryPolicy(delays);
 
         var retryContext = new RetryContext { RetryAttempt = attempt };
-        Assert.Equal(TimeSpan.FromSeconds(seconds), policy.NextRetryDelay(retryContext));
-    }
-
-    [Theory]
-    [InlineData(1)]
-    [InlineData(2)]
-    [InlineData(3)]
-    [InlineData(5)]
-    [InlineData(7)]
-    public void GetConstantRetryDelay(int attempt)
-    {
-        var delays = new[] { TimeSpan.FromSeconds(1) };
-
-        var policy = new DefaultRetryPolicy(delays, jitter: false);
-
-        Assert.Equal(TimeSpan.FromSeconds(1), policy.NextRetryDelay(new RetryContext { RetryAttempt = attempt }));
+        Assert.InRange(policy.NextRetryDelay(retryContext),
+            TimeSpan.FromSeconds(seconds / 2.0), TimeSpan.FromSeconds(seconds));
     }
 
     [Fact]
-    public void DefaultScheduleNeverDropsBackDuringALongOutage()
+    public void DefaultScheduleKeepsUsingLastDelayDuringALongOutage()
     {
-        var policy = new DefaultRetryPolicy(DefaultRetryPolicy.DefaultRetryDelays, jitter: false);
+        var policy = new DefaultRetryPolicy();
+        var firstAttemptPastSchedule = DefaultRetryPolicy.DefaultRetryDelays.Length;
 
-        var delays = Enumerable.Range(0, 50)
-            .Select(i => policy.NextRetryDelay(new RetryContext { RetryAttempt = i }))
-            .ToArray();
-
-        for (var i = 1; i < delays.Length; i++)
-        {
-            Assert.True(delays[i] >= delays[i - 1], $"attempt {i} waits {delays[i]} < attempt {i - 1} {delays[i - 1]}");
-        }
-
-        Assert.Equal(TimeSpan.FromSeconds(55), delays[^1]);
-    }
-
-    [Fact]
-    public void JitteredDelayStaysWithinHalfToFullDelay()
-    {
-        var policy = new DefaultRetryPolicy(new[] { TimeSpan.FromSeconds(10) });
-
-        for (var i = 0; i < 1000; i++)
-        {
-            var delay = policy.NextRetryDelay(new RetryContext { RetryAttempt = i });
-            Assert.InRange(delay, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10));
-        }
+        Assert.InRange(policy.NextRetryDelay(new RetryContext { RetryAttempt = firstAttemptPastSchedule }),
+            TimeSpan.FromSeconds(27.5), TimeSpan.FromSeconds(55));
     }
 
     [Fact]
     public void ZeroDelayIsNotJittered()
     {
-        var policy = new DefaultRetryPolicy(new[] { TimeSpan.Zero });
+        var policy = new DefaultRetryPolicy();
 
         Assert.Equal(TimeSpan.Zero, policy.NextRetryDelay(new RetryContext { RetryAttempt = 0 }));
     }

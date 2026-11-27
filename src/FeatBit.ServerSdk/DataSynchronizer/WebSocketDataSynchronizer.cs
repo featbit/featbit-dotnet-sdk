@@ -159,9 +159,10 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
                 timeout.TotalSeconds
             );
 
-            _webSocket.AbortConnection(new TimeoutException(
+            var timeoutException = new TimeoutException(
                 $"No data-sync response received within {timeout.TotalSeconds:F0} seconds."
-            ), connectionId);
+            );
+            _webSocket.AbortConnection(timeoutException, connectionId);
         }
 
         private void OnStatusChanged(DataSynchronizerStatus status) => StatusChanged?.Invoke(status);
