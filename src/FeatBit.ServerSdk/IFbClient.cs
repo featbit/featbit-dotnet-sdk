@@ -21,31 +21,12 @@ public interface IFbClient
     FbClientStatus Status { get; }
 
     /// <summary>
-    /// Occurs after a full synchronization replaces data or a patch changes stored data.
+    /// Occurs after a full synchronization replaces stored data or a patch changes it.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// The event does not expose feature flag keys, values, segments, or evaluation results, and handlers
-    /// must not rely on it for every connection or status change.
-    /// </para>
-    /// <para>
-    /// Handlers are invoked on a background thread after the store has been updated, one notification at a
-    /// time and in order. A slow handler does not delay later updates: flag evaluations keep reflecting new
-    /// data while it runs. Notifications that arrive while an earlier one is still being handled are combined
-    /// into a single notification (its <see cref="DataChangeEventArgs.Kind"/> is
-    /// <see cref="DataChangeKind.Full"/> if any combined change was a full synchronization, and its changed
-    /// flags cover every combined change), so a handler is not called once per individual update. By the
-    /// time a handler runs, the data may already include later changes. Handlers should still return
-    /// promptly, because combined notifications are delivered only after the current handler returns.
-    /// </para>
-    /// <para>
-    /// Handlers are looked up when a notification is delivered, not when the change occurred. A handler
-    /// added shortly after a change may therefore still receive that change's notification if it had not
-    /// been delivered yet, and a handler that has been removed is not called for notifications still
-    /// waiting. Beyond that, notifications delivered before a handler was added are not replayed. A
-    /// subscriber that needs initial state should add its handler before explicitly refreshing that
-    /// state; an extra notification just means refreshing again.
-    /// </para>
+    /// Handlers run serially in the background while the SDK continues applying updates.
+    /// Pending notifications may be combined, so one callback can represent multiple updates.
+    /// Subscribers are determined at delivery time. Delivered notifications are not replayed.
     /// </remarks>
     event EventHandler<DataChangeEventArgs> DataChanged;
 
