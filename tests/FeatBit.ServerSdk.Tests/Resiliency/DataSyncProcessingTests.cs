@@ -24,7 +24,7 @@ public class DataSyncProcessingTests
     [Theory]
     [InlineData(NonGuidIdFlag)]
     [InlineData(NullUpdatedAtFlag)]
-    public async Task One_malformed_flag_does_not_block_all_other_flags(string brokenFlag)
+    public async Task FullSyncLoadsValidFlagsWhenOneFlagIsMalformed(string brokenFlag)
     {
         await using var els = await FakeEls.StartAsync();
         els.OnStreaming = async (ws, n, ct) =>
@@ -61,7 +61,7 @@ public class DataSyncProcessingTests
 
     // #54
     [Fact]
-    public async Task Malformed_entity_in_a_patch_does_not_drop_the_healthy_changes_with_it()
+    public async Task PatchAppliesValidChangesWhenAnEntityIsMalformed()
     {
         await using var els = await FakeEls.StartAsync();
         els.OnStreaming = async (ws, n, ct) =>
@@ -94,7 +94,7 @@ public class DataSyncProcessingTests
     }
 
     [Fact]
-    public void DataSet_skips_malformed_entities_and_counts_them()
+    public void ParserSkipsAndCountsMalformedEntities()
     {
         var json = JsonDocument.Parse(
             FakeEls.DataSync("full", FakeEls.Flag(true, 1), NonGuidIdFlag, NullUpdatedAtFlag, "null")
@@ -117,7 +117,7 @@ public class DataSyncProcessingTests
     [InlineData("""{"eventType":"full","featureFlags":[],"segments":{}}""")]
     [InlineData("""{"eventType":"full","segments":[]}""")]
     [InlineData("""{"eventType":"full","featureFlags":[]}""")]
-    public void DataSet_rejects_a_payload_whose_arrays_are_missing_or_not_arrays(string payload)
+    public void ParserRejectsMissingOrInvalidEntityArrays(string payload)
     {
         var json = JsonDocument.Parse(payload).RootElement;
 
@@ -125,7 +125,7 @@ public class DataSyncProcessingTests
     }
 
     [Fact]
-    public async Task Full_sync_with_a_non_array_featureFlags_does_not_initialize_with_an_empty_store()
+    public async Task FullSyncWithInvalidFeatureFlagsArrayDoesNotInitializeClient()
     {
         await using var els = await FakeEls.StartAsync();
         els.OnStreaming = async (ws, n, ct) =>
@@ -163,7 +163,7 @@ public class DataSyncProcessingTests
 
     // #49
     [Fact]
-    public async Task Slow_DataChanged_subscriber_does_not_delay_flag_updates()
+    public async Task SlowDataChangedSubscriberDoesNotDelayFlagUpdates()
     {
         var fullDelivered = NewSignal();
         var firstHandlerStarted = NewSignal();
@@ -225,7 +225,7 @@ public class DataSyncProcessingTests
     }
 
     [Fact]
-    public async Task SerialDispatcher_delivers_in_order_without_blocking_the_caller()
+    public async Task SerialDispatcherDeliversInOrderWithoutWaitingForHandlers()
     {
         var received = new List<int>();
         var done = new TaskCompletionSource();
@@ -246,7 +246,7 @@ public class DataSyncProcessingTests
     }
 
     [Fact]
-    public async Task SerialDispatcher_keeps_going_after_a_handler_throws()
+    public async Task SerialDispatcherContinuesAfterHandlerThrows()
     {
         var done = new TaskCompletionSource<int>();
         var dispatcher = new SerialDispatcher<int>(i =>
@@ -262,7 +262,7 @@ public class DataSyncProcessingTests
     }
 
     [Fact]
-    public async Task SerialDispatcher_coalesces_items_that_pile_up_behind_a_slow_handler()
+    public async Task SerialDispatcherCoalescesPendingItemsWhileHandlerRuns()
     {
         var release = new ManualResetEventSlim();
         var received = new List<int>();
@@ -292,7 +292,7 @@ public class DataSyncProcessingTests
     }
 
     [Fact]
-    public async Task Patches_that_pile_up_behind_a_slow_subscriber_arrive_as_one_notification()
+    public async Task PendingPatchesProduceOneNotificationWhileSubscriberRuns()
     {
         // two patches that arrive while a subscriber is busy with the first are delivered as one notification
         var fullDelivered = NewSignal();
@@ -371,7 +371,7 @@ public class DataSyncProcessingTests
     [InlineData(DataChangeKind.Patch, DataChangeKind.Patch, DataChangeKind.Patch)]
     [InlineData(DataChangeKind.Full, DataChangeKind.Patch, DataChangeKind.Full)]
     [InlineData(DataChangeKind.Patch, DataChangeKind.Full, DataChangeKind.Full)]
-    public void Merged_notification_is_Full_if_either_was_Full(DataChangeKind a, DataChangeKind b, DataChangeKind expected)
+    public void MergedNotificationIsFullWhenEitherInputIsFull(DataChangeKind a, DataChangeKind b, DataChangeKind expected)
     {
         var merged = WebSocketDataSynchronizer.MergeDataChanges(
             new DataChangeEventArgs(a, featureFlagsChanged: true, segmentsChanged: false),
