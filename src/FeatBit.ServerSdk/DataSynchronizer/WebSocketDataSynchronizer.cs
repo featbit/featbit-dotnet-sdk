@@ -3,7 +3,6 @@ using System.Buffers;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
-using System.Threading;
 using System.Threading.Tasks;
 using FeatBit.Sdk.Server.Concurrent;
 using FeatBit.Sdk.Server.Options;
@@ -28,15 +27,13 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
         public event EventHandler<DataChangeEventArgs> DataChanged;
 
         private readonly IMemoryStore _store;
-        private readonly FbOptions _options;
         private readonly FbWebSocket _webSocket;
         private readonly TaskCompletionSource<bool> _initTcs;
         private readonly ILogger<WebSocketDataSynchronizer> _logger;
 
         private readonly DataSyncProcessor _dataSyncProcessor;
 
-        // canceled when a data-sync reply is applied; if it fires first, the connection is replaced
-        private CancellationTokenSource _dataSyncTimeoutCts;
+        private readonly DataSyncTimeoutWatchdog _dataSyncWatchdog;
 
         public WebSocketDataSynchronizer(
             FbOptions options,
@@ -51,7 +48,7 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
 
             // Shallow copy so we don't mutate the user-defined options object.
             var shallowCopiedOptions = options.ShallowCopy();
-            _options = shallowCopiedOptions;
+            _dataSyncWatchdog = new DataSyncTimeoutWatchdog(shallowCopiedOptions.DataSyncTimeout);
 
             var factory = fbWebSocketFactory ?? DefaultFbWebSocketFactory;
             _webSocket = factory(shallowCopiedOptions);
@@ -85,7 +82,9 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
             try
             {
                 // do data-sync once the connection is established, and make sure we hear back
-                StartDataSyncTimeout();
+                var connectionId = _webSocket.ConnectionId;
+                _dataSyncWatchdog.Start(timeout => OnDataSyncTimeout(connectionId, timeout));
+
                 await DoDataSyncAsync();
             }
             catch (Exception ex)
@@ -129,7 +128,7 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
 
         private Task OnReconnecting(Exception ex)
         {
-            CancelDataSyncTimeout();
+            _dataSyncWatchdog.Cancel();
             _statusManager.CompareAndSet(DataSynchronizerStatus.Stable, DataSynchronizerStatus.Interrupted);
             return Task.CompletedTask;
         }
@@ -140,38 +139,14 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
             string closeStatusDescription,
             string closeMessage)
         {
-            CancelDataSyncTimeout();
+            _dataSyncWatchdog.Cancel();
             _statusManager.SetStatus(DataSynchronizerStatus.Stopped);
             return Task.CompletedTask;
         }
 
-        private void StartDataSyncTimeout()
+        private void OnDataSyncTimeout(int connectionId, TimeSpan timeout)
         {
-            var cts = new CancellationTokenSource();
-            Interlocked.Exchange(ref _dataSyncTimeoutCts, cts)?.Cancel();
-
-            // OnConnected runs after the connection is established, so this is the connection the request goes to
-            _ = WatchDataSyncReplyAsync(_webSocket.ConnectionId, cts.Token);
-        }
-
-        private void CancelDataSyncTimeout() => Interlocked.Exchange(ref _dataSyncTimeoutCts, null)?.Cancel();
-
-        private async Task WatchDataSyncReplyAsync(int connectionId, CancellationToken token)
-        {
-            var timeout = _options.DataSyncTimeout;
-            try
-            {
-                await Task.Delay(timeout, token).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-                // reply arrived (or the connection went away) in time
-                return;
-            }
-
-            // The reply may have been applied between the delay completing and this continuation running,
-            // or the connection may already have been replaced: neither should be aborted (or logged).
-            if (token.IsCancellationRequested || connectionId != _webSocket.ConnectionId)
+            if (connectionId != _webSocket.ConnectionId)
             {
                 return;
             }
@@ -183,6 +158,7 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
                 "No data-sync response received within {Timeout} seconds; replacing the connection.",
                 timeout.TotalSeconds
             );
+
             _webSocket.AbortConnection(new TimeoutException(
                 $"No data-sync response received within {timeout.TotalSeconds:F0} seconds."
             ), connectionId);
@@ -224,9 +200,12 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
             _webSocket.OnReceived -= OnReceived;
             _webSocket.OnReconnecting -= OnReconnecting;
             _webSocket.OnClosed -= OnClosed;
-            CancelDataSyncTimeout();
+            _dataSyncWatchdog.Cancel();
 
             await _webSocket.CloseAsync();
+
+            // An in-flight OnConnected callback may have started a timer during shutdown.
+            _dataSyncWatchdog.Cancel();
 
             _statusManager.SetStatus(DataSynchronizerStatus.Stopped);
         }
@@ -252,7 +231,7 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
             }
 
             // the server answered: the connection is useful, stop waiting and reset the reconnect backoff
-            CancelDataSyncTimeout();
+            _dataSyncWatchdog.Cancel();
             _webSocket.MarkConnectionHealthy();
 
             _statusManager.SetStatus(DataSynchronizerStatus.Stable);
