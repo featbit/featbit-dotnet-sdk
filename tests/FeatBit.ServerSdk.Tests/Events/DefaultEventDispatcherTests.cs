@@ -132,37 +132,108 @@ public class DefaultEventDispatcherTests
     }
 
     [Fact]
-    public void ActiveFlushStopsWhenAnotherFlushIsRejected()
+    public void ActiveFlushKeepsItsRemainingEventsWhenAnotherFlushIsRejected()
     {
-        var queue = new BlockingCollection<IEvent>();
-        var options = new FbOptionsBuilder("fake-secret").MaxFlushWorker(2).MaxEventPerRequest(1).Build();
-
-        // the first request (worker A's first batch) is held until released; every later request is rejected
+        // request 1 (worker A's first batch) is held open; request 2 (worker B) is rejected; later ones succeed
         var release = new TaskCompletionSource<DeliveryStatus>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var calls = 0;
-        var mockSender = new Mock<IEventSender>();
-        mockSender.Setup(x => x.SendAsync(It.IsAny<byte[]>()))
-            .Returns(() => Interlocked.Increment(ref calls) == 1
-                ? release.Task
-                : Task.FromResult(DeliveryStatus.Rejected));
-
-        using var dispatcher = new DefaultEventDispatcher(options, queue, sender: mockSender.Object);
+        var test = new ConcurrentFlushTest(maxEventPerRequest: 1, call => call switch
+        {
+            1 => release.Task,
+            2 => Task.FromResult(DeliveryStatus.Rejected),
+            _ => Task.FromResult(DeliveryStatus.Succeeded)
+        });
+        using var dispatcher = test.Dispatcher;
 
         // worker A: 3 one-event batches, stuck sending the first
-        for (var i = 0; i < 3; i++) queue.Add(new IntEvent(i));
-        var flushA = new FlushEvent();
-        queue.Add(flushA);
-        Assert.True(SpinWait.SpinUntil(() => Volatile.Read(ref calls) == 1, 1000));
+        var flushA = test.StartFlush(eventCount: 3, untilCalls: 1);
 
         // worker B is rejected while A is still sending: delivery pauses
-        queue.Add(new IntEvent(3));
-        FlushAndWaitComplete(queue);
-        Assert.True(dispatcher.IsSuspended);
+        test.RejectAnotherFlush();
 
-        // A's first batch completes; it must not send its remaining two batches into the pause
+        // A's first batch completes; it must not send its remaining two batches into the pause...
         release.SetResult(DeliveryStatus.Succeeded);
         EnsureAsyncEventComplete(flushA);
-        Assert.Equal(2, Volatile.Read(ref calls));
+        Assert.Equal(2, test.Calls);
+
+        // ...but keeps them, and sends them once delivery resumes
+        test.FlushAfterPause();
+        Assert.Equal(4, test.Calls);
+    }
+
+    [Fact]
+    public void SplitBatchKeepsItsSecondHalfWhenAnotherFlushIsRejected()
+    {
+        // request 1: worker A's 2-event batch is too large; request 2 (first half) is held open;
+        // request 3 (worker B) is rejected; later ones succeed
+        var release = new TaskCompletionSource<DeliveryStatus>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var test = new ConcurrentFlushTest(maxEventPerRequest: 2, call => call switch
+        {
+            1 => Task.FromResult(DeliveryStatus.PayloadTooLarge),
+            2 => release.Task,
+            3 => Task.FromResult(DeliveryStatus.Rejected),
+            _ => Task.FromResult(DeliveryStatus.Succeeded)
+        });
+        using var dispatcher = test.Dispatcher;
+
+        var flushA = test.StartFlush(eventCount: 2, untilCalls: 2);
+        test.RejectAnotherFlush();
+
+        // the first half completes; the second half must not be sent into the pause...
+        release.SetResult(DeliveryStatus.Succeeded);
+        EnsureAsyncEventComplete(flushA);
+        Assert.Equal(3, test.Calls);
+
+        // ...but is kept, and sent once delivery resumes
+        test.FlushAfterPause();
+        Assert.Equal(4, test.Calls);
+    }
+
+    // Two flush workers: worker A is held mid-send while worker B is rejected.
+    private sealed class ConcurrentFlushTest
+    {
+        private readonly BlockingCollection<IEvent> _queue = new();
+        private int _calls;
+
+        public DefaultEventDispatcher Dispatcher { get; }
+        public int Calls => Volatile.Read(ref _calls);
+
+        public ConcurrentFlushTest(int maxEventPerRequest, Func<int, Task<DeliveryStatus>> respond)
+        {
+            var options = new FbOptionsBuilder("fake-secret")
+                .MaxFlushWorker(2)
+                .MaxEventPerRequest(maxEventPerRequest)
+                .Build();
+            // long enough that worker A always finishes inside the pause, short enough to wait out
+            options.EventRejectionBackoff = TimeSpan.FromSeconds(2);
+
+            var sender = new Mock<IEventSender>();
+            sender.Setup(x => x.SendAsync(It.IsAny<byte[]>()))
+                .Returns(() => respond(Interlocked.Increment(ref _calls)));
+
+            Dispatcher = new DefaultEventDispatcher(options, _queue, sender: sender.Object);
+        }
+
+        public FlushEvent StartFlush(int eventCount, int untilCalls)
+        {
+            for (var i = 0; i < eventCount; i++) _queue.Add(new IntEvent(i));
+            var flush = new FlushEvent();
+            _queue.Add(flush);
+            Assert.True(SpinWait.SpinUntil(() => Calls == untilCalls, 1000));
+            return flush;
+        }
+
+        public void RejectAnotherFlush()
+        {
+            _queue.Add(new IntEvent(100));
+            FlushAndWaitComplete(_queue);
+            Assert.True(Dispatcher.IsSuspended);
+        }
+
+        public void FlushAfterPause()
+        {
+            Assert.True(SpinWait.SpinUntil(() => !Dispatcher.IsSuspended, 5000));
+            FlushAndWaitComplete(_queue);
+        }
     }
 
     [Fact]

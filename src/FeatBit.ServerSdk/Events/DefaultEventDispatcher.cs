@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using FeatBit.Sdk.Server.Concurrent;
@@ -36,6 +37,10 @@ namespace FeatBit.Sdk.Server.Events
         internal bool IsSuspended => DateTime.UtcNow < ResumeAt; // internal for testing
         internal int DroppedOnLastRejection { get; private set; } // internal for testing
 
+        // the dispatch loop's queue: flush workers hand unsent events back through it, since only the loop
+        // may touch _buffer
+        private readonly BlockingCollection<IEvent> _queue;
+
         private readonly ILogger<DefaultEventDispatcher> _logger;
 
         internal DefaultEventDispatcher(
@@ -59,6 +64,7 @@ namespace FeatBit.Sdk.Server.Events
             _initialRejectionBackoff = options.EventRejectionBackoff;
             _maxRejectionBackoff = options.EventRejectionMaxBackoff;
             _nextRejectionBackoff = _initialRejectionBackoff;
+            _queue = queue;
 
             // Start the loop only after every field it uses has been assigned.
             // Here we use TaskFactory.StartNew instead of Task.Run() because that allows us to specify the
@@ -99,6 +105,9 @@ namespace FeatBit.Sdk.Server.Events
                         case FlushEvent fe:
                             TriggerFlush(fe);
                             break;
+                        case RetainEventsEvent re:
+                            RetainEvents(re.Events);
+                            break;
                         case ShutdownEvent se:
                             WaitForFlushes();
                             _flushWorkersFinished = true;
@@ -130,6 +139,27 @@ namespace FeatBit.Sdk.Server.Events
             else
             {
                 Log.ExceededCapacity(_logger);
+            }
+        }
+
+        // runs on the dispatch loop: put events a flush worker could not send back into the buffer
+        private void RetainEvents(IEvent[] events)
+        {
+            if (_stopped.Value)
+            {
+                return;
+            }
+
+            var retained = 0;
+            while (retained < events.Length && _buffer.AddEvent(events[retained]))
+            {
+                retained++;
+            }
+
+            Log.EventsRetained(_logger, retained);
+            if (retained < events.Length)
+            {
+                Log.RetainedEventsDropped(_logger, events.Length - retained);
             }
         }
 
@@ -198,22 +228,26 @@ namespace FeatBit.Sdk.Server.Events
         {
             var memory = new ReadOnlyMemory<IEvent>(events);
 
+            // events this flush stops short of sending because another worker's rejection paused delivery
+            var unsent = new List<IEvent>();
+
             // split and send
             var total = events.Length;
             for (var i = 0; i < total; i += _maxEventPerRequest)
             {
-                if (IsSuspended)
+                if (unsent.Count > 0 || IsSuspended)
                 {
-                    // Another flush worker was rejected while this one was sending. Its remaining batches would
-                    // be rejected too (and lengthen the pause), so stop here instead of sending into it.
-                    Log.FlushStoppedByPause(_logger, total - i);
-                    return;
+                    // Another flush worker was rejected while this one was sending. These events were never
+                    // rejected, but sending them now would be (and would lengthen the pause): keep them for
+                    // when delivery resumes instead.
+                    unsent.AddRange(memory.Slice(i).ToArray());
+                    break;
                 }
 
                 var length = Math.Min(_maxEventPerRequest, total - i);
                 var slice = memory.Slice(i, length);
 
-                var result = await SendBatchAsync(slice);
+                var result = await SendBatchAsync(slice, unsent);
                 if (result.Status == DeliveryStatus.Rejected)
                 {
                     // Do not keep sending the rest of this flush into a rejection: drop it and pause delivery.
@@ -223,14 +257,46 @@ namespace FeatBit.Sdk.Server.Events
                     return;
                 }
             }
+
+            if (unsent.Count > 0)
+            {
+                HandBackToBuffer(unsent.ToArray());
+            }
+        }
+
+        private void HandBackToBuffer(IEvent[] events)
+        {
+            Log.FlushStoppedByPause(_logger, events.Length);
+
+            bool queued;
+            try
+            {
+                // never blocks: if the queue is full the events are dropped, like any event recorded then
+                queued = _queue.TryAdd(new RetainEventsEvent(events));
+            }
+            catch (Exception ex) when (ex is InvalidOperationException || ex is ObjectDisposedException)
+            {
+                // shutting down: nothing will send them anyway
+                queued = false;
+            }
+
+            if (!queued)
+            {
+                Log.RetainedEventsDropped(_logger, events.Length);
+            }
         }
 
         /// <param name="batch">events to send in one request (split further if the server says it is too large)</param>
+        /// <param name="unsent">
+        /// receives the events of a split batch that were not sent because delivery was paused in the meantime
+        /// </param>
         /// <returns>
         /// The final status, and when it is <see cref="DeliveryStatus.Rejected"/>, how many events of this batch
         /// were not delivered (after a split, the halves sent before the rejection were delivered).
         /// </returns>
-        private async Task<(DeliveryStatus Status, int RejectedEvents)> SendBatchAsync(ReadOnlyMemory<IEvent> batch)
+        private async Task<(DeliveryStatus Status, int RejectedEvents)> SendBatchAsync(
+            ReadOnlyMemory<IEvent> batch,
+            List<IEvent> unsent)
         {
             var payload = _serializer.Serialize(batch);
             var status = await _sender.SendAsync(payload);
@@ -248,14 +314,21 @@ namespace FeatBit.Sdk.Server.Events
                 {
                     // split the batch in half and send each half on its own
                     var half = batch.Length / 2;
-                    var first = await SendBatchAsync(batch.Slice(0, half));
+                    var first = await SendBatchAsync(batch.Slice(0, half), unsent);
                     if (first.Status == DeliveryStatus.Rejected)
                     {
                         // the second half is never sent
                         return (first.Status, first.RejectedEvents + (batch.Length - half));
                     }
 
-                    return await SendBatchAsync(batch.Slice(half));
+                    if (unsent.Count > 0 || IsSuspended)
+                    {
+                        // another worker was rejected while the first half was in flight: keep the second half
+                        unsent.AddRange(batch.Slice(half).ToArray());
+                        return (DeliveryStatus.Failed, 0);
+                    }
+
+                    return await SendBatchAsync(batch.Slice(half), unsent);
                 }
 
                 case DeliveryStatus.PayloadTooLarge:

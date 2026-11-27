@@ -44,9 +44,16 @@ internal sealed partial class DefaultEventDispatcher
         [LoggerMessage(11, LogLevel.Warning, "A single event exceeds the server's payload size limit and was dropped.")]
         public static partial void SingleEventTooLarge(ILogger logger);
 
-        [LoggerMessage(12, LogLevel.Warning,
+        [LoggerMessage(12, LogLevel.Information,
             "Event delivery was paused by a rejection while this flush was in progress; " +
-            "{DroppedEvents} unsent events from it were dropped.")]
-        public static partial void FlushStoppedByPause(ILogger logger, int droppedEvents);
+            "{UnsentEvents} unsent events from it are kept for when delivery resumes.")]
+        public static partial void FlushStoppedByPause(ILogger logger, int unsentEvents);
+
+        [LoggerMessage(13, LogLevel.Debug, "{RetainedEvents} unsent events were put back in the buffer.")]
+        public static partial void EventsRetained(ILogger logger, int retainedEvents);
+
+        [LoggerMessage(14, LogLevel.Warning,
+            "{DroppedEvents} unsent events could not be kept (buffer full or shutting down) and were dropped.")]
+        public static partial void RetainedEventsDropped(ILogger logger, int droppedEvents);
     }
 }
