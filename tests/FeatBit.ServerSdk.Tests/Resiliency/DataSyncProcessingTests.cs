@@ -63,6 +63,7 @@ public class DataSyncProcessingTests
     [Fact]
     public async Task PatchAppliesValidChangesWhenAnEntityIsMalformed()
     {
+        var initialAssertionsPassed = NewSignal();
         await using var els = await FakeEls.StartAsync();
         els.OnStreaming = async (ws, n, ct) =>
         {
@@ -72,19 +73,19 @@ public class DataSyncProcessingTests
                 if (type == "data-sync") break;
             }
 
-            await Task.Delay(200, ct);
+            await initialAssertionsPassed.Task.WaitAsync(ct);
             await FakeEls.SendAsync(ws, FakeEls.DataSync("patch", NonGuidIdFlag, FakeEls.Flag(true, 2)), ct);
             await els.ServeNormallyAsync(ws, n, ct);
         };
 
         var client = new FbClient(els.Options().Builder.Build());
-        Assert.True(client.Initialized);
-        Assert.False(client.BoolVariation("f", User));
-
-        await WaitUntilAsync(() => client.BoolVariation("f", User));
-
         try
         {
+            Assert.True(client.Initialized);
+            Assert.False(client.BoolVariation("f", User));
+            initialAssertionsPassed.SetResult();
+
+            await WaitUntilAsync(() => client.BoolVariation("f", User));
             Assert.True(client.BoolVariation("f", User));
         }
         finally
@@ -296,6 +297,7 @@ public class DataSyncProcessingTests
     {
         // two patches that arrive while a subscriber is busy with the first are delivered as one notification
         var fullDelivered = NewSignal();
+        var postObserverAttached = NewSignal();
         var firstHandlerStarted = NewSignal();
         var release = new ManualResetEventSlim();
 
@@ -313,6 +315,7 @@ public class DataSyncProcessingTests
 
             // patches only after the initial Full notification was delivered, so they cannot merge into it
             await fullDelivered.Task.WaitAsync(ct);
+            await postObserverAttached.Task.WaitAsync(ct);
             await FakeEls.SendAsync(ws, FakeEls.DataSync("patch", FakeEls.Flag(true, 2)), ct);   // handled first
 
             await firstHandlerStarted.Task.WaitAsync(ct);
@@ -344,6 +347,7 @@ public class DataSyncProcessingTests
         try
         {
             Assert.True(client.Initialized);
+            postObserverAttached.SetResult();
 
             // all three patches are posted while the first notification is still being handled
             await WaitUntilAsync(() => Volatile.Read(ref postedPatches) == 3);
