@@ -57,6 +57,17 @@ namespace FeatBit.Sdk.Server.Events
     {
     }
 
+    // posted by a flush worker so the dispatch loop puts events it could not send back into the buffer
+    internal sealed class RetainEventsEvent : IEvent
+    {
+        public IEvent[] Events { get; }
+
+        public RetainEventsEvent(IEvent[] events)
+        {
+            Events = events;
+        }
+    }
+
     internal class PayloadEvent : IEvent
     {
     }

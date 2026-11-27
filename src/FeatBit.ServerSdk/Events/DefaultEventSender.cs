@@ -14,13 +14,12 @@ namespace FeatBit.Sdk.Server.Events
     internal partial class DefaultEventSender : IEventSender
     {
         private static readonly TimeSpan DefaultConnectTimeout = TimeSpan.FromSeconds(1);
-        private static readonly TimeSpan DefaultReadTimeout = TimeSpan.FromSeconds(1);
-        private static readonly TimeSpan DefaultTimeout = DefaultConnectTimeout + DefaultReadTimeout;
 
         private readonly Uri _eventUri;
         private const string EventPath = "api/public/insight/track";
         private readonly int _maxAttempts;
         private readonly TimeSpan _retryInterval;
+        private readonly TimeSpan _timeout;
 
         private readonly HttpClient _httpClient;
 
@@ -40,6 +39,7 @@ namespace FeatBit.Sdk.Server.Events
             _eventUri = new Uri(options.EventUri, EventPath);
             _maxAttempts = options.MaxSendEventAttempts;
             _retryInterval = options.SendEventRetryInterval;
+            _timeout = options.SendEventTimeout;
 
             _logger = options.LoggerFactory.CreateLogger<DefaultEventSender>();
         }
@@ -55,7 +55,7 @@ namespace FeatBit.Sdk.Server.Events
 
                 bool isRecoverable;
                 string error;
-                using var cts = new CancellationTokenSource(DefaultTimeout);
+                using var cts = new CancellationTokenSource(_timeout);
 
                 try
                 {
@@ -65,22 +65,22 @@ namespace FeatBit.Sdk.Server.Events
                         return DeliveryStatus.Succeeded;
                     }
 
-                    error = response.ReasonPhrase;
-                    isRecoverable = HttpErrors.IsRecoverable((int)response.StatusCode);
-                }
-                catch (TaskCanceledException ex)
-                {
-                    if (ex.CancellationToken == cts.Token)
+                    var status = (int)response.StatusCode;
+                    error = $"HTTP {status} {response.ReasonPhrase}";
+                    if (status == 413)
                     {
-                        Log.SendTaskWasCanceled(_logger);
-
-                        // The task was canceled due to a handle timeout, do not retry it.
-                        return DeliveryStatus.Failed;
+                        Log.SendFailed(_logger, error);
+                        return DeliveryStatus.PayloadTooLarge;
                     }
 
-                    // Otherwise this was a request timeout.
+                    isRecoverable = HttpErrors.IsRecoverable(status);
+                }
+                catch (OperationCanceledException) when (cts.IsCancellationRequested)
+                {
+                    // Our own per-attempt timeout elapsed: the server is slow, which is transient. Retry.
+                    Log.SendTaskWasCanceled(_logger);
                     isRecoverable = true;
-                    error = "request timeout";
+                    error = $"request timed out after {_timeout.TotalSeconds:F1}s";
                 }
                 catch (Exception ex)
                 {
@@ -92,7 +92,7 @@ namespace FeatBit.Sdk.Server.Events
                 Log.SendFailed(_logger, error);
                 if (!isRecoverable)
                 {
-                    return DeliveryStatus.FailedAndMustShutDown;
+                    return DeliveryStatus.Rejected;
                 }
             }
 
@@ -131,7 +131,12 @@ namespace FeatBit.Sdk.Server.Events
 #else
             var handler = new HttpClientHandler();
 #endif
-            var client = new HttpClient(handler, false);
+            var client = new HttpClient(handler, false)
+            {
+                // each attempt is bounded by SendEventTimeout; HttpClient's own 100s default would otherwise
+                // cut off attempts when SendEventTimeout is configured above 100 seconds
+                Timeout = System.Threading.Timeout.InfiniteTimeSpan
+            };
             return client;
         }
 
