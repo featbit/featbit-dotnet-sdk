@@ -27,7 +27,8 @@ public class DefaultEventDispatcherTests
         queue.Add(new IntEvent(1));
         queue.Add(new IntEvent(2));
 
-        Assert.True(SpinWait.SpinUntil(() => mockBuffer.Invocations.Count > 0, 1000));
+        // wait for both events: checking after the first would race the dispatch loop adding the second
+        Assert.True(SpinWait.SpinUntil(() => mockBuffer.Invocations.Count >= 2, 1000));
         mockBuffer.Verify(x => x.AddEvent(It.IsAny<IEvent>()), Times.Exactly(2));
     }
 
@@ -128,6 +129,40 @@ public class DefaultEventDispatcherTests
 
         // one request rejected; the other four batches are not sent into the rejection
         mockSender.Verify(x => x.SendAsync(It.IsAny<byte[]>()), Times.Once);
+    }
+
+    [Fact]
+    public void ActiveFlushStopsWhenAnotherFlushIsRejected()
+    {
+        var queue = new BlockingCollection<IEvent>();
+        var options = new FbOptionsBuilder("fake-secret").MaxFlushWorker(2).MaxEventPerRequest(1).Build();
+
+        // the first request (worker A's first batch) is held until released; every later request is rejected
+        var release = new TaskCompletionSource<DeliveryStatus>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var calls = 0;
+        var mockSender = new Mock<IEventSender>();
+        mockSender.Setup(x => x.SendAsync(It.IsAny<byte[]>()))
+            .Returns(() => Interlocked.Increment(ref calls) == 1
+                ? release.Task
+                : Task.FromResult(DeliveryStatus.Rejected));
+
+        using var dispatcher = new DefaultEventDispatcher(options, queue, sender: mockSender.Object);
+
+        // worker A: 3 one-event batches, stuck sending the first
+        for (var i = 0; i < 3; i++) queue.Add(new IntEvent(i));
+        var flushA = new FlushEvent();
+        queue.Add(flushA);
+        Assert.True(SpinWait.SpinUntil(() => Volatile.Read(ref calls) == 1, 1000));
+
+        // worker B is rejected while A is still sending: delivery pauses
+        queue.Add(new IntEvent(3));
+        FlushAndWaitComplete(queue);
+        Assert.True(dispatcher.IsSuspended);
+
+        // A's first batch completes; it must not send its remaining two batches into the pause
+        release.SetResult(DeliveryStatus.Succeeded);
+        EnsureAsyncEventComplete(flushA);
+        Assert.Equal(2, Volatile.Read(ref calls));
     }
 
     [Fact]

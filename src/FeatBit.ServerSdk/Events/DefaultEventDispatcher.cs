@@ -202,6 +202,14 @@ namespace FeatBit.Sdk.Server.Events
             var total = events.Length;
             for (var i = 0; i < total; i += _maxEventPerRequest)
             {
+                if (IsSuspended)
+                {
+                    // Another flush worker was rejected while this one was sending. Its remaining batches would
+                    // be rejected too (and lengthen the pause), so stop here instead of sending into it.
+                    Log.FlushStoppedByPause(_logger, total - i);
+                    return;
+                }
+
                 var length = Math.Min(_maxEventPerRequest, total - i);
                 var slice = memory.Slice(i, length);
 
