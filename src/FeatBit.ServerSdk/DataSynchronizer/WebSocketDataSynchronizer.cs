@@ -35,6 +35,12 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
 
         private readonly DataSyncTimeoutWatchdog _dataSyncWatchdog;
 
+        // Deliver DataChanged notifications in order, off the WebSocket receive loop.
+        private readonly SerialDispatcher<DataChangeEventArgs> _dataChangedDispatcher;
+
+        // Raised on the receive loop after a notification is posted, for test coordination.
+        internal event Action<DataChangeEventArgs> DataChangePosted;
+
         public WebSocketDataSynchronizer(
             FbOptions options,
             IMemoryStore store,
@@ -63,7 +69,22 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
 
             _logger = options.LoggerFactory.CreateLogger<WebSocketDataSynchronizer>();
             _dataSyncProcessor = new DataSyncProcessor(store, _logger);
+            _dataChangedDispatcher = new SerialDispatcher<DataChangeEventArgs>(
+                change => DataChanged?.Invoke(this, change),
+                _logger,
+                // notifications only say "something changed": merge any that pile up behind a slow subscriber
+                MergeDataChanges
+            );
         }
+
+        internal static DataChangeEventArgs MergeDataChanges(DataChangeEventArgs pending, DataChangeEventArgs next) =>
+            new(
+                pending.Kind == DataChangeKind.Full || next.Kind == DataChangeKind.Full
+                    ? DataChangeKind.Full
+                    : DataChangeKind.Patch,
+                pending.FeatureFlagsChanged || next.FeatureFlagsChanged,
+                pending.SegmentsChanged || next.SegmentsChanged
+            );
 
         private static FbWebSocket DefaultFbWebSocketFactory(FbOptions options)
         {
@@ -213,7 +234,16 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
 
         private void ProcessDataSyncMessage(JsonElement data)
         {
-            var dataSet = DataSet.FromJsonElement(data);
+            var dataSet = DataSetJsonParser.Parse(data, _logger);
+            if (dataSet.SkippedCount > 0)
+            {
+                _logger.LogError(
+                    "{SkippedCount} malformed entities were skipped in a {EventType} data-sync message; " +
+                    "the remaining entities were applied.",
+                    dataSet.SkippedCount, dataSet.EventType
+                );
+            }
+
             if (dataSet.EventType == DataSet.Patch && !Initialized)
             {
                 // Patch data-sync message received before full synchronization has initialized the client, ignore it
@@ -241,10 +271,12 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
                 _initTcs.TrySetResult(true);
             }
 
-            // Notify subscribers of data changes if there are any
+            // Notify subscribers of data changes if there are any. Subscribers run on a background dispatcher
+            // so a slow handler cannot delay the processing of later messages (flag updates, pongs).
             if (result.Change != null)
             {
-                DataChanged?.Invoke(this, result.Change);
+                _dataChangedDispatcher.Post(result.Change);
+                DataChangePosted?.Invoke(result.Change);
             }
         }
     }

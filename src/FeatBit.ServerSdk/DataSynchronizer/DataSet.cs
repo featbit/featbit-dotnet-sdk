@@ -1,6 +1,5 @@
+using System;
 using System.Collections.Generic;
-using System.Text.Json;
-using FeatBit.Sdk.Server.Json;
 using FeatBit.Sdk.Server.Model;
 using FeatBit.Sdk.Server.Store;
 
@@ -17,19 +16,18 @@ namespace FeatBit.Sdk.Server.DataSynchronizer
 
         public Segment[] Segments { get; set; }
 
+        /// <summary>
+        /// Number of entities in the message that could not be deserialized and were skipped.
+        /// </summary>
+        public int SkippedCount { get; set; }
+
         internal IEnumerable<StorableObject> GetStorableObjects()
         {
             var objects = new List<StorableObject>();
-            objects.AddRange(FeatureFlags);
-            objects.AddRange(Segments);
+            objects.AddRange(FeatureFlags ?? Array.Empty<FeatureFlag>());
+            objects.AddRange(Segments ?? Array.Empty<Segment>());
 
             return objects;
-        }
-
-        internal static DataSet FromJsonElement(JsonElement jsonElement)
-        {
-            var dataSet = jsonElement.Deserialize<DataSet>(ReusableJsonSerializerOptions.Web);
-            return dataSet;
         }
     }
 }

@@ -21,15 +21,12 @@ public interface IFbClient
     FbClientStatus Status { get; }
 
     /// <summary>
-    /// Occurs after a full synchronization replaces data or a patch changes stored data.
+    /// Occurs after a full synchronization replaces stored data or a patch changes it.
     /// </summary>
     /// <remarks>
-    /// The event does not expose feature flag keys, values, segments, or evaluation results. Event
-    /// handlers should finish quickly and must not rely on the event for every connection or status change.
-    /// Handlers are invoked synchronously while the SDK processes updated data. They must not block
-    /// or synchronously wait for <see cref="CloseAsync"/>; queue long-running work and return promptly.
-    /// Notifications that occurred before a handler was added are not replayed. A subscriber that needs
-    /// initial state should add its handler before explicitly refreshing that state.
+    /// Handlers run serially in the background while the SDK continues applying updates.
+    /// Pending notifications may be combined, so one callback can represent multiple updates.
+    /// Subscribers are determined at delivery time. Delivered notifications are not replayed.
     /// </remarks>
     event EventHandler<DataChangeEventArgs> DataChanged;
 
